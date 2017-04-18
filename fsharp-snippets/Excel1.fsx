@@ -10,7 +10,7 @@ let workbook : Excel.Workbook = app.Workbooks.Open(@"G:\work\working\data1.xlsx"
 // let workbook = app.Workbooks.Item("data1.xlsx")
 let worksheet = workbook.Sheets.["DATA"] :?> Excel.Worksheet
 
-let value = worksheet.Cells.Range("A1").Value2
+let value = worksheet.Cells.Range("A1").Text
 
 workbook.Close(SaveChanges = false)
 app.Quit()
