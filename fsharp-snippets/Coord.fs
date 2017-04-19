@@ -1,23 +1,29 @@
 ﻿namespace Coord
 
 open System
-
+open Microsoft.FSharp.Core
+open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 
 
 module Coord = 
 
-    type metres = double    
-    type ddegrees = double
+    // Units of measure make the internals very complicated (perhaps limit to the external interface?)
 
-    type OSGB36Point = { Eastings : metres; Northings : metres }
-    type WGS84Point = { Latitude : ddegrees; Longitude : ddegrees }
+    // type metres = double    
+    
+    [<Measure>]
+    type degree
+
+    type OSGB36Point = { Eastings : float<meter>; Northings : float<meter> }
+    type WGS84Point = { Latitude : float<degree>; Longitude : float<degree> }
 
     let deg2rad (d : float) = (Math.PI/180.0) * d
 
     let rad2deg (r : float) = (180.0/Math.PI) * r
 
     /// fromDMS :: Int -> Int -> Double -> DDegrees
-    let fromDMS (d : int) (m : int) (s : float) = float d + float m / 60.0 + s / 3600.0
+    let fromDMS (d : int) (m : int) (s : float) : float<degree> = 
+        LanguagePrimitives.FloatWithMeasure (float d + float m / 60.0 + s / 3600.0)
 
     // ellipsoid constants for Airy 1830
     let (private a : float) = 6377563.396
@@ -70,8 +76,8 @@ module Coord =
         b * F0 * (Ma - Mb + Mc - Md)
 
     let latlonToEN ({Latitude = phidd; Longitude = lamdd} : WGS84Point) = 
-        let phi = deg2rad phidd
-        let lam = deg2rad lamdd
+        let phi = deg2rad (float phidd)
+        let lam = deg2rad (float lamdd)
         let sinPhi = sin phi
         let cosPhi = cos phi
         let tanPhi = tan phi
@@ -92,22 +98,22 @@ module Coord =
         let VI = nu / 120.0 * cos5Phi * (5.0 - 18.0 * tan2Phi + tan4Phi + 14.0 * eta2 - 58.0 * tan2Phi * eta2)
         let N = I + II * lamMlam0 ** 2.0 + III * lamMlam0 ** 4.0 + IIIA * lamMlam0 ** 6.0
         let E = E0 + IV * lamMlam0 + V * lamMlam0 ** 3.0 + VI * lamMlam0 ** 5.0
-        { Eastings = E; Northings = N }
+        { Eastings = E * 1.0<meter>; Northings = N * 1.0<meter> }
 
 
 
     let enToLatLon ({Eastings = E; Northings = N} : OSGB36Point) =
         let rec makePhi p m = 
-            if abs (N - N0 - m) < 0.01 then 
+            if abs (float N - N0 - m) < 0.01 then 
                 p 
             else
-                let phi_new = (N - N0 - m) / (a * F0) + p
-                let Mnew   = equationC3 phi_new
-                makePhi phi_new Mnew
+                let phiNEW = (float N - N0 - m) / (a * F0) + p
+                let Mnew   = equationC3 phiNEW
+                makePhi phiNEW Mnew
         
-        let phi1'       = (N - N0) / (a * F0) + phi0
-        let M1         = equationC3 phi1'
-        let phi'        = makePhi phi1' M1
+        let phi1'           = (float N - N0) / (a * F0) + phi0
+        let M1              = equationC3 phi1'
+        let phi'            = makePhi phi1' M1
         let (nu,rho,eta2)   = equationC2 phi'
         let tanPhi'         = tan phi'
         let cosPhi'         = cos phi'
@@ -115,7 +121,7 @@ module Coord =
         let tan2Phi'        = tanPhi' * tanPhi'
         let tan4Phi'        = tanPhi' * tanPhi' * tanPhi' * tanPhi'
         let tan6Phi'        = tanPhi' * tanPhi' * tanPhi' * tanPhi' * tanPhi' * tanPhi'
-        let Em_E0          = E - E0
+        let Em_E0          = float E - E0
 
         let VII        = tanPhi' / (2.0 * rho * nu)
         let VIII       = tanPhi' / (24.0 * rho * nu ** 3.0) * (5.0 + 3.0 * tan2Phi' + eta2 - 9.0 * tan2Phi' * eta2)
@@ -126,7 +132,8 @@ module Coord =
         let XIIA       = secPhi' / (5040.0 * nu ** 7.0) * (61.0 + 662.0 * tan2Phi' + 1320.0 * tan4Phi' + 720.0 * tan6Phi')
         let phi         = phi' - VII * (Em_E0 ** 2.0) + VIII * (Em_E0 ** 4.0) - IX * (Em_E0 ** 6.0)
         let lam         = lam0 + X * Em_E0 - XI * (Em_E0 ** 3.0) + XII * (Em_E0 ** 5.0) - XIIA * (Em_E0 ** 7.0)
-        {Latitude = rad2deg phi; Longitude = rad2deg lam } 
+        { Latitude = LanguagePrimitives.FloatWithMeasure (rad2deg phi)
+        ; Longitude = LanguagePrimitives.FloatWithMeasure (rad2deg lam) } 
 
 
     /// OS Grid refs, see
@@ -158,12 +165,13 @@ module Coord =
         let (em, nm) = decodeMinor t
         (eM + em, nM + nm)
 
-    let decodeOSGridRef10 (m : char) (mm : char) east north = 
+    let decodeOSGridRef10 (m : char) (mm : char) (east : float<meter>) (north : float<meter>) = 
         let (majE, majN) = decodeAlpha m mm 
-        {Eastings = majE + east; Northings = majN + north}
+        { Eastings = east + LanguagePrimitives.FloatWithMeasure majE
+        ; Northings = north + LanguagePrimitives.FloatWithMeasure majN }
     
     let decodeOSGridRef6 (m : char) (mm : char) east north = 
-        decodeOSGridRef10 m mm (east * 100.0) (north * 100.0) 
+        decodeOSGridRef10 m mm (east * 100.0<meter>) (north * 100.0<meter>) 
 
     /// Seq.toListmight be better...
 
@@ -199,5 +207,7 @@ module Coord =
     let fromOSGridRef10 (ss : string) = 
         match Seq.toList ss with
             | (m :: mm :: xs) -> let (e,n) = ns 5 xs
-                                 Some <| decodeOSGridRef10 m mm e n
+                                 let e1 = LanguagePrimitives.FloatWithMeasure e
+                                 let n1 = LanguagePrimitives.FloatWithMeasure n
+                                 Some <| decodeOSGridRef10 m mm e1 n1
             | _ -> None    

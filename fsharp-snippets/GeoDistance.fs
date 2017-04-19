@@ -4,18 +4,18 @@ open Coord
 open System
 
 module GeoDistance = 
+    
+    [<Measure>]
+    type kilometer
 
-    type kilometres = double
-
-    // let temp = Coord.WGS84Point 0 0 
 
     // Operates on WGS84Points i.e. Lat-Lon
     let haversineDistance (p1 : Coord.WGS84Point) (p2 : Coord.WGS84Point) = 
-        let radius = (6371.000 : kilometres)
-        let lat1R = Coord.deg2rad(p1.Latitude)
-        let lat2R = Coord.deg2rad(p2.Latitude)
-        let latDeltaR = Coord.deg2rad(p2.Latitude-p1.Latitude)
-        let lonDeltaR = Coord.deg2rad(p2.Longitude-p1.Longitude);
+        let radius = 6371.000<kilometer>
+        let lat1R = Coord.deg2rad (float p1.Latitude)
+        let lat2R = Coord.deg2rad (float p2.Latitude)
+        let latDeltaR = Coord.deg2rad (float (p2.Latitude-p1.Latitude))
+        let lonDeltaR = Coord.deg2rad (float (p2.Longitude-p1.Longitude))
         let a = Math.Sin(latDeltaR /2.0) * Math.Sin(latDeltaR /2.0) + 
                 Math.Cos(lat1R) * Math.Cos(lat2R) *
                 Math.Sin(lonDeltaR / 2.0) * Math.Sin(lonDeltaR/2.0)

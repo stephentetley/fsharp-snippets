@@ -7,15 +7,16 @@
 open Coord
 open GeoDistance
 open System
+open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 
 let testZ1 = Coord.ns 3 (Seq.toList "352263")
 let testZ2 = Char.GetNumericValue '6'
 
-let phi1 = Coord.fromDMS 52 39 27.2531
-let lam1 = Coord.fromDMS 1 43 4.5177
+let phi1 : float<Coord.degree> = Coord.fromDMS 52 39 27.2531
+let lam1 : float<Coord.degree> = Coord.fromDMS 1 43 4.5177
 
 let test01 = Coord.latlonToEN {Latitude = phi1; Longitude = lam1}
-let test02 = Coord.enToLatLon {Eastings = 651409.903; Northings = 313177.270}
+let test02 = Coord.enToLatLon {Eastings = 651409.903<meter>; Northings = 313177.270<meter>}
 
 let test03 = Coord.decodeMinor 'c' ;;
 let testit c = Coord.decodeAlpha c
@@ -37,10 +38,8 @@ let isle_of_lewis = Coord.fromOSGridRef10 "NB0669737542"
 /// SE - Easting : 628458    Northing : 141168
 let dover = Coord.fromOSGridRef10 "TR2845841168"
 
-let dover2 = {Coord.Eastings = 628458.0; Coord.Northings =  141168.0}
+let dover2 = {Coord.Eastings = 628458.0<meter>; Coord.Northings =  141168.0<meter>}
 
-#load "GeoDistance.fs"
-open GeoDistance
 
 let testD1 = match dover with
              | Some d1 -> GeoDistance.haversineDistance (Coord.enToLatLon d1) (Coord.enToLatLon dover2)
