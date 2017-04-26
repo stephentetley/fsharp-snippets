@@ -91,4 +91,6 @@ let test05 = run pdecimal "1440.37500 "
 let test06 = run limit "32766=100.37500 "
 let test07 = pointType "PID1"
 let test08 = run sysPoint "P2_CURRENT_DAY_MINS_RUN AID3 0=0.000000 1440=1440.000000 "
-let test09 = runParserOnFile pConfig () @"G:\work\working\SAMPLE.odf" Text.ASCIIEncoding.ASCII
+
+let path1 = System.IO.Path.Combine(__SOURCE_DIRECTORY__,"..","data/SAMPLE.odf")
+let test09 = runParserOnFile pConfig () path1 Text.ASCIIEncoding.ASCII
