@@ -5,9 +5,12 @@
 
 
 open System.IO
+open Microsoft.Office.Interop
+open PhotoDoc.DocBuilder
+
 
 let dir1 = @"G:\work\photos1\site photos"
-
+let docname = @"G:\work\photos1.doc"
 
 Directory.Exists(dir1)
 
@@ -22,3 +25,18 @@ let rec allFiles dir =
             yield! allFiles subdir }
 
 allFiles dir1 |> Seq.iter (printfn "%s")
+
+let rbox v = ref (box v)
+
+
+let TestIt () = 
+    let oapp = new Word.ApplicationClass (Visible = true) 
+    let odoc = oapp.Documents.Add()
+    let obuild = new DocBuilder(odoc)
+    allFiles dir1 |> Seq.iter (obuild.AppendPicture)
+    odoc.SaveAs(FileName = rbox docname)
+    odoc.Close(SaveChanges = rbox false)
+    oapp.Quit()
+
+
+
