@@ -26,17 +26,25 @@ let rec allFiles dir =
 
 allFiles dir1 |> Seq.iter (printfn "%s")
 
-let rbox v = ref (box v)
+// let rbox v = ref (box v)
 
 
-let TestIt () = 
+let Driver () = 
+
     let oapp = new Word.ApplicationClass (Visible = true) 
     let odoc = oapp.Documents.Add()
     let obuild = new DocBuilder(odoc)
-    allFiles dir1 |> Seq.iter (obuild.AppendPicture)
+    let mkPage (name : string) = 
+        obuild.AppendPicture name
+        obuild.AppendTextParagraph name
+        obuild.AppendPageBreak ()
+
+    obuild.AppendStyledParagraph Word.WdBuiltinStyle.wdStyleTitle "Photos"
+    allFiles dir1 |> Seq.iter mkPage
     odoc.SaveAs(FileName = rbox docname)
     odoc.Close(SaveChanges = rbox false)
     oapp.Quit()
 
 
+let Test01 () = Driver ()
 
