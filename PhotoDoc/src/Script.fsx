@@ -30,7 +30,6 @@ allFiles dir1 |> Seq.iter (printfn "%s")
 
 
 let Driver () = 
-
     let oapp = new Word.ApplicationClass (Visible = true) 
     let odoc = oapp.Documents.Add()
     let obuild = new DocBuilder(odoc)
