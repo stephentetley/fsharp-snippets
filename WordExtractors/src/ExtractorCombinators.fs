@@ -10,22 +10,31 @@ module Parsers =
 
     let rbox (v : 'a) : obj ref = ref (box v)
 
+    type Result<'a> = 
+        | Succ of 'a
+        | Fail of string
+
+
     type WDoc = Word.Document
 
     // TODO - what object is best to store as a cursor - a range or an integer position?
     // We should be very careful about a range as it might get mutated under the hood.
+    
+    // ALTERNATIVELY - maybe a cursor is wrong and what we really need are delimited
+    // regions like the Reader monad's @local.
+
     type WRange = Word.Range
     
-    type FailK<'r> = WRange -> 'r
+    type FailK<'r> = WRange -> Result<'r>
 
-    type SuccK<'a,'r> = 'a -> FailK<'r> -> WDoc -> WRange -> 'r
+    type SuccK<'a,'r> = 'a -> FailK<'r> -> WDoc -> WRange -> Result<'r>
         
 
     // Note from a Range we could get back to Doc
 
-    type Parser<'a,'r> = Parser of (SuccK<'a,'r> -> FailK<'r> -> WDoc -> WRange -> 'r)
+    type Parser<'a,'r> = Parser of (SuccK<'a,'r> -> FailK<'r> -> WDoc -> WRange -> Result<'r>)
 
-    let apply1 (p : Parser<'a,'r>) (sk : SuccK<'a,'r>) : FailK<'r> -> WDoc -> WRange -> 'r = 
+    let apply1 (p : Parser<'a,'r>) (sk : SuccK<'a,'r>) : FailK<'r> -> WDoc -> WRange -> Result<'r> = 
         let (Parser pf) = p in pf sk
 
 
@@ -54,14 +63,16 @@ module Parsers =
 
     // Use "find" to get the first locus
 
-    let private furthest (x : WRange) (y : WRange) : WRange = if x.Start >= y.Start then x else y
 
+    // Left-biased
     let alt (p : Parser<'a,'r>) (q : Parser<'a,'r>) : Parser<'a,'r> =
-        Parser (fun sk fk ts n -> 
-                    let fkp n1 =
-                        let fkq n2 = fk (furthest n1 n2)
-                        apply1 q sk fkq ts n
-                    apply1 p sk fkp ts n)
+        Parser (fun sk fk doc rng -> 
+                    let ans1 = apply1 p sk fk doc rng
+                    match ans1 with
+                    | Fail _ -> apply1 q sk fk doc rng
+                    | _ -> ans1)
+
+
 
     let (<|>) (p : Parser<'a,'r>) (q : Parser<'a,'r>) : Parser<'a,'r> = alt p q
 
@@ -109,8 +120,14 @@ module Parsers =
                         sk () fk doc rng1
                     else fk rng)
 
-                    
-     
+    // look for line end...
+    let RestOfLine  : Parser<string,'r> = 
+        Parser (fun sk fk doc rng -> 
+                    match rng with
+                    | null -> fk rng
+                    | rng1 -> let txt = rng1.Text
+                              let _ = updRangeToEnd rng1
+                              sk txt fk doc rng1)
 
 
     let test (p : Parser<'a,'r>) (filepath : string) : 'a = 
@@ -119,10 +136,13 @@ module Parsers =
         let dstart = doc.Content.Start
         let dend = doc.Content.End
         let rng = doc.Range(rbox dstart, rbox dend)
-        let sk = fun x fk ts n -> x
-        let fk = fun n -> failwith "Add error handling..."
+        let sk = fun x fk ts n -> Succ x
+        let fk = fun n -> Fail "Add error handling..."
         let ans = apply1 p sk fk doc rng 
         doc.Close(SaveChanges = rbox false)
         app.Quit()
-        ans
+        match ans with
+        | Fail msg -> failwith msg
+        | Succ a -> a
+
 

@@ -7,7 +7,8 @@ open System.IO
 open Microsoft.Office.Interop
 open ExtractorCombinators
 
-
+// Note to self - this example is not "properly structured" tables are free text
+//
 let testpath = @"G:\work\working\Survey1.docx"
 
 let oapp = new Word.ApplicationClass (Visible = true) 
@@ -52,7 +53,7 @@ let test2 () =
     text
 
 let test3 () = 
-    let p1 = parser { let! _ = ToTable 0
+    let p1 = parser { do! ToTable 0
                       let! a = Text
                       return a }
     let text = test p1 testpath
