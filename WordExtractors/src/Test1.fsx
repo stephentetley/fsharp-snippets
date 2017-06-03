@@ -38,3 +38,23 @@ Seq.cast odoc.Tables
 
 odoc.Close(SaveChanges = rbox false)
 oapp.Quit()
+
+
+
+let test1 () = 
+    let text = test Text testpath
+    text
+
+let test2 () = 
+    let p1 = parser { let! a = Text
+                      return a }
+    let text = test p1 testpath
+    text
+
+let test3 () = 
+    let p1 = parser { let! _ = ToTable 0
+                      let! a = Text
+                      return a }
+    let text = test p1 testpath
+    text
+
