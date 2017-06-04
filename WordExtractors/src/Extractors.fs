@@ -109,21 +109,23 @@ module Extractors
                     | null -> Fail "Range is null"
                     | rng1 -> Okay <| rng1.Text)
 
+
+    // Note - the index is local within the range
+    // Also indexing is from 1 (must check this...)
     let withTable (i:int) (p : Parser<'a>) : Parser<'a> =
         Parser (fun rng -> 
-                    if i < rng.Document.Tables.Count then 
-                        let rng1 = rng.Document.Tables.Item(1).Range
+                    if i < rng.Tables.Count then 
+                        let rng1 = rng.Tables.Item(i).Range
                         apply1 p rng1
                     else Fail "Table out of Range")
-//
-//    // look for line end...
-//    let restOfLine : Parser<string> = 
-//        Parser (fun sk fk doc rng -> 
-//                    match rng with
-//                    | null -> fk rng
-//                    | rng1 -> let txt = sRestOfLine rng1.Text
-//                              let _ = updRangeToEnd rng1
-//                              sk txt fk doc rng1)
+
+    // look for line end...
+    let restOfLine : Parser<string> = 
+        Parser (fun rng -> 
+                    match rng with
+                    | null -> Fail "restOfLine - range is null"
+                    | rng1 -> Okay <| sRestOfLine rng1.Text)
+
 //
 //    // To check - does duplicating range work as expected...
 //    let find (s:string) : Parser<unit> = 

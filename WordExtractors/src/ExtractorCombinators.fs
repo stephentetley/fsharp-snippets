@@ -112,7 +112,7 @@ module ExtractorCombinators
     let gotoTable (i:int) : Parser<unit,'r> =
         Parser (fun sk fk doc rng -> 
                     if i < doc.Tables.Count then 
-                        let rng1 = doc.Tables.Item(1).Range
+                        let rng1 = doc.Tables.Item(i).Range
                         sk () fk doc rng1
                     else fk rng)
 
