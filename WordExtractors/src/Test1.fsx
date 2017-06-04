@@ -1,11 +1,13 @@
 ﻿
 #r "Microsoft.Office.Interop.Word"
 
-#load "ExtractorCombinators.fs"
+#load "Utils.fs"
+#load "Extractors.fs"
 
 open System.IO
 open Microsoft.Office.Interop
-open ExtractorCombinators
+open Utils
+open Extractors
 
 // Note to self - this example is not "properly structured" tables are free text
 //
@@ -43,19 +45,18 @@ oapp.Quit()
 
 
 let test1 () = 
-    let text = test Text testpath
+    let text = test text testpath
     text
 
 let test2 () = 
-    let p1 = parser { let! a = Text
+    let p1 = parser { let! a = text
                       return a }
     let text = test p1 testpath
     text
 
 let test3 () = 
-    let p1 = parser { do! ToTable 0
-                      let! a = Text
-                      return a }
+    let p1 = withTable 0 <| parser { let! a = text
+                                     return a }
     let text = test p1 testpath
     text
 

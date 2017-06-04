@@ -1,14 +1,10 @@
 ﻿[<AutoOpen>]
 module ExtractorCombinators
 
-// Add a reference via the COM tab 
-// All that PIA stuff is outdated for Office 365 / .Net 4.5 / VS2015 
-open Microsoft.Office.Interop
-
-[<AutoOpen>]
-module Parsers = 
-
-    let rbox (v : 'a) : obj ref = ref (box v)
+    // Add a reference via the COM tab 
+    // All that PIA stuff is outdated for Office 365 / .Net 4.5 / VS2015 
+    open Microsoft.Office.Interop
+    open Utils
 
     type Result<'a> = 
         | Succ of 'a
@@ -105,7 +101,7 @@ module Parsers =
         rng.Start <- end1
 
 
-    let Text : Parser<string,'r> = 
+    let text : Parser<string,'r> = 
         Parser (fun sk fk doc rng -> 
                     match rng with
                     | null -> fk rng
@@ -113,7 +109,7 @@ module Parsers =
                               let _ = updRangeToEnd rng1
                               sk txt fk doc rng1)
 
-    let ToTable (i:int) : Parser<unit,'r> =
+    let gotoTable (i:int) : Parser<unit,'r> =
         Parser (fun sk fk doc rng -> 
                     if i < doc.Tables.Count then 
                         let rng1 = doc.Tables.Item(1).Range
@@ -121,13 +117,20 @@ module Parsers =
                     else fk rng)
 
     // look for line end...
-    let RestOfLine  : Parser<string,'r> = 
+    let restOfLine : Parser<string,'r> = 
         Parser (fun sk fk doc rng -> 
                     match rng with
                     | null -> fk rng
-                    | rng1 -> let txt = rng1.Text
+                    | rng1 -> let txt = sRestOfLine rng1.Text
                               let _ = updRangeToEnd rng1
                               sk txt fk doc rng1)
+
+    // To check - does duplicating range work as expected...
+    let find (s:string) : Parser<unit,'r> = 
+        Parser (fun sk fk doc rng -> 
+                    let mutable rng1 = rng.Duplicate
+                    let ans = rng1.Find.Execute(FindText = rbox s)
+                    Succ ())
 
 
     let test (p : Parser<'a,'r>) (filepath : string) : 'a = 
