@@ -23,111 +23,111 @@ module Extractors
     
         
 
-    // Parser is Reader+Error
+    // Extractor is Reader+Error
 
-    type Parser<'a> = Parser of (WRange -> Result<'a>)
-
-
-
-    let fail : Parser<'a> = Parser (fun rng -> Fail "fail")
-
-    let apply1 (p : Parser<'a>) (rng : WRange) : Result<'a> = 
-        let (Parser pf) = p in pf rng
+    type Extractor<'a> = Extractor of (WRange -> Result<'a>)
 
 
-    let unit (x : 'a) : Parser<'a> = 
-        Parser (fun rng -> Okay x)
+
+    let fail : Extractor<'a> = Extractor (fun rng -> Fail "fail")
+
+    let apply1 (p : Extractor<'a>) (rng : WRange) : Result<'a> = 
+        let (Extractor pf) = p in pf rng
 
 
-    let bind (p : Parser<'a>) (f : 'a -> Parser<'b>) : Parser<'b> =
-        Parser (fun rng -> 
-                    match apply1 p rng with
-                    | Okay a -> apply1 (f a) rng
-                    | Fail msg -> Fail msg)
+    let unit (x : 'a) : Extractor<'a> = 
+        Extractor (fun rng -> Okay x)
 
 
-    let fmap (f : 'a -> 'b) (p : Parser<'a>) : Parser<'b> = 
+    let bind (p : Extractor<'a>) (f : 'a -> Extractor<'b>) : Extractor<'b> =
+        Extractor <| fun rng -> 
+            match apply1 p rng with
+            | Okay a -> apply1 (f a) rng
+            | Fail msg -> Fail msg
+
+
+    let fmap (f : 'a -> 'b) (p : Extractor<'a>) : Extractor<'b> = 
         bind p (unit << f)
 
-    type ParserBuilder() = 
+    type ExtractorBuilder() = 
         member self.Return x = unit x
         member self.Bind (p,f) = bind p f
         member self.Zero () = fail
 
 
-    let parser = new ParserBuilder()
+    let extractor = new ExtractorBuilder()
 
-    let empty : Parser<'a> = fail
+    let empty : Extractor<'a> = fail
 
 
-    let delimit (upd : WRange -> WRange) (p : Parser<'a>) : Parser<'a> = 
-        Parser (fun rng ->
-                    let rng1 = rng.Duplicate
-                    apply1 p (upd rng1))
+    let delimit (upd : WRange -> WRange) (p : Extractor<'a>) : Extractor<'a> = 
+        Extractor <| fun rng ->
+            let rng1 = rng.Duplicate
+            apply1 p (upd rng1)
 
 
     // Left-biased
-    let alt (p : Parser<'a>) (q : Parser<'a>) : Parser<'a> =
-        Parser (fun rng -> 
-                    match apply1 p rng with
-                    | Okay a -> Okay a
-                    | Fail _ -> apply1 q rng)
+    let alt (p : Extractor<'a>) (q : Extractor<'a>) : Extractor<'a> =
+        Extractor <| fun rng -> 
+            match apply1 p rng with
+            | Okay a -> Okay a
+            | Fail _ -> apply1 q rng
 
 
 
-    let (<|>) (p : Parser<'a>) (q : Parser<'a>) : Parser<'a> = alt p q
+    let (<|>) (p : Extractor<'a>) (q : Extractor<'a>) : Extractor<'a> = alt p q
 
 
-    let ap (p : Parser<'a -> 'b>) (q : Parser<'a>) : Parser<'b> =
-        parser { let! f = p
-                 let! a = q
-                 return (f a)
-               }
+    let ap (p : Extractor<'a -> 'b>) (q : Extractor<'a>) : Extractor<'b> =
+        extractor { let! f = p
+                    let! a = q
+                    return (f a)
+                  }
 
-    let (<*>) (p : Parser<'a -> 'b>) (q : Parser<'a>) : Parser<'b> = ap p q
+    let (<*>) (p : Extractor<'a -> 'b>) (q : Extractor<'a>) : Extractor<'b> = ap p q
 
-    let apLeft (p : Parser<'a>) (q : Parser<'b>) : Parser<'a> = 
-        parser { let! a = p
-                 let! _ = q
-                 return a
-               }
+    let apLeft (p : Extractor<'a>) (q : Extractor<'b>) : Extractor<'a> = 
+        extractor { let! a = p
+                    let! _ = q
+                    return a
+                  }
 
-    let apRight (p : Parser<'a>) (q : Parser<'b>) : Parser<'b> = 
-        parser { let! _ = p
-                 let! a = q
-                 return a
-               }
+    let apRight (p : Extractor<'a>) (q : Extractor<'b>) : Extractor<'b> = 
+        extractor { let! _ = p
+                    let! a = q
+                    return a
+                  }
 
-    let ( *> ) (p : Parser<'a>) (q : Parser<'b>) : Parser<'b> = apRight p q
-    let ( <* ) (p : Parser<'a>) (q : Parser<'b>) : Parser<'a> = apLeft p q
+    let ( *> ) (p : Extractor<'a>) (q : Extractor<'b>) : Extractor<'b> = apRight p q
+    let ( <* ) (p : Extractor<'a>) (q : Extractor<'b>) : Extractor<'a> = apLeft p q
 
 
-    let text : Parser<string> = 
-        Parser (fun rng -> 
-                    match rng with
-                    | null -> Fail "Range is null"
-                    | rng1 -> Okay <| rng1.Text)
+    let text : Extractor<string> = 
+        Extractor <| fun rng -> 
+            match rng with
+            | null -> Fail "Range is null"
+            | rng1 -> Okay <| rng1.Text
 
 
     // Note - the index is local within the range
     // Also indexing is from 1 (must check this...)
-    let withTable (i:int) (p : Parser<'a>) : Parser<'a> =
-        Parser (fun rng -> 
-                    if i < rng.Tables.Count then 
-                        let rng1 = rng.Tables.Item(i).Range
-                        apply1 p rng1
-                    else Fail "Table out of Range")
+    let withTable (i:int) (p : Extractor<'a>) : Extractor<'a> =
+        Extractor <| fun rng -> 
+            if i < rng.Tables.Count then 
+                let rng1 = rng.Tables.Item(i).Range
+                apply1 p rng1
+            else Fail "Table out of Range"
 
     // look for line end...
-    let restOfLine : Parser<string> = 
-        Parser (fun rng -> 
-                    match rng with
-                    | null -> Fail "restOfLine - range is null"
-                    | rng1 -> Okay <| sRestOfLine rng1.Text)
+    let restOfLine : Extractor<string> = 
+        Extractor <| fun rng -> 
+            match rng with
+            | null -> Fail "restOfLine - range is null"
+            | rng1 -> Okay <| sRestOfLine rng1.Text
 
 
     // To check - does duplicating range work as expected...
-    let find (s:string) : Parser<string> = 
+    let find (s:string) : Extractor<string> = 
         let upd (rng : WRange) = 
             rng.Find.ClearFormatting ()
             let ans = rng.Find.Execute(FindText = rbox s)
@@ -135,7 +135,7 @@ module Extractors
         delimit upd text
 
 
-    let test (p : Parser<'a>) (filepath : string) : 'a = 
+    let test (p : Extractor<'a>) (filepath : string) : 'a = 
         let app = new Word.ApplicationClass (Visible = true) 
         let doc = app.Documents.Open(FileName = rbox filepath)
         let dstart = doc.Content.Start

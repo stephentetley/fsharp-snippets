@@ -74,8 +74,8 @@ let test1 () =
     text
 
 let test2 () = 
-    let p1 = parser { let! a = text
-                      return a }
+    let p1 = extractor { let! a = text
+                         return a }
     let text = test p1 testpath
     text
 
@@ -85,11 +85,31 @@ let test3 () =
     text
 
 // Hopefully find should be delimited...
-// Note though that find isn't very "good"
+// Note though that find isn't very "good" it just finds (or not) what it looks for, we really 
+// need a means of using find as a anchor where we can access text (or tables, etc.) next to it.
 let test4 () = 
-    let p1 = parser { let! a = restOfLine
-                      let! b = find "Contractor Information"
-                      let! c = restOfLine
-                      return a,b,c }
+    let p1 = extractor { let! a = restOfLine
+                         let! b = find "Contractor Information"
+                         let! c = restOfLine
+                         return a,b,c }
     test p1 testpath
-    
+
+let anchor (searchtext: string) (p: Extractor<'a>) : Extractor<'a> = failwith "TODO"
+
+let nextTableDown (p: Extractor<'a>) : Extractor<'a> = failwith "TODO"
+
+let freeTextValue (search : string) : Extractor<string> = failwith "TODO"
+
+type GeneralInfo = 
+    { Site : string
+      LevelControlName : string     // aka "Process Application"
+      SiteArea : string }
+
+
+let extract1 () = 
+    let p0 = extractor { let! sn = freeTextValue "Site"
+                         let! lcn = freeTextValue "Process Application"
+                         let! sa = freeTextValue "Site Area" 
+                         return {Site=sn; LevelControlName=lcn; SiteArea=sa} }
+    let (p1 : Extractor<GeneralInfo>) = anchor "Survey General Information" <| nextTableDown p0
+    test p1 testpath
