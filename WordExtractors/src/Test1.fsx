@@ -54,6 +54,19 @@ let dummy3a () =
     runIt action
 
 
+let dummy4 () = 
+    let fn (doc : Word.Document) = 
+        let docrng = doc.Range ()
+        let mutable rng1 = doc.Range()
+        let ans = rng1.Find.Execute(FindText = rbox "Site")
+        let rng2 = rangeRightOf docrng rng1
+        let ans2 = match rng2 with
+                   | Some r -> sRestOfLine <| r.Text 
+                   | None -> "bad range"
+        rng1.Text, ans2
+    runIt fn
+
+
 
 
 let test1 () = 
@@ -67,9 +80,16 @@ let test2 () =
     text
 
 let test3 () = 
-    let p1 = withTable 1 <| parser { let! a = text
-                                     return a }
+    let p1 = withTable 1 <| text
     let text = test p1 testpath
     text
 
-
+// Hopefully find should be delimited...
+// Note though that find isn't very "good"
+let test4 () = 
+    let p1 = parser { let! a = restOfLine
+                      let! b = find "Contractor Information"
+                      let! c = restOfLine
+                      return a,b,c }
+    test p1 testpath
+    

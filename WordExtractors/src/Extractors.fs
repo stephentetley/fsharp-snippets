@@ -1,11 +1,10 @@
 ﻿[<AutoOpen>]
 module Extractors
 
-    // Add a reference via the COM tab 
+    // Add references via the COM tab for Office and Word
     // All that PIA stuff is outdated for Office 365 / .Net 4.5 / VS2015 
     open Microsoft.Office.Interop
     open Utils
-
 
 
     type Result<'a> = 
@@ -126,14 +125,15 @@ module Extractors
                     | null -> Fail "restOfLine - range is null"
                     | rng1 -> Okay <| sRestOfLine rng1.Text)
 
-//
-//    // To check - does duplicating range work as expected...
-//    let find (s:string) : Parser<unit> = 
-//        Parser (fun sk fk doc rng -> 
-//                    let mutable rng1 = rng.Duplicate
-//                    let ans = rng1.Find.Execute(FindText = rbox s)
-//                    Succ ())
-//
+
+    // To check - does duplicating range work as expected...
+    let find (s:string) : Parser<string> = 
+        let upd (rng : WRange) = 
+            rng.Find.ClearFormatting ()
+            let ans = rng.Find.Execute(FindText = rbox s)
+            rng
+        delimit upd text
+
 
     let test (p : Parser<'a>) (filepath : string) : 'a = 
         let app = new Word.ApplicationClass (Visible = true) 

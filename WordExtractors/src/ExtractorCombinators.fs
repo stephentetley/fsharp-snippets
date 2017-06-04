@@ -1,7 +1,7 @@
 ﻿[<AutoOpen>]
 module ExtractorCombinators
 
-    // Add a reference via the COM tab 
+    // Add references via the COM tab for Office and Word
     // All that PIA stuff is outdated for Office 365 / .Net 4.5 / VS2015 
     open Microsoft.Office.Interop
     open Utils
@@ -126,7 +126,7 @@ module ExtractorCombinators
                               sk txt fk doc rng1)
 
     // To check - does duplicating range work as expected...
-    let find (s:string) : Parser<unit,'r> = 
+    let find (s:string) : Parser<unit, 'r> = 
         Parser (fun sk fk doc rng -> 
                     let mutable rng1 = rng.Duplicate
                     let ans = rng1.Find.Execute(FindText = rbox s)
