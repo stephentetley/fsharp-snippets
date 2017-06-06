@@ -4,20 +4,26 @@ module Extractors
     // Add references via the COM tab for Office and Word
     // All that PIA stuff is outdated for Office 365 / .Net 4.5 / VS2015 
     open Microsoft.Office.Interop
-    open Utils
 
+    open Utils
+    open RangeOperations
 
     type Result<'a> = 
         | Okay of 'a
         | Fail of string
 
-
-    type WDoc = Word.Document
-
-    // TODO - what object is best to store as a cursor - a range or an integer position?
-    // We should be very careful about a range as it might get mutated under the hood.
     
-    // Design - maybe what we really need are delimited regions like the Reader monad's @local.
+    // Design - what we would like are delimited regions like the Reader monad's @local.
+    // We can achieve this but "almost all the work" goes into the first branch of @local
+    // (i.e the projection: WRange -> WRange) rather than the second branch (the monadic action).
+    // This means we lose the monadic utilies like (<|>) in the projection.
+    //
+    // The State monad is not a good alternative as updates are undelimited - an update changes 
+    // state for the rest of the computation.
+    //
+    // It looks like a two level EDSL is going to be the best approach - one level is monadic
+    // and handles binding, feeding the doc (Reader) and error handling. The other (inner) level 
+    // provides some sort of path expressions on Ranges that are run by the outer level.
 
     type WRange = Word.Range
     
@@ -133,6 +139,14 @@ module Extractors
             let ans = rng.Find.Execute(FindText = rbox s)
             rng
         delimit upd text
+
+
+//    let findr (s:string) (p:Extractor<'a>) : Extractor<'a> = 
+//        let upd (rng : WRange) = 
+//            rng.Find.ClearFormatting ()
+//            let ans = rng.Find.Execute(FindText = rbox s)
+//            rng
+//        delimit upd p
 
 
     let test (p : Extractor<'a>) (filepath : string) : 'a = 

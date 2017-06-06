@@ -2,11 +2,13 @@
 #r "Microsoft.Office.Interop.Word"
 
 #load "Utils.fs"
+#load "RangeOperations.fs"
 #load "Extractors.fs"
 
 open System.IO
 open Microsoft.Office.Interop
 open Utils
+open RangeOperations
 open Extractors
 
 // Note to self - this example is not "properly structured" tables are free text
@@ -59,7 +61,7 @@ let dummy4 () =
         let docrng = doc.Range ()
         let mutable rng1 = doc.Range()
         let ans = rng1.Find.Execute(FindText = rbox "Site")
-        let rng2 = rangeRightOf docrng rng1
+        let rng2 = rightDifference docrng rng1
         let ans2 = match rng2 with
                    | Some r -> sRestOfLine <| r.Text 
                    | None -> "bad range"
@@ -113,3 +115,16 @@ let extract1 () =
                          return {Site=sn; LevelControlName=lcn; SiteArea=sa} }
     let (p1 : Extractor<GeneralInfo>) = anchor "Survey General Information" <| nextTableDown p0
     test p1 testpath
+
+
+let anchorU (searchtext: string) : Extractor<'a> = failwith "TODO"
+
+
+//let nextTableDownU : Extractor<'a> = failwith "TODO"
+//
+//
+//let extract2 () = 
+//    let (p1 : Extractor<string>) = anchorU "Survey General Information" *> nextTableDownU *> text
+//    test p1 testpath
+
+    

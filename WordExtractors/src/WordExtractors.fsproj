@@ -52,6 +52,7 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Utils.fs" />
+    <Compile Include="RangeOperations.fs" />
     <Compile Include="Extractors.fs" />
     <None Include="Test1.fsx" />
     <COMReference Include="Microsoft Office 16.0 Object Library">
@@ -70,7 +71,6 @@
       <Isolated>False</Isolated>
       <WrapperTool>primary</WrapperTool>
     </COMReference>
-    <Compile Include="ExtractorCombinators.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
