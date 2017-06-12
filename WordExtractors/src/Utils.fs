@@ -2,8 +2,9 @@
 module Utils
 
 open System.IO
+
 // Add references via the COM tab for Office and Word
-// All that PIA stuff is outdated for Office 365 / .Net 4.5 / VS2015 
+// All the PIA stuff online is outdated for Office 365 / .Net 4.5 / VS2015 
 open Microsoft.Office.Interop
 
 

@@ -53,8 +53,9 @@
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Utils.fs" />
     <Compile Include="RangeOperations.fs" />
+    <Compile Include="PathExpressions.fs" />
     <Compile Include="Extractors.fs" />
-    <None Include="Test1.fsx" />
+    <None Include="TestRange.fsx" />
     <COMReference Include="Microsoft Office 16.0 Object Library">
       <Guid>{2df8d04c-5bfa-101b-bde5-00aa0044de52}</Guid>
       <VersionMajor>2</VersionMajor>
@@ -71,6 +72,7 @@
       <Isolated>False</Isolated>
       <WrapperTool>primary</WrapperTool>
     </COMReference>
+    <None Include="Test1.fsx" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />

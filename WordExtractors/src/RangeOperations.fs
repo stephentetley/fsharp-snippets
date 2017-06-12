@@ -3,7 +3,7 @@ module RangeOperations
 
 
 // Add references via the COM tab for Office and Word
-// All that PIA stuff is outdated for Office 365 / .Net 4.5 / VS2015 
+// All the PIA stuff online is outdated for Office 365 / .Net 4.5 / VS2015 
 open Microsoft.Office.Interop
 
  
@@ -33,9 +33,18 @@ let before (ra : Word.Range) (rb : Word.Range) : bool =
 let after (ra : Word.Range) (rb :Word.Range) : bool = 
     ra.Start > rb.End
 
+// |---------|......... (a)
+// ....|----------|.... (b)
+//
+// (a) overlaps-start of (b)
 let overlapsStart (ra : Word.Range) (rb :Word.Range) : bool = 
     ra.End >= rb.Start && ra.End <= rb.End
 
+
+// |---------|......... (a)
+// ....|----------|.... (b)
+//
+// (b) overlaps-end of (a)
 let overlapsEnd (ra : Word.Range) (rb :Word.Range) : bool = 
     ra.Start >= rb.Start && ra.Start <= rb.End
 
@@ -43,12 +52,25 @@ let overlapsEnd (ra : Word.Range) (rb :Word.Range) : bool =
 /// Set operations
 
 // "Right Difference" - todo - write this without calling other functions
-let rightDifference (rbase : Word.Range) (anchor : Word.Range) : Option<Word.Range> = 
-    if leftBorder rbase anchor >= 0 && rightBorder rbase anchor > 0 then 
-        let newrange = rbase.Duplicate
-        newrange.Start <- anchor.End + 1        // plus 1? ...
+// |=========|......... (a)
+// ....|==========|.... (b)
+// ..........|====|.... (a) `rightDifference` (b)
+//
+//
+// ....|==========|.... (a)
+// |=========|......... (b)
+// ..........|====|.... (a) `rightDifference` (b) ??
+//
+// Note - should we care about arg order?
+
+let rightDifference (ra : Word.Range) (rb : Word.Range) : Option<Word.Range> = 
+    if ra.End >= rb.Start && ra.End < rb.End  then 
+        let newrange = rb.Duplicate
+        newrange.Start <- ra.End + 1        // plus 1? ...
         Some <| newrange
     else None
+
+// If we are confused about whether arg order is important it implies we have the wrong API...
 
 // todo - write this without calling other functions
 let leftDifference (rbase : Word.Range) (anchor : Word.Range) : Option<Word.Range> = 
