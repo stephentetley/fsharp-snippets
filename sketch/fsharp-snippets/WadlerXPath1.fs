@@ -1,11 +1,9 @@
-﻿module WadlerXPath
+﻿module WadlerXPath1
 
 // Unfinished
+// This is "Figure 1: First semantics of XPath"
 
 open Microsoft.FSharp.Collections  // for Set
-
-
-
 
 
 type Axis =
@@ -36,10 +34,19 @@ type Pattern =
     | Pipe of Pattern * Pattern         // Disjunction "|"
     | Root of Pattern
     | Slash of Pattern * Pattern
-    | NodeAxis of Node      // ???? aka [[n]]
+    | Step of Axis * Pattern
+    | Named of string                   // aka [n]
     | Wild
     | Text of unit
-    // more to do
+    | Test of Pattern * Qualifier
+
+
+and Qualifier = 
+    | And of Qualifier * Qualifier
+    | Or of Qualifier * Qualifier
+    | Not of Qualifier
+    | Equal of Qualifier * Qualifier
+    | Pattern of Pattern   // placeholder
 
 type Expr = 
     | Plus of Expr * Expr
@@ -48,18 +55,14 @@ type Expr =
     | Last of unit
     | Int of int
 
-type Qualifier = 
-    | And of Qualifier * Qualifier
-    | Or of Qualifier * Qualifier
-    | Not of Qualifier
-    | Equal of Qualifier * Qualifier
-    | Pattern of Pattern   // placeholder
-
 
 
 let nodetype (x:Node) : Nodetype = match x with | Node (_,ty) -> ty
 
+let nodename (x:Node) : string = "<bad node name>"
+
 // this is <=doc used by E
+// There appears to be an explanation of "<doc" in Gottlob, Koch and Pichler
 let lteDoc (x1:Node) (x2:Node) : bool = 
     match (x1,x2) with
     | Node(a,_), Node (b,_) -> a <= b
@@ -98,19 +101,27 @@ let direction (d:Axis) : Direction =
 
 
 // selected i.e. S
-let rec selected1 (a:Axis) (p:Pattern) ((x,eS) : Context) : Set<Node> = 
+let rec selected (a:Axis) (p:Pattern) ((x,eS) : Context) : Set<Node> = 
     match p with
     | Pipe (p1,p2) -> 
-        let s1 = selected1 a p1 (x,eS)
-        let s2 = selected1 a p2 (x,eS)
+        let s1 = selected a p1 (x,eS)
+        let s2 = selected a p2 (x,eS)
         Set.union s1 s2
 
     | Root p1 -> failwith "err"
 
     | Slash (p1,p2) -> 
-        let s1 = selected1 a p1 (x,eS)
+        let s1 = selected a p1 (x,eS)
         failwith "err"
-    | NodeAxis n -> failwith "err"
+    
+    | Step (a1,p1) ->
+        let s1 = selected a p1 (x,eS)
+        Set.filter (fun x2 -> failwith "err") s1
+
+    | Named ss -> 
+        let anodes = axis a x
+        let typ = principal a
+        Set.filter (fun x1 -> nodetype x1 = typ && nodename x1 = ss) anodes
 
     | Wild ->
         let anodes = axis a x
@@ -121,40 +132,45 @@ let rec selected1 (a:Axis) (p:Pattern) ((x,eS) : Context) : Set<Node> =
         let anodes = axis a x
         Set.filter (fun x1 -> nodetype x1 = TyText) anodes 
 
+    | Test (p,q) ->
+        let s1 = selected a p (x,eS)
+        Set.filter (fun x1 -> qualifier a q (x1,s1)) s1
+
 // qualifier i.e. Q
-and qualifier1 (a:Axis) (q:Qualifier) ((x,eS) : Context) : bool = 
+and qualifier (a:Axis) (q:Qualifier) ((x,eS) : Context) : bool = 
     match q with
     | And (q1,q2) -> 
-        let b1 = qualifier1 a q1 (x,eS)
-        let b2 = qualifier1 a q2 (x,eS)
+        let b1 = qualifier a q1 (x,eS)
+        let b2 = qualifier a q2 (x,eS)
         b1 && b2
 
     | Or (q1,q2) -> 
-        let b1 = qualifier1 a q1 (x,eS)
-        let b2 = qualifier1 a q2 (x,eS)
+        let b1 = qualifier a q1 (x,eS)
+        let b2 = qualifier a q2 (x,eS)
         b1 || b2
 
-    | Not q1 -> not <| qualifier1 a q1 (x,eS)
+    | Not q1 -> not <| qualifier a q1 (x,eS)
 
     | Equal (q1,q2) -> 
-        let b1 = qualifier1 a q1 (x,eS)
-        let b2 = qualifier1 a q2 (x,eS)
+        let b1 = qualifier a q1 (x,eS)
+        let b2 = qualifier a q2 (x,eS)
         b1 = b2
 
-    | Pattern p1 -> let sel1 = selected1 a p1 (x,eS) in not (Set.isEmpty sel1)
+    | Pattern p1 -> let sel1 = selected a p1 (x,eS) in not (Set.isEmpty sel1)
+
 
 // evaluate i.e. E
 
-and evaluate1 (a:Axis) (e:Expr) ((x,eS) : Context) : int = 
+and evaluate (a:Axis) (e:Expr) ((x,eS) : Context) : int = 
     match e with
     | Plus (e1,e2) -> 
-        let i1 = evaluate1 a e1 (x,eS)
-        let i2 = evaluate1 a e2 (x,eS)                  
+        let i1 = evaluate a e1 (x,eS)
+        let i2 = evaluate a e2 (x,eS)                  
         i1 + i2
 
     | Mult (e1,e2) -> 
-        let i1 = evaluate1 a e1 (x,eS)
-        let i2 = evaluate1 a e2 (x,eS)                  
+        let i1 = evaluate a e1 (x,eS)
+        let i2 = evaluate a e2 (x,eS)                  
         i1 * i2
 
     | Position () -> 
