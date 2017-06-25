@@ -134,8 +134,14 @@ let rec children (s:Name) (m:Map<Name, Element list>) : Directory list =
                                                 | None -> []
                                                 | Some(xs) -> xs)
     let allkids2 = List.map element1 allkids
-    let dirs = List.map (fun (a:Directory) -> children (a.name) m) <| List.choice1s allkids2
-    List.concat dirs
+    let mkLongname suffix = s + "\\" + suffix
+    let buildup (x:Directory)  = 
+        let longname = mkLongname x.name
+        let kids1 = children longname m
+        { x with subdirs=kids1; name=longname}
+    List.map buildup <| List.choice1s allkids2
+    
+
 
 let topdown (x:Listing) : Root option = 
     let optroot = getRoot x
