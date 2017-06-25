@@ -6,11 +6,11 @@
 #r "FParsecCS"
 #r "FSharpx.Collections.dll"
 
-
 #load "Syntax.fs"
 #load "FlatSyntax.fs"
 
 open System
+open System.IO
 open FParsec
 open FilePath.Syntax
 open FilePath
@@ -67,10 +67,24 @@ let path1 = System.IO.Path.Combine(__SOURCE_DIRECTORY__,"..","data/dir-Recurse.t
 let test11 () = runParserOnFile FlatSyntax.pListing () path1 Text.ASCIIEncoding.ASCII
 
 let test12 () = 
-    let opt = runParserOnFile FlatSyntax.pListing () path1 Text.ASCIIEncoding.ASCII
+    let opt = FlatSyntax.readListing path1
     match opt with
-    | Success(a,_,_) -> FlatSyntax.topdown a
-    | Failure(s,_,_) -> failwith s
+    | Choice2Of2(a) -> FlatSyntax.topdown a
+    | Choice1Of2(s) -> failwith s
 
 
+let path2 = System.IO.Path.Combine(__SOURCE_DIRECTORY__,"..","data/chop.txt")
+let test13 () = FlatSyntax.readListing path2
 
+let test14 () = ppDate { Day=4; Month=6; Year=2017 }
+
+let test15 () = shortName "E:\\coding\\fsharp\\fsharp-snippets\\WordExtractors\\src\\obj\\Debug"
+
+let test16 () = 
+    let opt = FlatSyntax.readListing path1
+    match opt with
+    | Choice2Of2(a) -> FlatSyntax.topdown a |> 
+                      (fun a -> match a with
+                                | Some b -> printfn "%s" <| directoryListing b
+                                | None -> failwith "Bad")
+    | Choice1Of2(s) -> failwith s

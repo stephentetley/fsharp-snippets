@@ -1,7 +1,7 @@
 ﻿[<RequireQualifiedAccess>]
 module FilePath.FlatSyntax
 
-
+open System
 open FParsec
 open FSharpx.Collections
 open FilePath.Syntax
@@ -46,10 +46,10 @@ let pName : Parser<Name,unit> = restOfLine false |>> (fun s -> s.TrimEnd ())
 
 // Note this is UK centric    
 let pDate : Parser<Date,unit> = 
-    pipe3 pint32 (pchar '/' >>. pint32) (pchar '/' >>. pint32) (fun d m y -> { year=y; month=m; day=d })
+    pipe3 pint32 (pchar '/' >>. pint32) (pchar '/' >>. pint32) (fun d m y -> { Year=y; Month=m; Day=d })
     
 let pTime : Parser<Time,unit> = 
-    pipe2 pint32 (pchar ':' >>. pint32) (fun h m -> { hour=h; minute=m })
+    pipe2 pint32 (pchar ':' >>. pint32) (fun h m -> { Hour=h; Minute=m })
 
 // Note this is UK centric
 let pTimeStamp : Parser<TimeStamp,unit> = 
@@ -94,6 +94,14 @@ let pBlock : Parser<Block, unit> =
 
 let pListing : Parser<Listing,unit> = many (pBlock .>> spaces)
 
+
+let readListing (path:string) : Choice<string,Listing> = 
+    let ans1 = runParserOnFile pListing () path Text.ASCIIEncoding.ASCII
+    match ans1 with
+    | Success(a,_,_) -> Choice2Of2 a
+    | Failure(s,_,_) -> Choice1Of2 s
+
+
 //// Conversion
 
 
@@ -118,16 +126,17 @@ let getDescendants (xs:Listing) : Map<Name, Element list> =
 
 let file1 (x:File1) : File = 
     match x with
-    | File1(s,m,t,l) -> { name=s; mode=m; timestamp=t; length=l }
+    | File1(s,m,t,l) -> { Name=s; Mode=m; TimeStamp=t; Length=l }
 
 // element1 does not fill out subdirectories
 let element1 (x:Element) : Choice<Directory,File> = 
     match x with
     | File (x) -> Choice2Of2 <| file1 x
-    | Dir (s,m,t,xs) -> Choice1Of2 { name=s
-                                   ; mode=m
-                                   ; timestamp=t
-                                   ; subdirs=[]; files=List.map file1 <| getFiles xs }
+    | Dir (s,m,t,xs) -> Choice1Of2 { Name=s
+                                   ; Mode=m
+                                   ; TimeStamp=t
+                                   ; SubDirs=[]
+                                   ; Files=List.map file1 <| getFiles xs }
 
 let rec children (s:Name) (m:Map<Name, Element list>) : Directory list =
     let allkids = Map.tryFind s m |> (fun x -> match x with 
@@ -136,9 +145,9 @@ let rec children (s:Name) (m:Map<Name, Element list>) : Directory list =
     let allkids2 = List.map element1 allkids
     let mkLongname suffix = s + "\\" + suffix
     let buildup (x:Directory)  = 
-        let longname = mkLongname x.name
+        let longname = mkLongname x.Name
         let kids1 = children longname m
-        { x with subdirs=kids1; name=longname}
+        { x with SubDirs=kids1; Name=longname}
     List.map buildup <| List.choice1s allkids2
     
 
@@ -149,5 +158,7 @@ let topdown (x:Listing) : Root option =
     match optroot with 
     | None -> None
     | Some(Block(name,elems)) -> let kids = children name mkids
-                                 Some <| { name=name; files=List.map file1 <| getFiles elems; subdirs=kids }
+                                 Some <| { Name=name
+                                         ; Files=List.map file1 <| getFiles elems
+                                         ; SubDirs=kids }
 
