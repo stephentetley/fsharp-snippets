@@ -1,8 +1,11 @@
 ﻿
 
 #I @"..\packages\FParsec.1.0.2\lib\net40-client"
+#I @"..\packages\FSharpx.Collections.1.16.0\lib\net40"
 #r "FParsec"
 #r "FParsecCS"
+#r "FSharpx.Collections.dll"
+
 
 #load "Syntax.fs"
 #load "FlatSyntax.fs"
@@ -10,29 +13,29 @@
 open System
 open FParsec
 open FilePath.Syntax
-open FilePath.FlatSyntax
+open FilePath
 
 
 
 
 
-let test01 () = run pMode "-a---"
+let test01 () = run FlatSyntax.pMode "-a---"
 
-let test02 () = run pTime "16:45"
+let test02 () = run FlatSyntax.pTime "16:45"
 
-let test03 () = run pDate "07/07/2016"
+let test03 () = run FlatSyntax.pDate "07/07/2016"
 
-let test04 () = run pName "with spaces.txt\nfalse"
+let test04 () = run FlatSyntax.pName "with spaces.txt\nfalse"
 
-let test05 () = run pElement "d-----       27/04/2017     19:44                messy-data"
-let test06 () = run pElement "-a----       15/05/2017     19:47         305505 HaZaRdS short 3 5 17.xlsx"
+let test05 () = run FlatSyntax.pElement "d-----       27/04/2017     19:44                messy-data"
+let test06 () = run FlatSyntax.pElement "-a----       15/05/2017     19:47         305505 HaZaRdS short 3 5 17.xlsx"
 
-let test07 () = run pDirectoryName "    Directory: E:\coding\fsharp\fsharp-snippets"
+let test07 () = run FlatSyntax.pDirectoryName "    Directory: E:\coding\fsharp\fsharp-snippets"
 
 let test08 () = 
    let ss = "Mode                LastWriteTime         Length Name          \n\
             ----                -------------         ------ ----           "
-   in run pTitles ss 
+   in run FlatSyntax.pTitles ss 
 
 let block1 = 
     String.concat "\n" <| 
@@ -55,12 +58,19 @@ let block1 =
         ; ""
         ]
 
-let test09 () = run pBlock block1
+let test09 () = run FlatSyntax.pBlock block1
 
-let test10 () = run pListing block1
+let test10 () = run FlatSyntax.pListing block1
 
 let path1 = System.IO.Path.Combine(__SOURCE_DIRECTORY__,"..","data/dir-Recurse.txt")
 
-let test11 () = runParserOnFile pListing () path1 Text.ASCIIEncoding.ASCII
+let test11 () = runParserOnFile FlatSyntax.pListing () path1 Text.ASCIIEncoding.ASCII
+
+let test12 () = 
+    let opt = runParserOnFile FlatSyntax.pListing () path1 Text.ASCIIEncoding.ASCII
+    match opt with
+    | Success(a,_,_) -> FlatSyntax.topdown a
+    | Failure(s,_,_) -> failwith s
+
 
 

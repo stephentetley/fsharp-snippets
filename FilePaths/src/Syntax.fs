@@ -16,4 +16,9 @@ type Mode = string
 type FileLength = System.Int64
 
 
+type File = { name: Name; mode: Mode; timestamp : TimeStamp; length: FileLength }
+
+type Directory = { name: Name; mode: Mode; timestamp : TimeStamp; subdirs: Directory list; files: File list }
+
+type Root = { name: Name; subdirs: Directory list; files: File list }
 

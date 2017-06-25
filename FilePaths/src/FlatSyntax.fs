@@ -1,18 +1,25 @@
-﻿[<AutoOpen>]
+﻿[<RequireQualifiedAccess>]
 module FilePath.FlatSyntax
 
-open FilePath.Syntax
-open FParsec
 
+open FParsec
+open FSharpx.Collections
+open FilePath.Syntax
+
+
+type File1 = File1 of Name * Mode * TimeStamp * FileLength
 
 type Element = 
     | Dir of Name * Mode * TimeStamp * Element list
-    | File of Name * Mode * TimeStamp * FileLength
+    | File of File1
 
 
 type Block = Block of Name * Element list
 
 type Listing = Block list
+
+
+    
 
 
 // Parsing output of "dir -Recurse"
@@ -75,7 +82,7 @@ let pTitles : Parser<unit,unit> =
 let pElement : Parser<Element,unit> = 
     let parseK mode = 
         if isDir mode then pipe2 (symbol1 pTimeStamp) pName (fun t s -> Dir (s,mode,t,[]))
-        else pipe3 (symbol1 pTimeStamp) (symbol1 pint64) pName (fun t l s -> File(s,mode,t,l))
+        else pipe3 (symbol1 pTimeStamp) (symbol1 pint64) pName (fun t l s -> File(File1(s,mode,t,l)))
     (symbol pMode) >>= parseK
 
 
@@ -86,3 +93,55 @@ let pBlock : Parser<Block, unit> =
           (fun s es z -> Block(s,es))
 
 let pListing : Parser<Listing,unit> = many (pBlock .>> spaces)
+
+//// Conversion
+
+
+
+let getFiles (xs: Element list) : File1 list = 
+    let step ac e =
+        match e with
+        | Dir(_) -> ac
+        | File(x) -> x::ac        
+    List.fold step [] xs
+
+let getRoot (x:Listing) : Block option = 
+    match x with
+    | x::xs -> Some(x)
+    | _ -> None
+
+let getDescendants (xs:Listing) : Map<Name, Element list> = 
+    let step ac e = match e with | Block(s,ys) -> Map.add s ys ac
+    List.fold step Map.empty xs
+    
+
+
+let file1 (x:File1) : File = 
+    match x with
+    | File1(s,m,t,l) -> { name=s; mode=m; timestamp=t; length=l }
+
+// element1 does not fill out subdirectories
+let element1 (x:Element) : Choice<Directory,File> = 
+    match x with
+    | File (x) -> Choice2Of2 <| file1 x
+    | Dir (s,m,t,xs) -> Choice1Of2 { name=s
+                                   ; mode=m
+                                   ; timestamp=t
+                                   ; subdirs=[]; files=List.map file1 <| getFiles xs }
+
+let rec children (s:Name) (m:Map<Name, Element list>) : Directory list =
+    let allkids = Map.tryFind s m |> (fun x -> match x with 
+                                                | None -> []
+                                                | Some(xs) -> xs)
+    let allkids2 = List.map element1 allkids
+    let dirs = List.map (fun (a:Directory) -> children (a.name) m) <| List.choice1s allkids2
+    List.concat dirs
+
+let topdown (x:Listing) : Root option = 
+    let optroot = getRoot x
+    let mkids = getDescendants x
+    match optroot with 
+    | None -> None
+    | Some(Block(name,elems)) -> let kids = children name mkids
+                                 Some <| { name=name; files=List.map file1 <| getFiles elems; subdirs=kids }
+
