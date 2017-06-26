@@ -42,27 +42,36 @@ let ppTime (x:Time) : string =
 let ppTimeStamp : (TimeStamp -> string) = 
     function | TimeStamp(d,t) -> sprintf "%s     %s" (ppTime t) (ppDate d)
 
-let ppFile (x:File) : string =
-    sprintf "%s       %s %14i %s" x.Mode (ppTimeStamp x.TimeStamp) x.Length x.Name
 
-let ppSubDirectory (x:Directory) : string =
-    sprintf "%s       %s               %s" x.Mode (ppTimeStamp x.TimeStamp) (shortName x.Name)
+
+// Extending StringBuilder is probably the nicest way of making custom Append functions.
+type StringBuilder with 
+    member this.AppendBlankBlank () =
+        ignore <| this.AppendLine ""
+        this.AppendLine ""
+
+    member this.AppendHeadings () =
+        ignore <| this.AppendLine "Mode                LastWriteTime         Length Name "
+        this.AppendLine "----                -------------         ------ ---- "
+
+    member this.AppendDirectoryHeading (x:string) = 
+        Printf.bprintf this "    Directory: %s\n" x
+
+    member this.AppendSubDirectory (x:Directory) = 
+        Printf.bprintf this "%s       %s               %s\n" x.Mode (ppTimeStamp x.TimeStamp) (shortName x.Name)
+
+    member this.AppendFile (x:File) =
+        Printf.bprintf this "%s       %s %14i %s\n" x.Mode (ppTimeStamp x.TimeStamp) x.Length x.Name
 
 
 let directoryListing1 (x:Root) : StringBuilder = 
     let sb = StringBuilder ()
-    let ppDirectory (x:Name) = Printf.bprintf sb "    Directory: %s\n" x
-    let ppSubDir (x:Directory) =
-        Printf.bprintf sb "%s       %s               %s\n" x.Mode (ppTimeStamp x.TimeStamp) (shortName x.Name)
 
-    let blank2 () = 
-        ignore <| sb.AppendLine ""
-        ignore <| sb.AppendLine "" 
-
-    blank2 ()
-    ppDirectory x.Name
-    blank2 ()
-    List.iter ppSubDir x.SubDirs
+    ignore <| sb.AppendBlankBlank ()
+    sb.AppendDirectoryHeading x.Name
+    ignore <| sb.AppendBlankBlank ()
+    List.iter sb.AppendSubDirectory x.SubDirs
+    List.iter sb.AppendFile x.Files
     sb
 
 

@@ -32,10 +32,10 @@ let test06 () = run FlatSyntax.pElement "-a----       15/05/2017     19:47      
 
 let test07 () = run FlatSyntax.pDirectoryName "    Directory: E:\coding\fsharp\fsharp-snippets"
 
-let test08 () = 
-   let ss = "Mode                LastWriteTime         Length Name          \n\
-            ----                -------------         ------ ----           "
-   in run FlatSyntax.pTitles ss 
+//let test08 () = 
+//   let ss = "Mode                LastWriteTime         Length Name          \n\
+//            ----                -------------         ------ ----           "
+//   in run FlatSyntax.pTitles ss 
 
 let block1 = 
     String.concat "\n" <| 

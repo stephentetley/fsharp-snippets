@@ -6,6 +6,8 @@ open FParsec
 open FSharpx.Collections
 open FilePath.Syntax
 
+// Note - a flat representation might be more useful than just an interim form close to input syntax.
+
 
 type File1 = File1 of Name * Mode * TimeStamp * FileLength
 
@@ -73,7 +75,7 @@ let sepStrings (strs : string list) : Parser<string list,unit> =
     fn strs
 
 // Mode                LastWriteTime         Length Name 
-let pTitles : Parser<unit,unit> = 
+let pHeadings : Parser<unit,unit> = 
     sepStrings ["Mode"; "LastWriteTime"; "Length"; "Name"] >>. ws >>. newline >>. restOfLine false >>. preturn ()
     
 
@@ -88,7 +90,7 @@ let pElement : Parser<Element,unit> =
 
 let pBlock : Parser<Block, unit> = 
     pipe3 (spaces >>. lineOf pDirectoryName) 
-          (twice blankline >>. lineOf pTitles >>. many1 (lineOf pElement))
+          (twice blankline >>. lineOf pHeadings >>. many1 (lineOf pElement))
           spaces
           (fun s es z -> Block(s,es))
 
