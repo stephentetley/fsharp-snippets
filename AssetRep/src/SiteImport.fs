@@ -73,8 +73,12 @@ let insertRow (conn:SQLiteConnection) (site1:SiteRow.Row) : unit =
 
 let insertAll (conn:SQLiteConnection) = 
     let file = new SiteRow()
+    let trans = conn.BeginTransaction(System.Data.IsolationLevel.ReadCommitted)
     for rowi in file.Data do
         insertRow conn rowi
         printfn "%s %s" rowi.InstAssetId  rowi.InstCommonName
+    trans.Commit ()
+
+
 
 

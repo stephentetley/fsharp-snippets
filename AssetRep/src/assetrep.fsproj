@@ -56,7 +56,7 @@
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="SiteImport.fs" />
     <None Include="Test1.fsx" />
-    <Content Include="readme-sqlite.txt" />
+    <Content Include="notes-sqlite.txt" />
     <Content Include="App.config" />
     <Content Include="packages.config" />
   </ItemGroup>
