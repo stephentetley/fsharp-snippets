@@ -1,0 +1,24 @@
+﻿
+Notes
+-----
+
+In sqlite favour TEXT rather than STRING as STRING data may be coerced to an numeric type
+if it is number-like.
+
+If you are doing everything with just raw SQL you only need System.Data.SQLite Core:
+PM> Install-Package System.Data.SQLite.Core
+
+Or you can add the other stuff (install EntityFramework first):
+PM> Install-Package EntityFramework
+PM> Install-Package System.Data.SQLite.EF6
+PM> Install-Package System.Data.SQLite.Linq
+PM> Install-Package System.Data.SQLite
+
+Don't need fsi to be in the src directory of the project.
+
+When to open and close connections:
+http://sqlite.1065341.n5.nabble.com/When-to-open-close-connections-td75340.html
+
+To add a reference to System.Data, right click on 'Refrences'; click "Add Reference..." and find 'System.Data' in 
+Assemblies > Framework.
+
