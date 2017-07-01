@@ -30,18 +30,23 @@ let test01 () =
                                                         testConn oc))
 
 
-type Data1Row = ExcelFile< @"G:\\work\\NEXT_GEN_SURVEYS\\Supplied Info\\AI Data.xlsx",
-                            SheetName = "qInstallationAddressesAndRespOf",
-                            ForceString = true >
+
 
 
 let test02 () = 
-    let file = new Data1Row()
+    let file = new SiteRow()
     for rowi in file.Data do
         printfn "%s %s %s" rowi.SiteReference rowi.``Postal Address 1`` rowi.``Post Code``
 
 
+let test03 () =
+    let loc = @"E:\\coding\\fsharp\\assetrep\\data\\assetrep.db"
+    let dbconn = makeConn(loc) 
+    dbconn.Do (fun conn -> withOpenConn conn (fun oc -> let _ = deleteData oc
+                                                        let _ = insertAll oc
+                                                        testConn oc))
 
 
 
+let temp01 () = escapeValueText "ALBION STREET/ST JOHN'S PLACE"
 

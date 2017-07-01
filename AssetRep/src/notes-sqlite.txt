@@ -22,3 +22,5 @@ http://sqlite.1065341.n5.nabble.com/When-to-open-close-connections-td75340.html
 To add a reference to System.Data, right click on 'Refrences'; click "Add Reference..." and find 'System.Data' in 
 Assemblies > Framework.
 
+Porbably should use a transaction to increse speed...
+https://www.devart.com/dotconnect/sqlite/docs/Devart.Data.SQLite~Devart.Data.SQLite.SQLiteTransaction.html
