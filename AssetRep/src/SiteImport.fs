@@ -37,10 +37,14 @@ let testConn (conn:SQLiteConnection) : unit =
     while reader.Read() do
         printfn "%s %s" (reader.GetString(0)) (reader.GetString(2))
 
-let deleteData (conn:SQLiteConnection) : int =  
-    let query = "DELETE FROM sites;"
+let deleteAllTableRows (conn:SQLiteConnection) (name:string) : int =  
+    let query = sprintf "DELETE FROM %s;" name
     let (command : SQLiteCommand) = new SQLiteCommand(query, conn)
     command.ExecuteNonQuery ()
+
+let deleteAllSites (conn:SQLiteConnection) : int =  deleteAllTableRows conn "sites"
+
+let deleteAllLocations (conn:SQLiteConnection) : int =  deleteAllTableRows conn "locations"
 
 
 
@@ -55,7 +59,7 @@ type SiteRow = ExcelFile< @"G:\\work\\NEXT_GEN_SURVEYS\\Supplied Info\\AI Data.x
                             ForceString = true>
 
 
-let insertRow (conn:SQLiteConnection) (site1:SiteRow.Row) : unit = 
+let insertSiteRow (conn:SQLiteConnection) (site1:SiteRow.Row) : unit = 
     let query = sprintf "INSERT INTO sites (sai_number, common_name, \
                          postal_address1, postal_address2, postal_address3, postal_address4, \
                          post_code) \
@@ -70,15 +74,40 @@ let insertRow (conn:SQLiteConnection) (site1:SiteRow.Row) : unit =
     let (command : SQLiteCommand) = new SQLiteCommand(query, conn)
     ignore <| command.ExecuteNonQuery ()
 
+let insertLocationRow (conn:SQLiteConnection) (site1:SiteRow.Row) : unit = 
+    let query = sprintf "INSERT INTO locations (common_name, \
+                         postal_address1, postal_address2, postal_address3, postal_address4, \
+                         post_code) \
+                         VALUES ('%s', '%s', '%s', '%s', '%s', '%s');"
+                         site1.InstCommonName
+                         (escapeValueText <| site1.``Postal Address 1``)
+                         (escapeValueText <| site1.``Postal Address 2``)
+                         (escapeValueText <| site1.``Postal Address 3``)
+                         (escapeValueText <| site1.``Postal Address 4``)
+                         (escapeValueText <| site1.``Post Code``)
+    let (command : SQLiteCommand) = new SQLiteCommand(query, conn)
+    ignore <| command.ExecuteNonQuery ()
 
-let insertAll (conn:SQLiteConnection) = 
+let insertAllSites (conn:SQLiteConnection) = 
     let file = new SiteRow()
     let trans = conn.BeginTransaction(System.Data.IsolationLevel.ReadCommitted)
     for rowi in file.Data do
-        insertRow conn rowi
+        insertSiteRow conn rowi
         printfn "%s %s" rowi.InstAssetId  rowi.InstCommonName
     trans.Commit ()
 
+let insertAllLocations (conn:SQLiteConnection) = 
+    let file = new SiteRow()
+    let foldStep (s1 : Set<string>) (x:SiteRow.Row) = 
+        let name = x.SiteCommonName
+        if s1.Contains name then s1 
+        else insertLocationRow conn x
+             printfn "%s %s" x.InstAssetId  x.InstCommonName
+             s1.Add name
+    let trans = conn.BeginTransaction(System.Data.IsolationLevel.ReadCommitted)
+    let _ = file.Data |> Seq.fold foldStep Set.empty
+    trans.Commit () 
 
+    
 
 

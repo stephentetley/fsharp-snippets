@@ -25,7 +25,7 @@ open AssetRep.SiteImport
 let test01 () =
     let loc = @"E:\\coding\\fsharp\\assetrep\\data\\assetrep.db"
     let dbconn = makeConn(loc) 
-    dbconn.Do (fun conn -> withOpenConn conn (fun oc -> let _ = deleteData oc
+    dbconn.Do (fun conn -> withOpenConn conn (fun oc -> let _ = deleteAllSites oc
                                                         let _ = insertDummy oc
                                                         testConn oc))
 
@@ -42,8 +42,16 @@ let test02 () =
 let test03 () =
     let loc = @"E:\\coding\\fsharp\\assetrep\\data\\assetrep.db"
     let dbconn = makeConn(loc) 
-    dbconn.Do (fun conn -> withOpenConn conn (fun oc -> let _ = deleteData oc
-                                                        let _ = insertAll oc
+    dbconn.Do (fun conn -> withOpenConn conn (fun oc -> let _ = deleteAllSites oc
+                                                        let _ = insertAllSites oc
+                                                        testConn oc))
+
+
+let test04 () =
+    let loc = @"E:\\coding\\fsharp\\assetrep\\data\\assetrep.db"
+    let dbconn = makeConn(loc) 
+    dbconn.Do (fun conn -> withOpenConn conn (fun oc -> let _ = deleteAllLocations oc
+                                                        let _ = insertAllLocations oc
                                                         testConn oc))
 
 
