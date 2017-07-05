@@ -51,9 +51,11 @@
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Utils.fs" />
     <Compile Include="Syntax.fs" />
     <Compile Include="FlatSyntax.fs" />
     <None Include="Test1.fsx" />
+    <None Include="Test2.fsx" />
     <Content Include="packages.config" />
   </ItemGroup>
   <ItemGroup>

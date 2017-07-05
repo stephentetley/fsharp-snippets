@@ -4,8 +4,9 @@
 open System.Data.SQLite
 
 // Need to set working directory so Data Source works...
+// (Actually this isn't true...)
 open System
-System.Environment.CurrentDirectory <- @"E:\coding\fsharp\fsharp-snippets\fsharp-snippets"
+System.Environment.CurrentDirectory <- @"E:\coding\fsharp\fsharp-snippets\sketch\fsharp-snippets"
 
 let dbconn = new SQLiteConnection( "Data Source=..\data\db1.sqlite;Version=3;")
 dbconn.Open()
