@@ -54,8 +54,10 @@
     <Compile Include="Utils.fs" />
     <Compile Include="Syntax.fs" />
     <Compile Include="FlatSyntax.fs" />
+    <Compile Include="RoseTree.fs" />
     <None Include="Test1.fsx" />
     <None Include="Test2.fsx" />
+    <None Include="TestRose.fsx" />
     <Content Include="packages.config" />
   </ItemGroup>
   <ItemGroup>

@@ -24,3 +24,9 @@ Assemblies > Framework.
 
 Porbably should use a transaction to increse speed...
 https://www.devart.com/dotconnect/sqlite/docs/Devart.Data.SQLite~Devart.Data.SQLite.SQLiteTransaction.html
+
+See this answer that shows how to create databases:
+https://stackoverflow.com/questions/15292880/create-sqlite-database-and-table
+Note however, creating tables with SQL is much more tractable than creating them with functions.
+
+

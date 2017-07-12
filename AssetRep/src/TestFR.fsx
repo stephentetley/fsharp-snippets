@@ -13,7 +13,8 @@ let makeFileName (x:string) : string =
     System.IO.Path.Combine(__SOURCE_DIRECTORY__, "..", ans)
     
 let makeModList (sitename:string) (sainum:string) : ModList = 
-    let ss= [ ("#SAINUM", sainum); ("#SITENAME", sitename) ]
+    let ss= [ ("#SAINUM", sainum)
+            ; ("#SITENAME", sitename) ]
     let outpath = makeFileName sitename
     (outpath, ss)
 
