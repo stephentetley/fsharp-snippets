@@ -9,6 +9,6 @@ let hasMatch (re:Regex) (s:string) : bool = re.Match(s).Success
 
 let regex (s:string) = new Regex(s)
 
-let test01 = let re = regex "[\p{L}_\d]+" in hasMatch re "VICTORIA_CSO"
+let test01 () = let re = regex "[\p{L}_\d]+" in hasMatch re "VICTORIA_CSO"
 
-let test02 = let re = new Regex("[\p{L}_\d]+") in hasMatch re "VICTORIA_CSO"
+let test02 () = let re = new Regex("[\p{L}_\d]+") in hasMatch re "VICTORIA_CSO"

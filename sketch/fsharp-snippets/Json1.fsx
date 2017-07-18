@@ -24,8 +24,8 @@ type Person = {
 
 let geoff = { Name = "Geoff"; Age = 65 }
 
-let test1 = toJson("hello" : string)
+let test01 () = toJson("hello" : string) |> printfn "%s"
 
-let test2 = toJson(geoff)
+let test02 () = toJson(geoff) |> printfn "%s"
 
-printfn "%s" test2
+

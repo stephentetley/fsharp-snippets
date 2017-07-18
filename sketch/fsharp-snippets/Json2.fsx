@@ -5,9 +5,9 @@
 #r "Newtonsoft.Json"
 open Newtonsoft.Json
 
-let json = JsonConvert.SerializeObject(1 : int)
-
-printfn "%s" json
+let test01 () = 
+    let json = JsonConvert.SerializeObject(1 : int)
+    printfn "%s" json
 
 let WriteNamed (name : string) (o : obj) (writer : JsonWriter) = 
     writer.WriteStartObject ()
@@ -15,12 +15,14 @@ let WriteNamed (name : string) (o : obj) (writer : JsonWriter) =
     writer.WriteValue o
     writer.WriteEndObject ()
 
-let json2 = 
-    let buf = new System.Text.StringBuilder()
-    let sw = new System.IO.StringWriter(buf)
-    let writer = new JsonTextWriter(sw)
-    WriteNamed "Age" (30 : int) writer
-    buf.ToString()
+let test02 () = 
+    let json = 
+        let buf = new System.Text.StringBuilder()
+        let sw = new System.IO.StringWriter(buf)
+        let writer = new JsonTextWriter(sw)
+        WriteNamed "Age" (30 : int) writer
+        buf.ToString()
+    printfn "%s" json
 
 
 

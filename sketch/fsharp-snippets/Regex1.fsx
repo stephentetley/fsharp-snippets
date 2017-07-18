@@ -9,15 +9,15 @@ open System.Text
 type PumpR = Regex< @"(?<Name>[\p{L}_\d]+)_(?<Suffix>PUMP_[AFPR])\z" >
 
 
-let test01 = PumpR().TypedMatch("DIGESTER_2_FEED_PUMP_R").Suffix.Value
-let test02 = PumpR().TypedMatch("DIGESTER_2_FEED_PUMP_F").Suffix.Value
-let test03 = PumpR().TypedMatch("DIGESTER_2_FEED_PUMP_R").Name.Value
+let test01 () = PumpR().TypedMatch("DIGESTER_2_FEED_PUMP_R").Suffix.Value
+let test02 () = PumpR().TypedMatch("DIGESTER_2_FEED_PUMP_F").Suffix.Value
+let test03 () = PumpR().TypedMatch("DIGESTER_2_FEED_PUMP_R").Name.Value
 
 // "VICTORIA_CSO   \ERSKINE_BATTERY"
 type OSPoint = Regex< @"(?<OS>[\p{L}_\d]+)(?:\s+\\)(?<Point>[\p{L}_\d]+)(?:\s*)" >
 
-let test04 = OSPoint().TypedMatch("VICTORIA_CSO   \ERSKINE_BATTERY").OS.Value
-let test05 = OSPoint().TypedMatch("VICTORIA_CSO   \ERSKINE_BATTERY").Point.Value
+let test04 () = OSPoint().TypedMatch("VICTORIA_CSO   \ERSKINE_BATTERY").OS.Value
+let test05 () = OSPoint().TypedMatch("VICTORIA_CSO   \ERSKINE_BATTERY").Point.Value
 
 
 

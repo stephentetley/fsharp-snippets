@@ -83,14 +83,15 @@ let sysPointList : Parser<SysPoint list,unit> = pstringline "DCL" >>. many1Till 
 
 let pConfig = pipe2 address sysPointList (fun a b -> {address=a; points=b})
 
-let test01 : ParserResult<int,unit> = run pint32 "-14"
-let test02 = run address "14\n189\nDCL"
-let test03 = run pointName "W_WELL_HI_AND_2_PMPS_RUNNING "
-let test04 = run pointID "AI12 "
-let test05 = run pdecimal "1440.37500 "
-let test06 = run limit "32766=100.37500 "
-let test07 = pointType "PID1"
-let test08 = run sysPoint "P2_CURRENT_DAY_MINS_RUN AID3 0=0.000000 1440=1440.000000 "
+let test01 () = run pint32 "-14"
+let test02 () = run address "14\n189\nDCL"
+let test03 () = run pointName "W_WELL_HI_AND_2_PMPS_RUNNING "
+let test04 () = run pointID "AI12 "
+let test05 () = run pdecimal "1440.37500 "
+let test06 () = run limit "32766=100.37500 "
+let test07 () = pointType "PID1"
+let test08 () = run sysPoint "P2_CURRENT_DAY_MINS_RUN AID3 0=0.000000 1440=1440.000000 "
 
 let path1 = System.IO.Path.Combine(__SOURCE_DIRECTORY__,"..","data/SAMPLE.odf")
-let test09 = runParserOnFile pConfig () path1 Text.ASCIIEncoding.ASCII
+let test09 () = runParserOnFile pConfig () path1 Text.ASCIIEncoding.ASCII
+
