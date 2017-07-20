@@ -3,13 +3,11 @@
 
 open System.Data.SQLite
 
-// Need to set working directory so Data Source works...
-// (Actually this isn't true...)
-open System
-System.Environment.CurrentDirectory <- @"E:\coding\fsharp\fsharp-snippets\sketch\fsharp-snippets"
 
-let dbconn = new SQLiteConnection( "Data Source=..\data\db1.sqlite;Version=3;")
-dbconn.Open()
+let constring = 
+    let s1 = @"E:\coding\fsharp\fsharp-snippets\sketch\data\db1.sqlite"
+    sprintf "Data Source=%s;Version=3;" s1
+
 
 (*
 let query = "insert into highscores (name, score) values ('Me', 3000)"
@@ -25,14 +23,13 @@ command = new SQLiteCommand(query, dbconn)
 command.ExecuteNonQuery()
 *)
 
-
-let query4 : string = "select * from highscores"
-let command4 = new SQLiteCommand(query4, dbconn)
-
-let reader : SQLiteDataReader = command4.ExecuteReader()
-while reader.Read() do
-    printf "%s %d\n" (reader.GetString(0)) (reader.GetInt32(1))
-
-reader.Close()
-
-dbconn.Close()
+let test01 () = 
+    let dbconn = new SQLiteConnection(constring)
+    dbconn.Open()
+    let query1 : string = "select * from highscores"
+    let command1 = new SQLiteCommand(query1, dbconn)
+    let reader : SQLiteDataReader = command1.ExecuteReader()
+    while reader.Read() do
+        printf "%s %d\n" (reader.GetString(0)) (reader.GetInt32(1))
+    reader.Close()
+    dbconn.Close()

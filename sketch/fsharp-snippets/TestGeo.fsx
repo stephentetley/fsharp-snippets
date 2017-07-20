@@ -24,13 +24,13 @@ let testit c = Coord.decodeAlpha c
 // let temp = Coord.N0;; 
 
 /// SW - Easting : 135247    Northing : 026365
-let cove_hill = Coord.fromOSGridRef10 "SW3524726365"
+let coveHill = Coord.fromOSGridRef10 "SW3524726365"
 
 /// NE - Easting :  335676   Northing : 970738
 let wick = Coord.fromOSGridRef10 "ND3567670738"
 
 /// NW - Easting : 106697    Northing : 937542
-let isle_of_lewis = Coord.fromOSGridRef10 "NB0669737542"
+let isleOfLewis = Coord.fromOSGridRef10 "NB0669737542"
 
 /// SE - Easting : 628458    Northing : 141168
 let dover = Coord.fromOSGridRef10 "TR2845841168"
