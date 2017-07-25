@@ -62,9 +62,12 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="SiteImport.fs" />
+    <Compile Include="CsoOutputs.fs" />
     <Compile Include="FindReplace.fs" />
-    <None Include="Test1.fsx" />
+    <Compile Include="FreshDB.fs" />
+    <None Include="TestCso.fsx" />
     <None Include="TestFR.fsx" />
+    <None Include="TestFresh.fsx" />
     <Content Include="notes-sqlite.txt" />
     <Content Include="App.config" />
     <Content Include="packages.config" />
@@ -76,6 +79,7 @@
       <Isolated>False</Isolated>
       <WrapperTool>primary</WrapperTool>
     </COMReference>
+    <None Include="Test1.fsx" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="EntityFramework">
