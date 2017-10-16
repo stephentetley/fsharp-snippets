@@ -6,9 +6,11 @@ open FParsec
 open FSharpx.Collections
 open FilePath.Syntax
 
+// ERROR - this is not a flat syntax, of course.
+// It is a rose tree syntax, main syntax is more "algebraic" but both are still trees.
+
+
 // Note - a flat representation might be more useful than just an interim form close to input syntax.
-
-
 type File1 = File1 of Name * Mode * TimeStamp * FileLength
 
 type Element = 
@@ -87,7 +89,7 @@ let pElement : Parser<Element,unit> =
         else pipe3 (symbol1 pTimeStamp) (symbol1 pint64) pName (fun t l s -> File(File1(s,mode,t,l)))
     (symbol pMode) >>= parseK
 
-
+// TODO - many1 looks wrong (empty directories?)
 let pBlock : Parser<Block, unit> = 
     pipe3 (spaces >>. lineOf pDirectoryName) 
           (twice blankline >>. lineOf pHeadings >>. many1 (lineOf pElement))
