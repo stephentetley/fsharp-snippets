@@ -1,15 +1,15 @@
 ﻿
 #r "Microsoft.Office.Interop.Word"
 
-#load "Utils.fs"
-#load "RangeOperations.fs"
-#load "Extractors.fs"
+#load @"WordExtractors\Utils.fs"
+#load @"WordExtractors\RangeOperations.fs"
+#load @"WordExtractors\Extractors.fs"
 
 open System.IO
 open Microsoft.Office.Interop
-open Utils
-open RangeOperations
-open Extractors
+open WordExtractors.Utils
+open WordExtractors.RangeOperations
+open WordExtractors.Extractors
 
 // Note to self - this example is not "properly structured" tables are free text
 //

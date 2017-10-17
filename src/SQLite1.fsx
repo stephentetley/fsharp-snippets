@@ -5,7 +5,7 @@ open System.Data.SQLite
 
 
 let constring = 
-    let s1 = @"E:\coding\fsharp\fsharp-snippets\sketch\data\db1.sqlite"
+    let s1 = System.IO.Path.Combine(__SOURCE_DIRECTORY__,"..","data\db1.sqlite")
     sprintf "Data Source=%s;Version=3;" s1
 
 

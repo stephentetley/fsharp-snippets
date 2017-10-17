@@ -11,7 +11,7 @@
 #r "ExcelProvider.dll"
 
 
-#load "CsoOutputs.fs"
+#load @"AssetRep\CsoOutputs.fs"
 
 
 open System

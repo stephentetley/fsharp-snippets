@@ -1,5 +1,5 @@
 ﻿[<AutoOpen>]
-module FindReplace
+module AssetRep.FindReplace
 
 open Microsoft.Office.Interop.Word
 

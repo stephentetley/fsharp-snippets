@@ -1,12 +1,12 @@
 ﻿[<AutoOpen>]
-module Extractors
+module WordExtractors.Extractors
 
     // Add references via the COM tab for Office and Word
     // All the PIA stuff online is outdated for Office 365 / .Net 4.5 / VS2015 
     open Microsoft.Office.Interop
 
-    open Utils
-    open RangeOperations
+    open WordExtractors.Utils
+    open WordExtractors.RangeOperations
 
     type Result<'a> = 
         | Okay of 'a

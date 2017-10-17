@@ -19,7 +19,7 @@ Don't need fsi to be in the src directory of the project.
 When to open and close connections:
 http://sqlite.1065341.n5.nabble.com/When-to-open-close-connections-td75340.html
 
-To add a reference to System.Data, right click on 'Refrences'; click "Add Reference..." and find 'System.Data' in 
+To add a reference to System.Data, right click on 'References'; click "Add Reference..." and find 'System.Data' in 
 Assemblies > Framework.
 
 Porbably should use a transaction to increse speed...

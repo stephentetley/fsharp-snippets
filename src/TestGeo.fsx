@@ -38,8 +38,9 @@ let dover = Coord.fromOSGridRef10 "TR2845841168"
 let dover2 = {Coord.Eastings = 628458.0<meter>; Coord.Northings =  141168.0<meter>}
 
 
-let testD1 = match dover with
-             | Some d1 -> GeoDistance.haversineDistance (Coord.enToLatLon d1) (Coord.enToLatLon dover2)
-             | None -> failwith "Bad"
+let testD1 () = 
+    match dover with
+    | Some d1 -> GeoDistance.haversineDistance (Coord.enToLatLon d1) (Coord.enToLatLon dover2)
+    | None -> failwith "Bad"
 
 

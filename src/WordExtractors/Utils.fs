@@ -1,5 +1,5 @@
 ﻿[<AutoOpen>]
-module Utils
+module WordExtractors.Utils
 
 open System.IO
 

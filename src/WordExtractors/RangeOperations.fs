@@ -1,5 +1,5 @@
 ﻿[<AutoOpen>]
-module RangeOperations
+module WordExtractors.RangeOperations
 
 
 // Add references via the COM tab for Office and Word

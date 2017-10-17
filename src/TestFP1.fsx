@@ -1,17 +1,18 @@
 ﻿
 
 #I @"..\packages\FParsec.1.0.2\lib\net40-client"
-#I @"..\packages\FSharpx.Collections.1.16.0\lib\net40"
+#I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FParsec"
 #r "FParsecCS"
 #r "FSharpx.Collections.dll"
 
-#load "Syntax.fs"
-#load "FlatSyntax.fs"
+#load @"FilePaths\Syntax.fs"
+#load @"FilePaths\FlatSyntax.fs"
 
 open System
 open System.IO
 open FParsec
+
 open FilePath.Syntax
 open FilePath
 

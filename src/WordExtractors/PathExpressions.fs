@@ -1,5 +1,5 @@
 ﻿[<AutoOpen>]
-module PathExpressions
+module WordExtractors.PathExpressions
 
 open Microsoft.Office.Interop
 

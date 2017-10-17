@@ -1,4 +1,4 @@
-﻿#load "RoseTree.fs"
+﻿#load @"FilePaths\RoseTree.fs"
 
 open System.Text
 open FilePaths

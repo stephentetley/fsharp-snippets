@@ -2,8 +2,8 @@
 #r "Microsoft.Office.Interop.Word"
 open Microsoft.Office.Interop
 
-#load "FindReplace.fs"
-open FindReplace
+#load @"AssetRep\FindReplace.fs"
+open AssetRep.FindReplace
 
 
 let cleanseName (x:string) = x.Replace("/", "_")

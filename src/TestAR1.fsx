@@ -11,7 +11,7 @@
 #r "ExcelProvider.dll"
 
 
-#load "SiteImport.fs"
+#load @"AssetRep\SiteImport.fs"
 
 
 open System
@@ -23,14 +23,12 @@ open AssetRep.SiteImport
 
 
 let test01 () =
-    let loc = @"E:\\coding\\fsharp\\assetrep\\data\\assetrep.db"
+    let loc = System.IO.Path.Combine(__SOURCE_DIRECTORY__,"..", @"data\assetrep.db")
+    printfn "%s" loc
     let dbconn = makeConn(loc) 
     dbconn.Do (fun conn -> withOpenConn conn (fun oc -> let _ = deleteAllSites oc
                                                         let _ = insertDummy oc
                                                         testConn oc))
-
-
-
 
 
 let test02 () = 
@@ -40,7 +38,7 @@ let test02 () =
 
 
 let test03 () =
-    let loc = @"E:\\coding\\fsharp\\assetrep\\data\\assetrep.db"
+    let loc = System.IO.Path.Combine(__SOURCE_DIRECTORY__,"..", @"data\assetrep.db")
     let dbconn = makeConn(loc) 
     dbconn.Do (fun conn -> withOpenConn conn (fun oc -> let _ = deleteAllSites oc
                                                         let _ = insertAllSites oc
@@ -48,7 +46,7 @@ let test03 () =
 
 
 let test04 () =
-    let loc = @"E:\\coding\\fsharp\\assetrep\\data\\assetrep.db"
+    let loc = System.IO.Path.Combine(__SOURCE_DIRECTORY__,"..", @"data\assetrep.db")
     let dbconn = makeConn(loc) 
     dbconn.Do (fun conn -> withOpenConn conn (fun oc -> let _ = deleteAllLocations oc
                                                         let _ = insertAllLocations oc
