@@ -61,7 +61,7 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Content Include="packages.config" />
-	<Compile Include="AssetRep\Utils.fs" />
+    <Compile Include="AssetRep\Utils.fs" />
     <Compile Include="AssetRep\CsoOutputs.fs" />
     <Compile Include="AssetRep\FindReplace.fs" />
     <Compile Include="AssetRep\FreshDB.fs" />
@@ -84,13 +84,14 @@
     <None Include="TestGeo.fsx" />
     <None Include="TestFact.fsx" />
     <None Include="WordForm.fsx" />
-    <None Include="Excel1.fsx" />
     <None Include="Json1.fsx" />
     <None Include="Json2.fsx" />
     <None Include="ParseODF.fsx" />
     <None Include="StringTemp1.fsx" />
+    <None Include="Excel1.fsx" />
     <None Include="Excel2.fsx" />
     <None Include="Excel3.fsx" />
+    <None Include="ExcelIndexing.fsx" />
     <None Include="Regex1.fsx" />
     <None Include="Regex2.fsx" />
     <None Include="SQLite1.fsx" />
