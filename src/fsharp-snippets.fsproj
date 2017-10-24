@@ -92,6 +92,7 @@
     <None Include="Excel2.fsx" />
     <None Include="Excel3.fsx" />
     <None Include="ExcelIndexing.fsx" />
+    <None Include="ExcelPairwise.fsx" />
     <None Include="Regex1.fsx" />
     <None Include="Regex2.fsx" />
     <None Include="SQLite1.fsx" />
