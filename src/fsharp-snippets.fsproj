@@ -106,6 +106,7 @@
     <None Include="TestFPRose.fsx" />
     <None Include="TestWE1.fsx" />
     <None Include="TestWERange.fsx" />
+    <None Include="NearestHospital.fsx" />
     <Content Include="App.config" />
     <COMReference Include="Microsoft Excel 16.0 Object Library">
       <Guid>{00020813-0000-0000-c000-000000000046}</Guid>

@@ -14,7 +14,10 @@ module Coord =
     [<Measure>]
     type degree
 
+    [<StructuredFormatDisplay("{Eastings}E {Northings}E")>]
     type OSGB36Point = { Eastings : float<meter>; Northings : float<meter> }
+
+    [<StructuredFormatDisplay("{Latitude}Lat {Longitude}Lon")>]
     type WGS84Point = { Latitude : float<degree>; Longitude : float<degree> }
 
     let deg2rad (d : float) = (Math.PI/180.0) * d
@@ -75,7 +78,7 @@ module Coord =
         let Md = ((35.0/24.0)*n3) * sin (3.0*phiMphi0) * cos (3.0*phiPphi0)
         b * F0 * (Ma - Mb + Mc - Md)
 
-    let latlonToEN ({Latitude = phidd; Longitude = lamdd} : WGS84Point) = 
+    let latlonToEN ({Latitude = phidd; Longitude = lamdd} : WGS84Point) : OSGB36Point = 
         let phi = deg2rad (float phidd)
         let lam = deg2rad (float lamdd)
         let sinPhi = sin phi
@@ -102,7 +105,7 @@ module Coord =
 
 
 
-    let enToLatLon ({Eastings = E; Northings = N} : OSGB36Point) =
+    let enToLatLon ({Eastings = E; Northings = N} : OSGB36Point) : WGS84Point =
         let rec makePhi p m = 
             if abs (float N - N0 - m) < 0.01 then 
                 p 
@@ -140,7 +143,7 @@ module Coord =
     /// https://en.wikipedia.org/wiki/Ordnance_Survey_National_Grid
 
    
-    let decodeMajor (ch : char) = 
+    let private decodeMajor (ch : char) = 
         match ch with
             | 'S' | 's' -> (0.0, 0.0)
             | 'T' | 't' -> (500000.0, 0.0)
@@ -149,7 +152,7 @@ module Coord =
             | 'H' | 'h' -> (0.0, 1000000.0)
             | _         -> (-1000000.0, -1000000.0)
 
-    let decodeMinor (ch : char) = 
+    let private decodeMinor (ch : char) = 
         let shifti x  = 
             match x with
                 | _ when x > 8  -> x-1
@@ -160,7 +163,7 @@ module Coord =
         let n1 = 4 - n0
         (float e1 * 100000.0, float n1 * 100000.0)
 
-    let decodeAlpha (s : char) (t : char) = 
+    let private decodeAlpha (s : char) (t : char) = 
         let (eM, nM) = decodeMajor s
         let (em, nm) = decodeMinor t
         (eM + em, nM + nm)
@@ -196,15 +199,15 @@ module Coord =
         let (b,s3)  = parse s2 0 0.0
         (a,b) 
 
-                                    
-    let fromOSGridRef6 (ss : string) = 
+    // Limitation - This takes a string with no spaces...                               
+    let fromOSGridRef6 (ss : string) : OSGB36Point option = 
         match Seq.toList ss with
             | (m :: mm :: xs) -> let (e,n) = ns 3 xs
                                  Some <| decodeOSGridRef6 m mm e n
             | _ -> None
 
-    
-    let fromOSGridRef10 (ss : string) = 
+    // Limitation - This takes a string with no spaces...
+    let fromOSGridRef10 (ss : string) : OSGB36Point option =  
         match Seq.toList ss with
             | (m :: mm :: xs) -> let (e,n) = ns 5 xs
                                  let e1 = LanguagePrimitives.FloatWithMeasure e

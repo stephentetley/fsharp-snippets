@@ -15,8 +15,8 @@ let lam1 : float<Coord.degree> = Coord.fromDMS 1 43 4.5177
 let test01 = Coord.latlonToEN {Latitude = phi1; Longitude = lam1}
 let test02 = Coord.enToLatLon {Eastings = 651409.903<meter>; Northings = 313177.270<meter>}
 
-let test03 = Coord.decodeMinor 'c' ;;
-let testit c = Coord.decodeAlpha c
+//let test03 = Coord.decodeMinor 'c' ;;
+//let testit c = Coord.decodeAlpha c
 
 // e.g. > TestScript.test01;;
 

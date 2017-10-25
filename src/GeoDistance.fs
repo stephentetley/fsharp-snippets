@@ -10,7 +10,7 @@ module GeoDistance =
 
 
     // Operates on WGS84Points i.e. Lat-Lon
-    let haversineDistance (p1 : Coord.WGS84Point) (p2 : Coord.WGS84Point) = 
+    let haversineDistance (p1 : Coord.WGS84Point) (p2 : Coord.WGS84Point) : float<kilometer> = 
         let radius = 6371.000<kilometer>
         let lat1R = Coord.deg2rad (float p1.Latitude)
         let lat2R = Coord.deg2rad (float p2.Latitude)
