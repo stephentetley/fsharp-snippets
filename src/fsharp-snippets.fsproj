@@ -107,6 +107,8 @@
     <None Include="TestWE1.fsx" />
     <None Include="TestWERange.fsx" />
     <None Include="NearestHospital.fsx" />
+    <None Include="ListOverlap.fsx" />
+    <None Include="ExcelTranspose.fsx" />	
     <None Include="XlsTrim.fsx" />
     <Content Include="App.config" />
     <COMReference Include="Microsoft Excel 16.0 Object Library">

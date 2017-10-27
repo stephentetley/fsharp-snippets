@@ -4,6 +4,9 @@
 #r @"FSharp.Data.dll"
 open FSharp.Data
 
+// NOTE - CSV processing is very fast
+// To trim basic (macro-free) Xls files, going to and from CSV looks like
+// a good choice, given that Excel is very slow.
 
 let inpath = System.IO.Path.Combine(__SOURCE_DIRECTORY__,"..","data/rts.csv")
 let outpath = System.IO.Path.Combine(__SOURCE_DIRECTORY__,"..","data/rts.out.csv")

@@ -9,7 +9,6 @@ open SheetWrite
 
 // Use cells
 let trimCell (worksheet:Excel.Worksheet) (rowIx:int) (colIx:int) : unit =
-    let ix = addressName rowIx colIx
     let rng1 = worksheet.Cells.[rowIx,colIx] :?> Excel.Range
     let ans = rng1.Text :?> string
     rng1.Value2 <- ans.Trim ()
