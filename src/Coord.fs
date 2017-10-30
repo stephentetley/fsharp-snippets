@@ -14,6 +14,9 @@ module Coord =
     [<Measure>]
     type degree
 
+
+    // Note - the the grid letter plus grid digits is a synonymous representation:
+    // E.g Sullom Voe oil terminal in the Shetlands can be specified as HU396753 or 439668,1175316.
     [<StructuredFormatDisplay("{Eastings}E {Northings}E")>]
     type OSGB36Point = { Eastings : float<meter>; Northings : float<meter> }
 
