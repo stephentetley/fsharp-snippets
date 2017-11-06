@@ -107,6 +107,7 @@
     <None Include="TestWE1.fsx" />
     <None Include="TestWERange.fsx" />
     <None Include="NearestHospital.fsx" />
+    <None Include="NearestNeighbour.fsx" />
     <None Include="ListOverlap.fsx" />
     <None Include="XlsTrim.fsx" />
     <None Include="ExcelTranspose.fsx" />
