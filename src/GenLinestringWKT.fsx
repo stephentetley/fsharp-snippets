@@ -36,17 +36,40 @@ let buildCoordDatabase () : CoordDB =
         |> Seq.fold addLine Map.empty
  
 
-let genWKT (order:string list) (db:CoordDB) : string =
+type OrderGroups = (string list) list
+
+let genLINESTRING (coords:Coord.WGS84Point list) : string =
     let make1 (pt:Coord.WGS84Point) : string = sprintf "%f %f" pt.Longitude pt.Latitude
-    let coords =
-        List.fold (fun ac name -> 
-            match Map.tryFind name db with
-            | Some(pt) -> (pt :: ac)
-            | None -> ac)
-            []
-            order
     let body = String.concat "," <| List.map make1 coords
-    sprintf "oid;wkt\n1;\"LINESTRING(%s)\"" body
+    sprintf "\"LINESTRING(%s)\"" body
+
+let findPoints (sites:string list)  (db:CoordDB) : Coord.WGS84Point list = 
+    List.fold (fun ac name -> 
+        match Map.tryFind name db with
+        | Some(pt) -> (pt :: ac)
+        | None -> ac)
+        []
+        sites
+
+let genWKT (orders:OrderGroups) (db:CoordDB) : string =
+    let pointGroups = List.map (fun ss -> findPoints ss db) orders
+    let textlines = 
+        List.mapi (fun i pts -> sprintf "%i;%s" (i+1) (genLINESTRING pts)) pointGroups
+    String.concat "\n" ("oid;wkt" :: textlines)
+
+let partition (lines:string list) : OrderGroups = 
+    let safecons (xs:string list) (xss:OrderGroups) = 
+        match xs with 
+        | [] -> xss
+        | _ -> (xs::xss)
+    let rec go (rest:string list) (ac1:string list) (acAll:OrderGroups) =
+        match rest with
+        | [] -> List.rev (safecons ac1 acAll)
+        | x :: xs ->
+            if System.String.IsNullOrEmpty x then
+                go xs [] (safecons (List.rev ac1) acAll)
+            else go xs (x::ac1) acAll
+    go lines [] []
 
 let outpath = @"G:\work\rtu\IS_barriers\siteorder-output.csv"
 
@@ -55,10 +78,10 @@ let inputList = @"G:\work\rtu\IS_barriers\sites-in-order.txt"
 
 let main () = 
     let db = buildCoordDatabase ()
-    let siteOrder : string list = 
+    let siteOrders:OrderGroups = 
         System.IO.File.ReadLines(inputList)
-            |> Seq.filter (fun (s:string) -> not <| System.String.IsNullOrEmpty s)
-            |> Seq.toList
-    let output = genWKT siteOrder db
+            |> Seq.toList 
+            |> partition
+    let output = genWKT siteOrders db
     System.IO.File.WriteAllText (outpath, output)
     printfn "%s" output
