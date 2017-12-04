@@ -7,14 +7,17 @@ open FSharp.ExcelProvider
 open Microsoft.Office.Interop
 
 #load "Coord.fs"
-#load "GeoDistance.fs"
-#load "SheetWrite.fs"
 open Coord
+
+#load "ExcelUtils.fs"
+open ExcelUtils
+
+#load "GeoDistance.fs"
 open GeoDistance
-open SheetWrite
+
 
 type InputTable = 
-    ExcelFile< @"G:\work\Projects\pgrouting\Sites.xlsx",
+    ExcelFile< @"G:\work\Projects\pgrouting\IS Barriers RTU & Enhancements.xlsx",
                SheetName = "RTU AR",
                ForceString = true >
 

@@ -1,4 +1,4 @@
-﻿module SheetWrite
+﻿module ExcelUtils
 
 open System
 open Microsoft.Office.Interop
@@ -28,6 +28,8 @@ let saveAndCloseWorkbook (workbook:Excel.Workbook) (filename:string)  : unit =
     app.DisplayAlerts <- true
     workbook.Close(SaveChanges = false)
 
+// Don't use this.
+// Use Cells.[i,j] for 2D index based addressing
 let columnName (i:int) : string = 
     let rec work n ac = 
         if n > 0 then
@@ -40,8 +42,12 @@ let columnName (i:int) : string =
         else ac
     work i [] |> String.Concat
 
+// Don't use this.
+// Use Cells.[i,j] for 2D index based addressing
 let addressName (rowIx:int) (colIx:int) : string = 
     sprintf "%s%d" (columnName colIx) rowIx
+
+
 
 let findLastCell (worksheet:Excel.Worksheet) : (int * int) =
     let a1 = worksheet.Cells.Range("A1")
@@ -52,3 +58,9 @@ let findLastCell (worksheet:Excel.Worksheet) : (int * int) =
                                     SearchOrder = Excel.XlSearchOrder.xlByRows,
                                     SearchDirection = Excel.XlSearchDirection.xlPrevious)
     (rng.Rows.Row, rng.Rows.Column)
+
+let findColumnCount (worksheet:Excel.Worksheet) : int =
+    snd <| findLastCell worksheet
+
+let findRowCount (worksheet:Excel.Worksheet) : int =
+    fst <| findLastCell worksheet

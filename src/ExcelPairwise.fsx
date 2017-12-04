@@ -1,21 +1,13 @@
-﻿#r "Microsoft.Office.Interop.Excel"
+﻿#I @"C:\WINDOWS\assembly\GAC_MSIL\Microsoft.Office.Interop.Excel\15.0.0.0__71e9bce111e9429c"
+#r "Microsoft.Office.Interop.Excel"
 open Microsoft.Office.Interop
 
 open System
 
+#load "ExcelUtils.fs"
+open ExcelUtils
 
-// TODO - this needs testing, but maybe it is not important...
-let columnName (i:int) : string = 
-    let rec work n ac = 
-        if n > 0 then
-            let remainder = n % 26
-            if remainder = 0 then
-                work ((n/26)-1) ('Z' :: ac)
-            else 
-                let ch = char (64+remainder)
-                work (n/26) (ch :: ac) 
-        else ac
-    work i [] |> String.Concat
+//// TODO - better to use Cells and 2D array indexing
 
 let cellIndex (col:string) (row:int) : string = 
     sprintf "%s%d" col row
@@ -31,13 +23,6 @@ let inputPath = @"G:\work\Projects\routers\IP_Subnets.xlsx"
 let outputPath = @"G:\work\Projects\routers\IP_Subnets_merged.xlsx"
 
 
-let saveAndCloseWorkbook (workbook:Excel.Workbook) (filename:string)  : unit =
-    let app:Excel.Application = workbook.Application
-    // To disable overwrite alert
-    app.DisplayAlerts <- false
-    workbook.SaveAs(Filename = filename)
-    app.DisplayAlerts <- true
-    workbook.Close(SaveChanges = false)
 
 let writeRow (sheet:Excel.Worksheet) (rowindex:int) (value:Item) : unit = 
     sheet.Cells.Range(cellIndex "A" rowindex).Value2 <- value.Name

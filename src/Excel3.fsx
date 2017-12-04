@@ -7,9 +7,10 @@ open FSharp.ExcelProvider
 
 #I @"C:\WINDOWS\assembly\GAC_MSIL\Microsoft.Office.Interop.Excel\15.0.0.0__71e9bce111e9429c"
 #r "Microsoft.Office.Interop.Excel"
+open Microsoft.Office.Interop
 
-#load @"SheetWrite.fs"
-open SheetWrite
+#load @"ExcelUtils.fs"
+open ExcelUtils
 
 type InputTable = ExcelFile< @"G:\work\working\name-trunc.xlsx",
                             SheetName = "NAME_TRUNC",

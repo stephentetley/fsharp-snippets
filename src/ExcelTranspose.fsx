@@ -3,8 +3,6 @@ open Microsoft.Office.Interop
 
 open System
 
-#load "SheetWrite.fs"
-open SheetWrite
 
 
 let cellIndex (col:string) (row:int) : string = 

@@ -2,11 +2,12 @@
 #r "ExcelProvider.dll"
 open FSharp.ExcelProvider
 
+#I @"C:\WINDOWS\assembly\GAC_MSIL\Microsoft.Office.Interop.Excel\15.0.0.0__71e9bce111e9429c"
 #r "Microsoft.Office.Interop.Excel"
 open Microsoft.Office.Interop
 
-#load "SheetWrite.fs"
-open SheetWrite
+#load "ExcelUtils.fs"
+open ExcelUtils
 
 type InputTable = ExcelFile< @"G:\work\Projects\routers\REVISED-site-lists.xlsx",
                              SheetName = "Site_List",
@@ -74,6 +75,6 @@ let main () =
     for (rowi:InputRow) in file.Data do
         match rowi.``Site Name`` with
         | null -> printfn "<nullrow>"
-        | _ -> printfn "Processing %s..." rowi.``Colloquial Name``
+        | _ -> printfn "Processing %s (%s)..." rowi.``Colloquial Name`` rowi.Batch
                processInputLine app rowi
     app.Quit()

@@ -1,23 +1,22 @@
-﻿#I @"..\packages\ExcelProvider.0.8.2\lib"
-#r "ExcelProvider.dll"
-open FSharp.ExcelProvider
-
+﻿#I @"C:\Windows\assembly\GAC_MSIL\office\15.0.0.0__71e9bce111e9429c"
+#r "office"
 #I @"C:\WINDOWS\assembly\GAC_MSIL\Microsoft.Office.Interop.Word\15.0.0.0__71e9bce111e9429c"
 #r "Microsoft.Office.Interop.Word"
+#I @"C:\WINDOWS\assembly\GAC_MSIL\Microsoft.Office.Interop.Excel\15.0.0.0__71e9bce111e9429c"
+#r "Microsoft.Office.Interop.Excel"
 open Microsoft.Office.Interop
+
 
 open System.IO
 
+#load @"ExcelUtils.fs"
+open ExcelUtils
 
-type InputTable = 
-    ExcelFile< @"G:\work\Projects\cso_pollution\assetlist-for-docgen.xlsx",
-               SheetName = "Assets",
-               ForceString = true >
 
-type InputRow = InputTable.Row
-
-let outputRoot = @"G:\work\Projects\cso_pollution\output\"
-let templateLoc = @"G:\work\Projects\cso_pollution\CSO Combined TEMPLATE.docx"
+let outputRoot = @"G:\work\Projects\T0975_EDM2\output\"
+let templateLoc = @"G:\work\Projects\T0975_EDM2\EDM2 Survey TEMPLATE.docx"
+let allSubsitutions = @"G:\work\Projects\T0975_EDM2\site-list-for-GEN.xlsx"
+let sheetName = @"SITE_LIST"
 
 type SearchList = List<string*string>
 
@@ -32,7 +31,8 @@ let defaultIfNull (dfault:string) (ss:string) : string =
 
 let safeName (input:string) : string = 
     let bads = ['\\'; '/'; ':']
-    List.fold (fun s c -> s.Replace(c,'_')) input bads
+    List.fold (fun s c -> s.Replace(c,'_')) (input.Trim()) bads
+
 
 let maybeCreateDirectory (dirpath:string) : unit = 
     if not <| Directory.Exists(dirpath) then 
@@ -41,11 +41,18 @@ let maybeCreateDirectory (dirpath:string) : unit =
 
 
 let replacer (x:Word.Document) (search:string) (replace:string) : bool = 
+    let replaceRange (range1:Word.Range) : bool = 
+        range1.Find.ClearFormatting ()
+        range1.Find.Execute (FindText = refobj search, 
+                                ReplaceWith = refobj replace,
+                                Replace = refobj Word.WdReplace.wdReplaceAll)
+
     let dstart = x.Content.Start
     let dend = x.Content.End
-    let rangeall = x.Range(refobj dstart, refobj dend)
-    rangeall.Find.ClearFormatting ()
-    rangeall.Find.Execute (FindText = refobj search, ReplaceWith = refobj replace)
+    let ans1 = replaceRange <| x.Range(refobj dstart, refobj dend)
+    let header = x.Sections.[1].Headers.[Word.WdHeaderFooterIndex.wdHeaderFooterPrimary].Range
+    let ans2 = replaceRange <| header
+    ans1 && ans2
 
 let replaces (x:Word.Document) (zs:SearchList) : unit = 
     for z in zs do
@@ -65,54 +72,57 @@ let process1 (app:Word.Application) (inpath:string) (outpath:string) (ss:SearchL
         doc.Close (SaveChanges = refobj false)
 
 
-let processName (ss:string) : string = 
-    let (parts : string []) = ss.Split('/')
-    if parts.Length > 3 then
-        let slice = Array.sub parts 2 (parts.Length - 3)
-        String.concat "/" slice 
-    else 
-        "Unknown Process" 
 
-let shortProcessName (ss:string) : string = 
-    let (parts : string []) = ss.Split('/')
-    if parts.Length > 3 then
-        let slice = Array.sub parts (parts.Length - 2) 1
-        String.concat " " slice 
-    else 
-        "Unknown Process" 
-
-let siteName (ss:string) : string = 
-    let (parts : string []) = ss.Split('/')
-    if parts.Length >= 2 then
-        let slice = Array.sub parts 0 2
-        String.concat "/" slice 
-    else 
-        ss
-
-let outfileName (site:string) (prozess:string) = 
+// new folder for each site...
+let outfileName (site:string) = 
     let safe1 = safeName site
-    let file = safe1 + " " + safeName prozess + " Survey.docx"
+    let file = sprintf "%s EDM2 Survey.docx" safe1
     System.IO.Path.Combine(outputRoot,safe1,file)
 
-let processInputLine (app:Word.Application) (rowi:InputRow) : unit =
-    let prozess = processName <| defaultIfNull "Unknown" rowi.``AI2 Asset Loc``
-    let shortProzess = shortProcessName <| defaultIfNull "Unknown" rowi.``AI2 Asset Loc``
-    let output  = outfileName rowi.``Site Name`` shortProzess
-    let searches = 
-        [ ("#SITENAME", defaultIfNull "#SITENAME" rowi.``Site Name``)
-        ; ("#SAINUMBER", defaultIfNull "#SAINUMBER" rowi.``Site SAI Number ``)
-        ; ("#PROCESSNAME", defaultIfNull "" prozess)
-        ; ("#PITAG", defaultIfNull "" rowi.``P&I Tag``)  
-        ]
-    process1 app templateLoc output searches
+// Excel rows are Ranges
+type TableRow(rng:Excel.Range) = 
+    member this.Item
+        with get(i) = (rng.Cells.[1,i] :?> Excel.Range).Value2
+        and set i value = rng.Cells.[1,i] <- value
+
+let rowValues (row:TableRow) : string list = 
+    let rec go ix ac = 
+        let h1 = row.[ix]
+        match h1 with
+        | null -> List.rev ac
+        | :? string as s -> go (ix+1) (s::ac)
+        | :? int -> go (ix+1) ("N/A"::ac)
+        | obj -> let s = (obj.ToString()) in go (ix+1) (s::ac)
+    go 1 []
+
+let makeHeaders (worksheet:Excel.Worksheet) : string list = 
+    let headers = TableRow(worksheet.Cells.Rows.[1] :?> Excel.Range)
+    rowValues headers
+
+
+// Caution - zipping may truncate
+let makeSearches (headers: string list) (row:TableRow) : SearchList = 
+    List.zip headers <| rowValues row
+
+let processInputLine (headers: string list) (app:Word.Application) (row:TableRow) : unit =
+    let sitename = safeName (row.[1] :?> string)
+    let outputpath  = outfileName sitename
+    let searches = makeSearches headers row
+    process1 app templateLoc outputpath searches
 
 let main () = 
-    let app = new Word.ApplicationClass (Visible = true) 
-    let file = new InputTable()
-    for (rowi:InputRow) in file.Data do
-        match rowi.``Site Name`` with
-        | null -> printfn "<nullrow>"
-        | _ -> printfn "Processing %s (%s)..." rowi.``Site Name`` rowi.``Asset Id``
-               processInputLine app rowi
-    app.Quit()
+    let wordApp = new Word.ApplicationClass (Visible = true) 
+    let excelApp = new Excel.ApplicationClass(Visible = true)
+    let workbook : Excel.Workbook = excelApp.Workbooks.Open(allSubsitutions)
+    let worksheet = workbook.Sheets.[sheetName] :?> Excel.Worksheet
+
+    let headers = makeHeaders worksheet
+    for ix = 1016 to findRowCount worksheet do   // TEMP HACK
+    // for ix = 2 to findRowCount worksheet do
+        let rowi = TableRow(worksheet.Cells.Rows.[ix] :?> Excel.Range)
+        processInputLine headers wordApp rowi
+    // Tear down...
+    workbook.Close(SaveChanges = false)
+    wordApp.Quit()
+    excelApp.Quit()
 

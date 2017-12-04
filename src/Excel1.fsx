@@ -1,4 +1,5 @@
-﻿#r "Microsoft.Office.Interop.Excel"
+﻿#I @"C:\WINDOWS\assembly\GAC_MSIL\Microsoft.Office.Interop.Excel\15.0.0.0__71e9bce111e9429c"
+#r "Microsoft.Office.Interop.Excel"
 open Microsoft.Office.Interop
 
 

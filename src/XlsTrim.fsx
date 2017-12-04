@@ -3,8 +3,8 @@
 open Microsoft.Office.Interop
 
 
-#load "SheetWrite.fs"
-open SheetWrite
+#load "ExcelUtils.fs"
+open ExcelUtils
 
 
 // Use cells

@@ -78,7 +78,7 @@
     <Compile Include="GeoDistance.fs" />
     <Compile Include="Fact.fs" />
     <Compile Include="WadlerXPath1.fs" />
-    <Compile Include="SheetWrite.fs" />
+    <Compile Include="ExcelUtils.fs" />
     <Compile Include="XPath2.fs" />
     <None Include="CsvTrim.fsx" />
     <None Include="TestGeo.fsx" />
@@ -106,14 +106,10 @@
     <None Include="TestFPRose.fsx" />
     <None Include="TestWE1.fsx" />
     <None Include="TestWERange.fsx" />
-    <None Include="NearestHospital.fsx" />
-    <None Include="NearestNeighbour.fsx" />
     <None Include="ListOverlap.fsx" />
     <None Include="XlsTrim.fsx" />
     <None Include="ExcelTranspose.fsx" />
     <None Include="ExcelRouting.fsx" />
-    <None Include="GenLinestringWKT.fsx" />
-    <Content Include="App.config" />
     <COMReference Include="Microsoft Excel 16.0 Object Library">
       <Guid>{00020813-0000-0000-c000-000000000046}</Guid>
       <VersionMajor>1</VersionMajor>
@@ -138,6 +134,14 @@
       <Isolated>False</Isolated>
       <WrapperTool>primary</WrapperTool>
     </COMReference>
+    <None Include="NearestHospital.fsx" />
+    <None Include="NearestNeighbour.fsx" />
+    <None Include="GenLinestringWKT.fsx" />
+    <None Include="GenPolygonWKT.fsx" />
+    <None Include="WGS84ExcelCoord.fsx" />
+    <None Include="WordFindReplace.fsx" />
+    <None Include="TEMP-FindReplace.fsx" />
+    <Content Include="App.config" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="EntityFramework">

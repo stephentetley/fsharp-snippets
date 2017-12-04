@@ -66,7 +66,7 @@ let findClosest (pt : Coord.WGS84Point) (hospitals:HospitalList) : BestMatch opt
         
 
 type DerivedAssets = 
-    ExcelFile< @"G:\work\Derived-Asset-List2.xlsx",
+    ExcelFile< @"G:\work\Derived-Asset-List3.xlsx",
                SheetName = "Site_List",
                ForceString = true >
 
@@ -93,7 +93,7 @@ let writeRow (sheet:Excel.Worksheet) (rowindex:int) (uid:string) (oname:string) 
 let main () = 
     // Run Excel as a visible application
     let app = new Excel.ApplicationClass(Visible = true) 
-    let outputPath = @"G:\work\hospitals-output.xlsx"
+    let outputPath = @"G:\work\hospitals-output2.xlsx"
     let hosiptalData = buildHospitalList ()
     let assetData = new DerivedAssets()
     let outputWorkbook : Excel.Workbook = app.Workbooks.Add()
