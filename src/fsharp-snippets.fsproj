@@ -110,6 +110,13 @@
     <None Include="XlsTrim.fsx" />
     <None Include="ExcelTranspose.fsx" />
     <None Include="ExcelRouting.fsx" />
+    <None Include="NearestHospital.fsx" />
+    <None Include="NearestNeighbour.fsx" />
+    <None Include="GenLinestringWKT.fsx" />
+    <None Include="TotalOrder.fsx" />
+    <None Include="GenPolygonWKT.fsx" />
+    <None Include="WGS84ExcelCoord.fsx" />
+    <None Include="WordFindReplace.fsx" />
     <COMReference Include="Microsoft Excel 16.0 Object Library">
       <Guid>{00020813-0000-0000-c000-000000000046}</Guid>
       <VersionMajor>1</VersionMajor>
@@ -134,13 +141,6 @@
       <Isolated>False</Isolated>
       <WrapperTool>primary</WrapperTool>
     </COMReference>
-    <None Include="NearestHospital.fsx" />
-    <None Include="NearestNeighbour.fsx" />
-    <None Include="GenLinestringWKT.fsx" />
-    <None Include="GenPolygonWKT.fsx" />
-    <None Include="WGS84ExcelCoord.fsx" />
-    <None Include="WordFindReplace.fsx" />
-    <None Include="TEMP-FindReplace.fsx" />
     <Content Include="App.config" />
   </ItemGroup>
   <ItemGroup>
