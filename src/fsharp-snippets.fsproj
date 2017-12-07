@@ -77,13 +77,11 @@
     <Compile Include="Coord.fs" />
     <Compile Include="GeoDistance.fs" />
     <Compile Include="Fact.fs" />
-    <Compile Include="WadlerXPath1.fs" />
     <Compile Include="ExcelUtils.fs" />
-    <Compile Include="XPath2.fs" />
     <None Include="CsvTrim.fsx" />
     <None Include="TestGeo.fsx" />
     <None Include="TestFact.fsx" />
-    <None Include="WordForm.fsx" />
+    <None Include="TestWord1.fsx" />
     <None Include="Json1.fsx" />
     <None Include="Json2.fsx" />
     <None Include="ParseODF.fsx" />
@@ -96,7 +94,6 @@
     <None Include="Regex1.fsx" />
     <None Include="Regex2.fsx" />
     <None Include="SQLite1.fsx" />
-    <None Include="TestXPath2.fsx" />
     <None Include="TestAR1.fsx" />
     <None Include="TestARCso.fsx" />
     <None Include="TestARFindReplace.fsx" />
@@ -117,6 +114,7 @@
     <None Include="GenPolygonWKT.fsx" />
     <None Include="WGS84ExcelCoord.fsx" />
     <None Include="WordFindReplace.fsx" />
+    <None Include="TestPostgres.fsx" />
     <COMReference Include="Microsoft Excel 16.0 Object Library">
       <Guid>{00020813-0000-0000-c000-000000000046}</Guid>
       <VersionMajor>1</VersionMajor>
@@ -197,6 +195,10 @@
       <HintPath>..\packages\Newtonsoft.Json.10.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Npgsql">
+      <HintPath>..\packages\Npgsql.3.2.6\lib\net451\Npgsql.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Core" />
@@ -214,6 +216,10 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="System.Numerics" />
+    <Reference Include="System.Threading.Tasks.Extensions">
+      <HintPath>..\packages\System.Threading.Tasks.Extensions.4.3.0\lib\portable-net45+win8+wp8+wpa81\System.Threading.Tasks.Extensions.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Xml.Linq" />
   </ItemGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
