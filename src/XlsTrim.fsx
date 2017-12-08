@@ -7,11 +7,22 @@ open Microsoft.Office.Interop
 open ExcelUtils
 
 
-// Use cells
-let trimCell (worksheet:Excel.Worksheet) (rowIx:int) (colIx:int) : unit =
-    let rng1 = worksheet.Cells.[rowIx,colIx] :?> Excel.Range
-    let ans = rng1.Text :?> string
-    rng1.Value2 <- ans.Trim ()
+// potentially use ClosedXML (GitHub, MIT License)
+
+let readRow (worksheet:Excel.Worksheet) (count:int) (rowIx:int) : string[] =
+    let c1:Excel.Range = worksheet.Cells.[rowIx,1] :?> Excel.Range
+    let c2:Excel.Range = worksheet.Cells.[rowIx,count] :?> Excel.Range
+    let rng : Excel.Range = worksheet.Range(c1,c2)
+    [| for i in 1 .. count -> (rng.Cells.[1,i] :?> Excel.Range).Text :?> string |]
+
+let trims (arr: string []) : obj [] = 
+    Array.map (fun (s:string) -> (s.Trim()) :> obj) arr
+
+let writeRow (worksheet:Excel.Worksheet) (rowIx:int) (arr:obj[]) : unit =
+    let c1:Excel.Range = worksheet.Cells.[rowIx,1] :?> Excel.Range
+    let c2:Excel.Range = worksheet.Cells.[rowIx,arr.Length] :?> Excel.Range
+    let rng : Excel.Range = worksheet.Range(c1,c2)
+    rng.Value2 <- arr
 
 let test01 () = 
     // Run Excel as a visible application
@@ -36,33 +47,38 @@ let test01 () =
     workbook.Close(SaveChanges = false)
     app.Quit()
 
-let inputFile = @"G:\work\RTS-WW-all-points.xlsx"
-let outputFile = @"G:\work\RTS-WW-all-points-TRIMMED.xlsx"
+let inputFile = @"G:\work\Projects\T0975_EDM2\Kim.xlsx"
+let outputFile = @"G:\work\Projects\T0975_EDM2\Kim-TRIMMED.xlsx"
 
 let runIt () : unit = 
     // Run Excel as a visible application
     let (app : Excel.Application) = new Excel.ApplicationClass(Visible = true) :> Excel.Application
     // Ideally this should be guarded...
-    let workbook : Excel.Workbook = app.Workbooks.Open(inputFile)
-    
+    let inputbook : Excel.Workbook = app.Workbooks.Open(inputFile)
+    let outputbook : Excel.Workbook = app.Workbooks.Add()
+
     // Ideally this should be guarded...
-    let worksheet = workbook.Sheets.["Sheet1"] :?> Excel.Worksheet
-    
+    let inputsheet = inputbook.Sheets.["Sheet1"] :?> Excel.Worksheet
+    let outputsheet = outputbook.Sheets.["Sheet1"] :?> Excel.Worksheet
+
     app.Calculation <- Excel.XlCalculation.xlCalculationManual
     app.EnableEvents <- false
     app.ScreenUpdating <- false
-    let (rowCount,colCount) = findLastCell worksheet
-    for rowi in 1 .. rowCount do
-        if rowi % 100 = 0 then
-            printfn "Row %i of %i" rowi rowCount 
+    let (rowCount,colCount) = findLastCell inputsheet
+    for rowi in 1 .. 3000 do // rowCount do
+        // let arr1 = trims <| readRow inputsheet colCount rowi
+        let arr1 = Array.map (fun i -> sprintf "A0%i" i :> obj) [| 1 .. 14 |]
+        writeRow outputsheet rowi arr1
+        if (rowi % 100 = 1) then
+            printfn "Row %i of %i" rowi rowCount
         else ()
-        for colj in 1 .. colCount do
-            trimCell worksheet rowi colj
 
     app.Calculation <- Excel.XlCalculation.xlCalculationAutomatic
     app.EnableEvents <- true
     app.ScreenUpdating <- true
-    saveAndCloseWorkbook workbook outputFile    
+    inputbook.Close(SaveChanges = false)
+    saveAndCloseWorkbook outputbook outputFile    
+    app.Quit()
 
 let main () = runIt ()
 
