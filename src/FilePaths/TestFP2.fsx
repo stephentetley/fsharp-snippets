@@ -1,4 +1,4 @@
-﻿#load @"FilePaths\Utils.fs"
+﻿#load @"Utils.fs"
 
 open FilePath.Utils
 

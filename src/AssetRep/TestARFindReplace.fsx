@@ -1,10 +1,10 @@
-﻿
-#r "Microsoft.Office.Interop.Word"
+﻿#r "Microsoft.Office.Interop.Word"
 open Microsoft.Office.Interop
 
-#load @"AssetRep\FindReplace.fs"
+#load @"FindReplace.fs"
 open AssetRep.FindReplace
 
+// TODO - to be deleted, a better version is WordFindReplace.fsx
 
 let cleanseName (x:string) = x.Replace("/", "_")
 

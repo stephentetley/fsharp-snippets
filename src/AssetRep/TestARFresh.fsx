@@ -1,7 +1,7 @@
-﻿#I @"..\packages\System.Data.SQLite.Core.1.0.105.2\lib\net46"
+﻿#I @"..\..\packages\System.Data.SQLite.Core.1.0.105.2\lib\net46"
 #r "System.Data.SQLite"
 
-#load @"AssetRep\FreshDB.fs"
+#load @"FreshDB.fs"
 
 open AssetRep.FreshDB
 
