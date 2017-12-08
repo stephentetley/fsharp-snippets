@@ -74,6 +74,9 @@
     <Compile Include="WordExtractors/RangeOperations.fs" />
     <Compile Include="WordExtractors/Extractors.fs" />
     <Compile Include="WordExtractors/PathExpressions.fs" />
+    <None Include="WordExtractors\TestWord1.fsx" />
+    <None Include="WordExtractors\TestWE1.fsx" />
+    <None Include="WordExtractors\TestWERange.fsx" />
     <Compile Include="Coord.fs" />
     <Compile Include="GeoDistance.fs" />
     <Compile Include="Fact.fs" />
@@ -81,7 +84,6 @@
     <None Include="CsvTrim.fsx" />
     <None Include="TestGeo.fsx" />
     <None Include="TestFact.fsx" />
-    <None Include="TestWord1.fsx" />
     <None Include="Json1.fsx" />
     <None Include="Json2.fsx" />
     <None Include="ParseODF.fsx" />
@@ -100,9 +102,7 @@
     <None Include="TestARFresh.fsx" />
     <None Include="TestFP1.fsx" />
     <None Include="TestFP2.fsx" />
-    <None Include="TestFPRose.fsx" />
-    <None Include="TestWE1.fsx" />
-    <None Include="TestWERange.fsx" />
+    <None Include="TestFPRose.fsx" />   
     <None Include="ListOverlap.fsx" />
     <None Include="XlsTrim.fsx" />
     <None Include="ExcelTranspose.fsx" />

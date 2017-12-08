@@ -1,9 +1,9 @@
 ﻿
 #r "Microsoft.Office.Interop.Word"
 
-#load @"WordExtractors\Utils.fs"
-#load @"WordExtractors\RangeOperations.fs"
-#load @"WordExtractors\Extractors.fs"
+#load @"Utils.fs"
+#load @"RangeOperations.fs"
+#load @"Extractors.fs"
 
 open System.IO
 open Microsoft.Office.Interop
