@@ -76,11 +76,12 @@
     <Compile Include="FilePaths\Utils.fs" />
     <None Include="FilePaths\TestFP1.fsx" />
     <None Include="FilePaths\TestFP2.fsx" />
-    <None Include="FilePaths\TestFPRose.fsx" />  
-    <Compile Include="WordExtractors/Utils.fs" />
-    <Compile Include="WordExtractors/RangeOperations.fs" />
-    <Compile Include="WordExtractors/Extractors.fs" />
-    <Compile Include="WordExtractors/PathExpressions.fs" />
+    <None Include="FilePaths\TestFPRose.fsx" />
+    <Compile Include="WordExtractors\Utils.fs" />
+    <Compile Include="WordExtractors\DocMonad.fs" />
+    <Compile Include="WordExtractors\RangeOperations.fs" />
+    <Compile Include="WordExtractors\Extractors.fs" />
+    <Compile Include="WordExtractors\PathExpressions.fs" />
     <None Include="WordExtractors\TestWord1.fsx" />
     <None Include="WordExtractors\TestWE1.fsx" />
     <None Include="WordExtractors\TestWERange.fsx" />
@@ -102,7 +103,7 @@
     <None Include="ExcelPairwise.fsx" />
     <None Include="Regex1.fsx" />
     <None Include="Regex2.fsx" />
-    <None Include="SQLite1.fsx" /> 
+    <None Include="SQLite1.fsx" />
     <None Include="ListOverlap.fsx" />
     <None Include="XlsTrim.fsx" />
     <None Include="ExcelTranspose.fsx" />

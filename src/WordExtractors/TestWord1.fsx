@@ -2,6 +2,10 @@
 #r "Microsoft.Office.Interop.Word"
 open Microsoft.Office.Interop
 
+#load @"DocMonad.fs"
+open WordExtractors.DocMonad
+
+
 let withDoc (f:Word.Document -> 'a) (filename:string) : 'a = 
     let app = new Word.ApplicationClass (Visible = true) 
     let doc = app.Documents.Open(FileName = ref (filename :> obj))
