@@ -30,12 +30,21 @@ type DocMonadBuilder() =
 
 let (docMonad:DocMonadBuilder) = new DocMonadBuilder()
 
-// TODO should check file exists...
-let runOnFile (ma:DocMonad<'a>) (filename:string) : Ans<'a> =
-    let app = new Word.ApplicationClass (Visible = true) 
-    let doc = app.Documents.Open(FileName = ref (filename :> obj))
-    let ans = apply1 ma doc
-    doc.Close(SaveChanges = ref (box false))
-    app.Quit()
-    ans
+
+let runOnFile (ma:DocMonad<'a>) (fileName:string) : Ans<'a> =
+    if System.IO.File.Exists (fileName) then
+        let app = new Word.ApplicationClass (Visible = true) 
+        let doc = app.Documents.Open(FileName = ref (fileName :> obj))
+        let ans = apply1 ma doc
+        doc.Close(SaveChanges = ref (box false))
+        app.Quit()
+        ans
+    else Err <| sprintf "Cannot find file %s" fileName
+
+let runOnFileE (ma:DocMonad<'a>) (fileName:string) : 'a =
+    match runOnFile ma fileName with
+    | Err msg -> failwith msg
+    | Ok a -> a
+
+let lift1 (fn : Word.Document -> 'a) : DocMonad<'a> = DocMonad (Ok << fn)
 

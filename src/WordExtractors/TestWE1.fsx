@@ -32,7 +32,7 @@ let dummy1 () =
     runIt fn
 
 // Find just finds the sought for text. To be useful for bookmarking
-// we would need to see rnage to the right (and maybe to the the left)
+// we would need to see range to the right (and maybe to the the left)
 let dummy2 () = 
     let rngfind (doc : Word.Document) = 
         let mutable rng = doc.Range()
@@ -71,17 +71,17 @@ let dummy4 () =
 
 
 
-let test1 () = 
+let test01 () = 
     let text = test text testpath
     text
 
-let test2 () = 
+let test02 () = 
     let p1 = extractor { let! a = text
                          return a }
     let text = test p1 testpath
     text
 
-let test3 () = 
+let test03 () = 
     let p1 = withTable 1 <| text
     let text = test p1 testpath
     text
@@ -89,7 +89,7 @@ let test3 () =
 // Hopefully find should be delimited...
 // Note though that find isn't very "good" it just finds (or not) what it looks for, we really 
 // need a means of using find as a anchor where we can access text (or tables, etc.) next to it.
-let test4 () = 
+let test04 () = 
     let p1 = extractor { let! a = restOfLine
                          let! b = find "Contractor Information"
                          let! c = restOfLine
