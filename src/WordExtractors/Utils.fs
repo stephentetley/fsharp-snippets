@@ -20,8 +20,6 @@ let sRestOfLine (s:string) : string =
 // Use an alternative...
 type Region = { regionStart : int; regionEnd : int}
 
-let isSubregionOf (major:Region) (minor:Region) : bool = 
-    minor.regionStart >= major.regionStart && minor.regionEnd <= major.regionEnd
 
 let extractRegion (range:Word.Range) : Region = { regionStart = range.Start; regionEnd = range.End }
 
@@ -30,6 +28,47 @@ let trimRange (range:Word.Range) (region:Region) : Word.Range =
     r2.Start <- region.regionStart
     r2.End <- region.regionEnd
     r2
+
+
+let isSubregionOf (major:Region) (minor:Region) : bool = 
+    minor.regionStart >= major.regionStart && minor.regionEnd <= major.regionEnd
+
+
+let majorLeft (major:Region) (minor:Region) : Region = 
+    if major.regionStart <= minor.regionStart then
+        { regionStart = major.regionStart; regionEnd = min major.regionEnd minor.regionStart }
+    else
+        failwith "majorLeft - no region to the left"
+
+let majorRight(major:Region) (minor:Region) : Region = 
+    if major.regionEnd >= minor.regionEnd then
+        { regionStart = max major.regionStart minor.regionEnd; regionEnd = major.regionEnd }
+    else
+        failwith "majorRight - no region to the right"
+
+
+let rangeToRightOf (range:Word.Range) (findText:string) : option<Word.Range> = 
+    let mutable (rng1:Word.Range) = range.Duplicate
+    let found = rng1.Find.Execute(FindText = rbox findText)
+    if found then
+        let reg1 = majorRight (extractRegion range) (extractRegion rng1)
+        Some <| trimRange range reg1
+    else None
+
+
+let rangeToLeftOf (range:Word.Range) (findText:string) : option<Word.Range> = 
+    let mutable (rng1:Word.Range) = range.Duplicate
+    let found = rng1.Find.Execute(FindText = rbox findText)
+    if found then
+        let reg1 = majorLeft (extractRegion range) (extractRegion rng1)
+        Some <| trimRange range reg1
+    else None
+
+let rangeBetween (range:Word.Range) (leftText:string) (rightText:string) : option<Word.Range> = 
+    let ans1 = rangeToRightOf range leftText
+    Option.bind (fun r -> rangeToLeftOf r rightText) ans1
+
+
 
 
 
