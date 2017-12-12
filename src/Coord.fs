@@ -20,6 +20,13 @@ module Coord =
     [<StructuredFormatDisplay("{Eastings}E {Northings}E")>]
     type OSGB36Point = { Eastings : float<meter>; Northings : float<meter> }
 
+    [<StructuredFormatDisplay("{Letter1}{Letter2} {Eastings} {Northings}")>]
+    type OSGB36Grid = 
+        { Letter1 : char; 
+          Letter2 : char; 
+          Eastings : float<meter>; 
+          Northings : float<meter> }
+
     [<StructuredFormatDisplay("{Latitude}Lat {Longitude}Lon")>]
     type WGS84Point = { Latitude : float<degree>; Longitude : float<degree> }
 
@@ -146,7 +153,7 @@ module Coord =
     /// https://en.wikipedia.org/wiki/Ordnance_Survey_National_Grid
 
    
-    let private decodeMajor (ch : char) = 
+    let private decodeMajor (ch : char) : (float*float) = 
         match ch with
             | 'S' | 's' -> (0.0, 0.0)
             | 'T' | 't' -> (500000.0, 0.0)
@@ -155,7 +162,7 @@ module Coord =
             | 'H' | 'h' -> (0.0, 1000000.0)
             | _         -> (-1000000.0, -1000000.0)
 
-    let private decodeMinor (ch : char) = 
+    let private decodeMinor (ch : char) : (float*float) =  
         let shifti x  = 
             match x with
                 | _ when x > 8  -> x-1
@@ -166,7 +173,7 @@ module Coord =
         let n1 = 4 - n0
         (float e1 * 100000.0, float n1 * 100000.0)
 
-    let private decodeAlpha (s : char) (t : char) = 
+    let private decodeAlpha (s : char) (t : char) : (float*float) =  
         let (eM, nM) = decodeMajor s
         let (em, nm) = decodeMinor t
         (eM + em, nM + nm)
@@ -202,7 +209,8 @@ module Coord =
         let (b,s3)  = parse s2 0 0.0
         (a,b) 
 
-    // Limitation - This takes a string with no spaces...                               
+    // Limitation - This takes a string with no spaces...   
+    // Should use a capturing regexp.
     let fromOSGridRef6 (ss : string) : OSGB36Point option = 
         match Seq.toList ss with
             | (m :: mm :: xs) -> let (e,n) = ns 3 xs
@@ -210,6 +218,7 @@ module Coord =
             | _ -> None
 
     // Limitation - This takes a string with no spaces...
+    // Should use a capturing regexp.
     let fromOSGridRef10 (ss : string) : OSGB36Point option =  
         match Seq.toList ss with
             | (m :: mm :: xs) -> let (e,n) = ns 5 xs
@@ -217,3 +226,43 @@ module Coord =
                                  let n1 = LanguagePrimitives.FloatWithMeasure n
                                  Some <| decodeOSGridRef10 m mm e1 n1
             | _ -> None    
+
+
+    let private findMajor (E:float) (N:float) : char =
+        match (E,N) with
+        | _ when E >= 0.0 && E < 500000.0 && N >= 0.0 && N < 500000.0 -> 'S'
+        | _ when E >= 500000.0 && E < 1000000.0 && N >= 0.0 && N < 500000.0 -> 'T'
+        | _ when E >= 0.0 && E < 500000.0 && N >= 500000.0 && N < 1000000.0 -> 'N'
+        | _ when E >= 500000.0 && E < 1000000.0 && N >= 500000.0 && N < 1000000.0 -> 'O'
+        | _ when E >= 0.0 && E < 500000.0 && N >= 1000000.0 && N < 1500000.0 -> 'H'
+        | _ when E >= 500000.0 && E < 1000000.0 && N >= 1000000.0 && N < 1500000.0 -> 'J'
+        | _ -> 'X'
+
+    let private minorGrid : char[,] = 
+        array2D [   [ 'V'; 'Q'; 'L'; 'F'; 'A' ];
+                    [ 'W'; 'R'; 'M'; 'G'; 'B' ];
+                    [ 'X'; 'S'; 'N'; 'H'; 'C' ];
+                    [ 'Y'; 'T'; 'O'; 'J'; 'D' ];
+                    [ 'Z'; 'U'; 'P'; 'K'; 'E' ]     ]
+
+    let private findMinor (E:float) (N:float) : char =
+        let modE = E % 500000.0
+        let modN = N % 500000.0
+        let divE = int (modE / 100000.0)
+        let divN = int <| modN / 100000.0
+        if divE >=0 && divE < 5 && divN >= 0 && divN < 5 then
+            minorGrid.[divE,divN]
+        else 'X'
+
+
+    let fromOSGB36Point ({Eastings = E; Northings = N} : OSGB36Point) : OSGB36Grid =  
+        let major = findMajor (float E) (float N)
+        let minor = findMinor (float E) (float N)
+        let smallE = E % 100000.0<meter>
+        let smallN = N % 100000.0<meter>
+        { Letter1 = major; Letter2 = minor; Eastings = smallE; Northings = smallN }
+    
+    
+    // Needs 0 padding, width five
+    let showOSGB36Grid (pt:OSGB36Grid) : string = 
+        sprintf "%c%c%05i%05i" pt.Letter1 pt.Letter2 (int pt.Eastings) (int pt.Northings)

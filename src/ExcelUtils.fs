@@ -15,7 +15,25 @@ let WriteDummy (filename:string) (sheetname:string) : unit =
     book.Close ()
     app.Quit()
 
-let saveAndCloseWorkbook (workbook:Excel.Workbook) (filename:string)  : unit =
+let covertToCSV (inputFile:string) (outputFile:string) : unit =
+    let app = new Excel.ApplicationClass(Visible = true) 
+    let (book:Excel.Workbook) = app.Workbooks.Open(inputFile)
+    app.DisplayAlerts <- false      // Disable overwrite alert
+    book.SaveAs(Filename = outputFile, FileFormat = Excel.XlFileFormat.xlCSV)
+    app.DisplayAlerts <- true
+    book.Close ()
+    app.Quit()
+
+let covertToXlOpenXML (inputFile:string) (outputFile:string) : unit =
+    let app = new Excel.ApplicationClass(Visible = true) 
+    let (book:Excel.Workbook) = app.Workbooks.Open(inputFile)
+    app.DisplayAlerts <- false      // Disable overwrite alert
+    book.SaveAs(Filename = outputFile, FileFormat = Excel.XlFileFormat.xlOpenXMLWorkbook)
+    app.DisplayAlerts <- true
+    book.Close ()
+    app.Quit()
+
+let saveAndCloseWorkbook (workbook:Excel.Workbook) (filename:string) : unit =
     let folderName = System.IO.Path.GetDirectoryName(filename)
     if not <| System.IO.Directory.Exists (folderName) then
         ignore <| System.IO.Directory.CreateDirectory folderName
