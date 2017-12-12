@@ -43,4 +43,11 @@ let testD1 () =
     | Some d1 -> GeoDistance.haversineDistance (Coord.enToLatLon d1) (Coord.enToLatLon dover2)
     | None -> failwith "Bad"
 
+let read01 () = 
+    Coord.readOSGB36Grid "ND3567670738"
 
+let read02 () = 
+    Coord.readOSGB36Grid "ND35676 70738"
+
+let read03 () = 
+    Coord.readOSGB36Grid "ND 3567 7073"

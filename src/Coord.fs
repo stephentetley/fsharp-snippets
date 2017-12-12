@@ -1,6 +1,7 @@
 ﻿namespace Coord
 
 open System
+open System.Text.RegularExpressions
 open Microsoft.FSharp.Core
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 
@@ -15,8 +16,10 @@ module Coord =
     type degree
 
 
-    // Note - the the grid letter plus grid digits is a synonymous representation:
+    // Note - the the grid letter plus grid digits is a synonymous representation for OSGB36
     // E.g Sullom Voe oil terminal in the Shetlands can be specified as HU396753 or 439668,1175316.
+    // So we have two versions.
+
     [<StructuredFormatDisplay("{Eastings}E {Northings}E")>]
     type OSGB36Point = { Eastings : float<meter>; Northings : float<meter> }
 
@@ -178,23 +181,36 @@ module Coord =
         let (em, nm) = decodeMinor t
         (eM + em, nM + nm)
 
-    let decodeOSGridRef10 (m : char) (mm : char) (east : float<meter>) (north : float<meter>) = 
+    let decodeOSGB36Grid10 (m : char) (mm : char) (east : float<meter>) (north : float<meter>) : OSGB36Point = 
         let (majE, majN) = decodeAlpha m mm 
         { Eastings = east + LanguagePrimitives.FloatWithMeasure majE
         ; Northings = north + LanguagePrimitives.FloatWithMeasure majN }
     
-    let decodeOSGridRef6 (m : char) (mm : char) east north = 
-        decodeOSGridRef10 m mm (east * 100.0<meter>) (north * 100.0<meter>) 
+    let decodeOSGB36Grid6 (m : char) (mm : char) east north = 
+        decodeOSGB36Grid10 m mm (east * 100.0<meter>) (north * 100.0<meter>) 
+    
+    let decodeOSGB36Grid8 (m : char) (mm : char) east north = 
+        decodeOSGB36Grid10 m mm (east * 10.0<meter>) (north * 10.0<meter>) 
 
     /// Seq.toListmight be better...
 
-    let numString (sz : int) (ss : string) = 
+    let numString (sz : int) (ss : string) : int*int = 
         if sz*2 = String.length ss then
             let left = ss.[0..sz-1]
             let right = ss.[sz..(sz*2-1)]
             (int left,int right)
         else
             (0,0)
+
+    // precondition length = 6, 8 or 10
+    let divideString (ss:string) : int*int = 
+        let width = String.length ss
+        let (a,b) = numString (width/2) ss
+        match width with 
+        | 6 -> (a*100, b*100)
+        | 8 -> (a*10, b*10)
+        | 10 -> (a,b)
+        | _ -> (0,0)
 
     let ns (sz : int) (s1 : char list) = 
         let rec parse xs n ac = 
@@ -214,7 +230,7 @@ module Coord =
     let fromOSGridRef6 (ss : string) : OSGB36Point option = 
         match Seq.toList ss with
             | (m :: mm :: xs) -> let (e,n) = ns 3 xs
-                                 Some <| decodeOSGridRef6 m mm e n
+                                 Some <| decodeOSGB36Grid6 m mm e n
             | _ -> None
 
     // Limitation - This takes a string with no spaces...
@@ -224,7 +240,7 @@ module Coord =
             | (m :: mm :: xs) -> let (e,n) = ns 5 xs
                                  let e1 = LanguagePrimitives.FloatWithMeasure e
                                  let n1 = LanguagePrimitives.FloatWithMeasure n
-                                 Some <| decodeOSGridRef10 m mm e1 n1
+                                 Some <| decodeOSGB36Grid10 m mm e1 n1
             | _ -> None    
 
 
@@ -254,6 +270,8 @@ module Coord =
             minorGrid.[divE,divN]
         else 'X'
 
+    let osgb36Grid (c1:char) (c2:char) (east:int) (north:int) : OSGB36Grid =  
+        { Letter1 = c1; Letter2 = c2; Eastings = 1.0<meter> *float east; Northings = 1.0<meter> * float north  }
 
     let fromOSGB36Point ({Eastings = E; Northings = N} : OSGB36Point) : OSGB36Grid =  
         let major = findMajor (float E) (float N)
@@ -262,7 +280,36 @@ module Coord =
         let smallN = N % 100000.0<meter>
         { Letter1 = major; Letter2 = minor; Eastings = smallE; Northings = smallN }
     
+    let fromOSGB36Grid (gridRef:OSGB36Grid) : OSGB36Point =
+        decodeOSGB36Grid10 gridRef.Letter1 gridRef.Letter2 gridRef.Eastings gridRef.Northings
+        
     
     // Needs 0 padding, width five
     let showOSGB36Grid (pt:OSGB36Grid) : string = 
         sprintf "%c%c%05i%05i" pt.Letter1 pt.Letter2 (int pt.Eastings) (int pt.Northings)
+
+    let private (|Regex|_|) (pattern:string) (input:string) : option<GroupCollection> =
+        let m = Regex.Match(input.Trim(), pattern)
+        if m.Success then Some m.Groups
+        else None
+    
+    let private decodeRefNumber (s:string) : int =
+        match s.Length with
+        | 1 -> 10000 * System.Convert.ToInt32 s
+        | 2 -> 1000 * System.Convert.ToInt32 s
+        | 3 -> 100 * System.Convert.ToInt32 s
+        | 4 -> 10 * System.Convert.ToInt32 s
+        | 5 -> System.Convert.ToInt32 s
+        | _ -> 0
+
+    let readOSGB36Grid (inputString:string) : OSGB36Grid = 
+        let getChar1 (groups:GroupCollection) = groups.[1].Value.[0]
+        let getChar2 (groups:GroupCollection) = groups.[2].Value.[0]
+        match inputString with
+        | Regex @"^([A-Za-z])([A-Za-z])\s*([0-9]+)$" groups -> 
+            let (e,n) = divideString (groups.[3].Value) in osgb36Grid (getChar1 groups) (getChar2 groups) e n
+        | Regex @"^([A-Za-z])([A-Za-z])\s*([0-9]+)\s+([0-9]+)$" groups -> 
+            let e = decodeRefNumber <| groups.[3].Value
+            let n = decodeRefNumber <| groups.[4].Value
+            osgb36Grid (getChar1 groups) (getChar2 groups) e n
+        | _ -> failwith "err"
