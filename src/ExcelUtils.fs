@@ -112,7 +112,7 @@ let unit (x:'a) : RowWriter<'a> =
 let bind (ma:RowWriter<'a>) (f : 'a -> RowWriter<'b>) : RowWriter<'b> =
     RowWriter (fun r s -> let (a,s1) = apply1 ma r s in apply1 (f a) r s1)
 
-let fail : RowWriter<'a> = RowWriter (fun r s -> failwith "Monad fail")
+let fail : RowWriter<'a> = RowWriter (fun r s -> failwith "RowWriter fail")
 
 type RowWriterBuilder() = 
         member self.Return x = unit x

@@ -90,6 +90,8 @@
     <Compile Include="Fact.fs" />
     <Compile Include="ExcelUtils.fs" />
     <Compile Include="StringUtils.fs" />
+    <Compile Include="SQLiteUtils.fs" />
+    <Compile Include="ClosedXMLWriter.fs" />
     <None Include="CsvTrim.fsx" />
     <None Include="TestGeo.fsx" />
     <None Include="TestFact.fsx" />
@@ -114,13 +116,13 @@
     <None Include="NearestNeighbour.fsx" />
     <None Include="GenLinestringWKT.fsx" />
     <None Include="TotalOrder.fsx" />
-    <None Include="TotalOrder2.fsx" />    
+    <None Include="TotalOrder2.fsx" />
     <None Include="GenPolygonWKT.fsx" />
     <None Include="WGS84ExcelCoord.fsx" />
     <None Include="WordFindReplace.fsx" />
     <None Include="TestPostgres.fsx" />
     <None Include="Consents.fsx" />
-    <None Include="GEN_Invoke_dot_bat.fsx" />
+    <None Include="GenUploadForm.fsx" />
     <COMReference Include="Microsoft Excel 16.0 Object Library">
       <Guid>{00020813-0000-0000-c000-000000000046}</Guid>
       <VersionMajor>1</VersionMajor>
