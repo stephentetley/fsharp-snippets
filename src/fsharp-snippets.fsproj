@@ -77,7 +77,9 @@
     <None Include="FilePaths\TestFP1.fsx" />
     <None Include="FilePaths\TestFP2.fsx" />
     <None Include="FilePaths\TestFPRose.fsx" />
-    <Compile Include="WordExtractors\Utils.fs" />
+    <Compile Include="Obsolete\Fact.fs" />
+    <None Include="Obsolete\TestFact.fsx" />	
+	<Compile Include="WordExtractors\Utils.fs" />
     <Compile Include="WordExtractors\DocMonad.fs" />
     <Compile Include="WordExtractors\RangeOperations.fs" />
     <Compile Include="WordExtractors\Extractors.fs" />
@@ -87,14 +89,13 @@
     <None Include="WordExtractors\TestWERange.fsx" />
     <Compile Include="Coord.fs" />
     <Compile Include="GeoDistance.fs" />
-    <Compile Include="Fact.fs" />
     <Compile Include="ExcelUtils.fs" />
     <Compile Include="StringUtils.fs" />
+    <Compile Include="PostgreSQLUtils.fs" />
     <Compile Include="SQLiteUtils.fs" />
     <Compile Include="ClosedXMLWriter.fs" />
     <None Include="CsvTrim.fsx" />
     <None Include="TestGeo.fsx" />
-    <None Include="TestFact.fsx" />
     <None Include="Json1.fsx" />
     <None Include="Json2.fsx" />
     <None Include="ParseODF.fsx" />

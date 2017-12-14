@@ -34,17 +34,26 @@ let runPGSQLConn (ma:PGSQLConn<'a>) (connString:string) : 'a =
 
 let liftConn (proc:NpgsqlConnection -> 'a) : PGSQLConn<'a> = PGSQLConn proc
 
-// execNonQuery
+let execNonQuery (statement:string) : PGSQLConn<int> = 
+    PGSQLConn <| fun conn -> 
+        let cmd : NpgsqlCommand = new NpgsqlCommand(statement, conn)
+        cmd.ExecuteNonQuery ()
 
 let execReader (statement:string) (proc:NpgsqlDataReader -> 'a) : PGSQLConn<'a> =
     PGSQLConn <| fun conn -> 
-        let cmd = new NpgsqlCommand(statement, conn)
+        let cmd : NpgsqlCommand = new NpgsqlCommand(statement, conn)
         let reader = cmd.ExecuteReader()
         let ans = proc reader
         reader.Close()
         ans
 
-// withTransaction
+// With error handling added to the monad we should be able to rollback instead...
+let withTransaction (ma:PGSQLConn<'a>) : PGSQLConn<'a> = 
+    PGSQLConn <| fun conn -> 
+        let trans = conn.BeginTransaction(System.Data.IsolationLevel.ReadCommitted)
+        let ans = apply1 ma conn
+        trans.Commit ()
+        ans
         
 let mapM (fn:'a -> PGSQLConn<'b>) (xs:'a list) : PGSQLConn<'b list> = 
     let rec work ac ys = 

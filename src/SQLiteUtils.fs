@@ -50,13 +50,13 @@ let liftConn (proc:SQLite.SQLiteConnection -> 'a) : SQLiteConn<'a> = SQLiteConn 
     
 let execNonQuery (statement:string) : SQLiteConn<int> = 
     SQLiteConn <| fun conn -> 
-        let command : SQLiteCommand = new SQLiteCommand(statement, conn)
-        command.ExecuteNonQuery ()
+        let cmd : SQLiteCommand = new SQLiteCommand(statement, conn)
+        cmd.ExecuteNonQuery ()
 
 let execReader (statement:string) (proc:SQLite.SQLiteDataReader -> 'a) : SQLiteConn<'a> =
     SQLiteConn <| fun conn -> 
-        let command : SQLiteCommand = new SQLiteCommand(statement, conn)
-        let reader : SQLiteDataReader = command.ExecuteReader()
+        let cmd : SQLiteCommand = new SQLiteCommand(statement, conn)
+        let reader : SQLiteDataReader = cmd.ExecuteReader()
         let ans = proc reader
         reader.Close()
         ans
