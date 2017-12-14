@@ -3,6 +3,9 @@
 open Npgsql
 #I @"..\packages\System.Threading.Tasks.Extensions.4.3.0\lib\portable-net45+win8+wp8+wpa81"
 
+#load "PostgreSQLUtils.fs"
+open PostgreSQLUtils
+
 let connString1 : Printf.StringFormat<(string -> string)> = "Host=localhost;Username=postgres;Password=%s;Database=spt_test";
 
 let test01 (pwd:string) = 

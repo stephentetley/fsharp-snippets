@@ -26,7 +26,7 @@ let inline private apply1 (ma : SQLiteConn<'a>) (conn:SQLite.SQLiteConnection) :
 let inline private unit (x:'a) : SQLiteConn<'a> = SQLiteConn (fun r -> x)
 
 
-let bind (ma:SQLiteConn<'a>) (f : 'a -> SQLiteConn<'b>) : SQLiteConn<'b> =
+let inline private bind (ma:SQLiteConn<'a>) (f : 'a -> SQLiteConn<'b>) : SQLiteConn<'b> =
     SQLiteConn (fun r -> let a = apply1 ma r in apply1 (f a) r)
 
 let fail : SQLiteConn<'a> = SQLiteConn (fun r -> failwith "SQLiteConn fail")
