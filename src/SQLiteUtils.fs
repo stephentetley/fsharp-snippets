@@ -5,6 +5,8 @@ open System.IO
 open System.Data
 open System.Data.SQLite
 
+
+
 // Helpers for values
 
 let escapeValueText (s:string) : string = 
@@ -14,7 +16,7 @@ let escapeValueText (s:string) : string =
 let cleanseValue (s:string) : string = s.Trim() |> escapeValueText
 
 
-// Monad
+// SQLiteConn Monad
 
 type SQLiteConn<'a> = SQLiteConn of (SQLite.SQLiteConnection -> 'a)
 

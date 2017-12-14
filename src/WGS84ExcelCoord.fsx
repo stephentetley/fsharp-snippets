@@ -20,6 +20,7 @@ type InputTable =
 type InputRow = InputTable.Row
 
 
+
 type CoordDB = Map<string,Coord.WGS84Point>
 
 

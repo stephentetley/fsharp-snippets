@@ -21,6 +21,8 @@ open SQLiteUtils
 #load @"ClosedXMLWriter.fs"
 open ClosedXMLWriter
 
+
+
 type ImportTable = 
     ExcelFile< @"G:\work\Projects\rtu\import_data\ImportData.xlsx",
                 SheetName = "SitesAndInstallations",

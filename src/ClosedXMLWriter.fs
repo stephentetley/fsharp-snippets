@@ -4,6 +4,7 @@ open ClosedXML
 
 type ClosedXMLSheet = ClosedXML.Excel.IXLWorksheet
 
+
 type ClosedXMLWriter<'a> = 
     ClosedXMLWriter of (ClosedXMLSheet -> int -> ('a * int))
 

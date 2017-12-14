@@ -12,7 +12,7 @@ open Coord
 open GeoDistance
 
 
-// TODO
+// TODO - this is just a placeholder, it will probably use Postgis...
 
 type InputTable = 
     ExcelFile< @"G:\work\rtu\IS_barriers\IS_Barriers.xlsx",

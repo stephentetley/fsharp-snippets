@@ -12,6 +12,7 @@ open System
 // Just names. ps> dir | select -exp name
 let directoryListing = @"G:\work\Projects\rtu\dir.txt"
 
+
 type MasterTable = 
     ExcelFile< @"G:\work\Projects\rtu\EDMS-docs.xlsx",
                 SheetName = "Sheet1",
