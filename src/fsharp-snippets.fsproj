@@ -123,6 +123,7 @@
     <None Include="WordFindReplace.fsx" />
     <None Include="TestPostgres.fsx" />
     <None Include="Consents.fsx" />
+    <None Include="DbImportSites.fsx" />
     <None Include="GenUploadForm.fsx" />
     <COMReference Include="Microsoft Excel 16.0 Object Library">
       <Guid>{00020813-0000-0000-c000-000000000046}</Guid>

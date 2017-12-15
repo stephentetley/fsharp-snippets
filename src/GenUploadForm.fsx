@@ -22,51 +22,9 @@ open SQLiteUtils
 open ClosedXMLWriter
 
 
-
-type ImportTable = 
-    ExcelFile< @"G:\work\Projects\rtu\import_data\ImportData.xlsx",
-                SheetName = "SitesAndInstallations",
-                ForceString = true >
-
-type ImportRow = ImportTable.Row
-
-//  **** DB Import
-
 let connString = 
     let dbSrc = System.IO.Path.Combine(__SOURCE_DIRECTORY__,"..","data\sai_refs.sqlite")
     sprintf "Data Source=%s;Version=3;" dbSrc
-
-
-let test01 () = 
-    let query1 = "DELETE FROM all_sites;"
-    let deleteProc = execNonQuery query1
-    runSQLiteConn deleteProc connString
-
-let test02 () : unit = 
-    let query1 : string = "SELECT * FROM all_sites"
-    let readProc (reader : SQLiteDataReader) = 
-        while reader.Read() do
-            printf "%s '%s'\n" (reader.GetString(0)) (reader.GetString(1)) 
-    let proc = execReader query1 readProc
-    runSQLiteConn proc connString
-
-let test03 () = 
-    let query1 : string = "INSERT INTO all_sites (sainum, sitename) VALUES ('SAI0000TEST', 'NAME/TEST');"
-    let insertProc = withTransaction <| execNonQuery query1
-    runSQLiteConn insertProc connString
-
-let makeInsertQuery (row:ImportRow) : string =
-    sprintf "INSERT INTO all_sites (sainum, sitename) VALUES ('%s','%s');"
-        (cleanseValue row.InstReference)
-        row.InstCommonName
-        
-let RunDataImport () : unit = 
-    let importData = new ImportTable()
-    let nullPred (row:ImportRow) = match row.InstReference with null -> false | _ -> true
-    let rows = importData.Data |> Seq.filter nullPred |> Seq.toList
-    let rowProc (row:ImportRow) : SQLiteConn<int> = execNonQuery <| makeInsertQuery row
-    let insertProc = withTransaction <| forMz rows rowProc
-    runSQLiteConn insertProc connString
 
 let realName (s:string) : string = s.Replace('_','/').Trim()
 let underscoreName (s:string) : string = s.Replace('/','_').Trim()
