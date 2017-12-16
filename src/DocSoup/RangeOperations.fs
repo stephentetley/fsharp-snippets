@@ -1,5 +1,5 @@
 ﻿[<AutoOpen>]
-module WordExtractors.RangeOperations
+module DocSoup.RangeOperations
 
 
 // Add references via the COM tab for Office and Word

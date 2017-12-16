@@ -1,5 +1,5 @@
 ﻿[<AutoOpen>]
-module WordExtractors.PathExpressions
+module DocSoup.PathExpressions
 
 open Microsoft.Office.Interop
 

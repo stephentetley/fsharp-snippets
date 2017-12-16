@@ -3,7 +3,7 @@
 open Microsoft.Office.Interop
 
 
-#load "ExcelUtils.fs"
+#load @"..\ExcelUtils.fs"
 open ExcelUtils
 
 

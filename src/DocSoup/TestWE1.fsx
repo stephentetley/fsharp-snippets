@@ -1,15 +1,16 @@
-﻿
+﻿#I @"C:\WINDOWS\assembly\GAC_MSIL\Microsoft.Office.Interop.Word\15.0.0.0__71e9bce111e9429c"
 #r "Microsoft.Office.Interop.Word"
-
-#load @"Utils.fs"
-#load @"RangeOperations.fs"
-#load @"Extractors.fs"
+open Microsoft.Office.Interop
 
 open System.IO
-open Microsoft.Office.Interop
-open WordExtractors.Utils
-open WordExtractors.RangeOperations
-open WordExtractors.Extractors
+
+
+#load @"Utils.fs"
+open DocSoup.Utils
+#load @"RangeOperations.fs"
+open DocSoup.RangeOperations
+#load @"Extractors.fs"
+open DocSoup.Extractors
 
 // Note to self - this example is not "properly structured" tables are free text
 //

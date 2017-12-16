@@ -1,4 +1,4 @@
-﻿#I @"..\packages\ExcelProvider.0.8.2\lib"
+﻿#I @"..\..\packages\ExcelProvider.0.8.2\lib"
 #r "ExcelProvider.dll"
 open FSharp.ExcelProvider
 
@@ -6,7 +6,7 @@ open FSharp.ExcelProvider
 #r "Microsoft.Office.Interop.Excel"
 open Microsoft.Office.Interop
 
-#load "ExcelUtils.fs"
+#load @"..\ExcelUtils.fs"
 open ExcelUtils
 
 type InputTable = ExcelFile< @"G:\work\Projects\routers\REVISED-site-lists.xlsx",

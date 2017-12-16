@@ -4,7 +4,7 @@ open Microsoft.Office.Interop
 
 open System
 
-#load "ExcelUtils.fs"
+#load @"..\ExcelUtils.fs"
 open ExcelUtils
 
 //// TODO - better to use Cells and 2D array indexing

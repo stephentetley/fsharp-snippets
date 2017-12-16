@@ -1,5 +1,5 @@
 ﻿[<AutoOpen>]
-module WordExtractors.DocMonad
+module DocSoup.DocMonad
 
 open Microsoft.Office.Interop
 

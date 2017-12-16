@@ -3,9 +3,9 @@
 open Microsoft.Office.Interop
 
 #load @"Utils.fs"
-open WordExtractors.Utils
+open DocSoup.Utils
 #load @"DocMonad.fs"
-open WordExtractors.DocMonad
+open DocSoup.DocMonad
 
 // Note to self, this test doc is not "well formed". 
 // Textual table data is often not split into rows and columns.

@@ -1,6 +1,6 @@
-﻿#I @"..\packages\DocumentFormat.OpenXml.2.7.2\lib\net46\"
-#I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
-#I @"..\packages\ClosedXML.0.90.0\lib\net452\"
+﻿#I @"..\..\packages\DocumentFormat.OpenXml.2.7.2\lib\net46\"
+#I @"..\..\packages\FastMember.Signed.1.1.0\lib\net40\"
+#I @"..\..\packages\ClosedXML.0.90.0\lib\net452\"
 #r "ClosedXML"
 open ClosedXML
 
@@ -12,7 +12,7 @@ open Microsoft.Office.Interop
 #I @"C:\Windows\assembly\GAC_MSIL\Microsoft.Office.Interop.Access\15.0.0.0__71e9bce111e9429c"
 open System.Data.OleDb
 
-#load "ExcelUtils.fs"
+#load @"..\ExcelUtils.fs"
 open ExcelUtils
 
 

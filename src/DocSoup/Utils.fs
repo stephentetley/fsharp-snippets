@@ -1,5 +1,5 @@
 ﻿[<AutoOpen>]
-module WordExtractors.Utils
+module DocSoup.Utils
 
 open System.IO
 
