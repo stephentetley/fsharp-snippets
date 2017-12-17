@@ -2,6 +2,8 @@
 module DocSoup.WordUtils
 
 open System.IO
+open System.Collections
+open System.Collections.Generic
 
 // Add references via the COM tab for Office and Word
 // All the PIA stuff online is outdated for Office 365 / .Net 4.5 / VS2015 
@@ -20,6 +22,21 @@ let sRestOfLine (s:string) : string =
 // Use an alternative...
 [<StructuredFormatDisplay("Region: {regionStart} to {regionEnd}")>]
 type Region = { regionStart : int; regionEnd : int}
+    
+
+// Expected to be sorted
+type Regions = 
+    | Regions of Region list 
+    interface IEnumerable<Region> with
+        member x.GetEnumerator() = match x with Regions(x) -> (x |> List.toSeq |> Seq.cast<Region>).GetEnumerator()
+    
+    // Apparently we need to implement theoldschool interface as well
+    interface IEnumerable with
+        member x.GetEnumerator() = match x with Regions(x) -> (x |> List.toSeq).GetEnumerator() :> IEnumerator
+
+
+let makeRegions (input:Region list) : Regions = 
+    Regions <| List.sortBy (fun o -> o.regionStart) input
 
 
 let extractRegion (range:Word.Range) : Region = { regionStart = range.Start; regionEnd = range.End }
@@ -70,12 +87,16 @@ let rangeBetween (range:Word.Range) (leftText:string) (rightText:string) : optio
     Option.bind (fun r -> rangeToLeftOf r rightText) ans1
 
 
-let tableRegions(doc:Word.Document) : Region list = 
-    let tables : seq<Word.Table> = Seq.cast doc.Tables
-    List.map (fun (o:Word.Table) -> extractRegion <| o.Range) <| Seq.toList tables
+let tableRegions(doc:Word.Document) : Regions = 
+    let tables : seq<Word.Table> = doc.Tables |> Seq.cast<Word.Table>
+    makeRegions 
+        <| List.map (fun (o:Word.Table) -> extractRegion <| o.Range) (Seq.toList tables)
 
 
     
-let sectionRegions(doc:Word.Document) : Region list = 
-    let sections : seq<Word.Section> = Seq.cast doc.Sections
-    List.map (fun (o:Word.Section) -> extractRegion <| o.Range) <| Seq.toList sections
+let sectionRegions(doc:Word.Document) : Regions = 
+    let sections : seq<Word.Section> = doc.Sections |> Seq.cast<Word.Section>
+    makeRegions 
+        <| List.map (fun (o:Word.Section) -> extractRegion <| o.Range) (Seq.toList sections)
+
+

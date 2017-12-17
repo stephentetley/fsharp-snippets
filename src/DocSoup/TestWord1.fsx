@@ -75,8 +75,8 @@ let test05 () =
 let test06 () = 
     let proc (doc:Word.Document) : unit = 
         printfn "** Sections"
-        List.iter (printfn "%A") <| sectionRegions doc
+        Seq.iter (printfn "%A") <| sectionRegions doc
         printfn "** Tables"
-        List.iter (printfn "%A") <| tableRegions doc
+        Seq.iter (printfn "%A") <| tableRegions doc
         
     runOnFileE (lift1 proc) testDoc
