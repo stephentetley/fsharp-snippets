@@ -5,8 +5,8 @@ open Microsoft.Office.Interop
 open System.IO
 
 
-#load @"Utils.fs"
-open DocSoup.Utils
+#load @"WordUtils.fs"
+open DocSoup.WordUtils
 #load @"RangeOperations.fs"
 open DocSoup.RangeOperations
 #load @"Extractors.fs"

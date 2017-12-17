@@ -1,5 +1,5 @@
 ﻿[<AutoOpen>]
-module DocSoup.Utils
+module DocSoup.WordUtils
 
 open System.IO
 
@@ -18,6 +18,7 @@ let sRestOfLine (s:string) : string =
 
 // Range is a very heavy object to be manipulating start and end points
 // Use an alternative...
+[<StructuredFormatDisplay("Region: {regionStart} to {regionEnd}")>]
 type Region = { regionStart : int; regionEnd : int}
 
 
@@ -69,7 +70,12 @@ let rangeBetween (range:Word.Range) (leftText:string) (rightText:string) : optio
     Option.bind (fun r -> rangeToLeftOf r rightText) ans1
 
 
+let tableRegions(doc:Word.Document) : Region list = 
+    let tables : seq<Word.Table> = Seq.cast doc.Tables
+    List.map (fun (o:Word.Table) -> extractRegion <| o.Range) <| Seq.toList tables
 
 
-
-
+    
+let sectionRegions(doc:Word.Document) : Region list = 
+    let sections : seq<Word.Section> = Seq.cast doc.Sections
+    List.map (fun (o:Word.Section) -> extractRegion <| o.Range) <| Seq.toList sections

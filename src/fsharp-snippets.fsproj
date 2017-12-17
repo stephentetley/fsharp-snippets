@@ -70,7 +70,7 @@
     <None Include="AssetRep\TestARCso.fsx" />
     <None Include="AssetRep\TestARFindReplace.fsx" />
     <None Include="AssetRep\TestARFresh.fsx" />
-    <Compile Include="DocSoup\Utils.fs" />
+    <Compile Include="DocSoup\WordUtils.fs" />
     <Compile Include="DocSoup\DocMonad.fs" />
     <Compile Include="DocSoup\RangeOperations.fs" />
     <Compile Include="DocSoup\Extractors.fs" />

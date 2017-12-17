@@ -2,8 +2,8 @@
 #r "Microsoft.Office.Interop.Word"
 open Microsoft.Office.Interop
 
-#load @"Utils.fs"
-open DocSoup.Utils
+#load @"WordUtils.fs"
+open DocSoup.WordUtils
 #load @"DocMonad.fs"
 open DocSoup.DocMonad
 
@@ -70,4 +70,13 @@ let test05 () =
         let s3 = Option.map (fun (r:Word.Range) -> r.Text.Trim()) (rangeBetween t1.Range "Process Application" "Site Area")
         printfn "'%s'\n----------" (if s3.IsSome then Option.get s3 else "<none>")
 
+    runOnFileE (lift1 proc) testDoc
+
+let test06 () = 
+    let proc (doc:Word.Document) : unit = 
+        printfn "** Sections"
+        List.iter (printfn "%A") <| sectionRegions doc
+        printfn "** Tables"
+        List.iter (printfn "%A") <| tableRegions doc
+        
     runOnFileE (lift1 proc) testDoc

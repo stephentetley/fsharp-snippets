@@ -4,6 +4,8 @@ module DocSoup.PathExpressions
 open Microsoft.Office.Interop
 
 
+// Obsolete
+
 // Cannot use Microsoft.FSharp.Collections.Set
 // The type 'Word.Range' does not support the 'comparison' constraint. 
 // For example, it does not support the 'System.IComparable' interface
