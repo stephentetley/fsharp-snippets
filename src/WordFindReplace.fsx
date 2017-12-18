@@ -13,13 +13,15 @@ open System.IO
 open ExcelUtils
 
 
+// TODO this should use Json for the find/replace pairs
+
 let outputRoot = @"G:\work\Projects\T0975_EDM2\output\"
 let templateLoc = @"G:\work\Projects\T0975_EDM2\EDM2 Survey TEMPLATE.docx"
 let allSubsitutions = @"G:\work\Projects\T0975_EDM2\site-list-for-GEN.xlsx"
 let sheetName = @"SITE_LIST"
 
 
-type SearchList = List<string*string>
+type SearchList = (string*string) list
 
 let doubleQuote (s:string) : string = "\"" + s + "\""
 
@@ -60,8 +62,8 @@ let replaces (x:Word.Document) (zs:SearchList) : unit =
         match z with | (a,b) -> ignore <| replacer x a b
 
 
-let process1 (app:Word.Application) (inpath:string) (outpath:string) (ss:SearchList) = 
-    let doc = app.Documents.Open(FileName = refobj inpath)
+let process1 (app:Word.Application) (templatePath:string) (outpath:string) (ss:SearchList) = 
+    let doc = app.Documents.Open(FileName = refobj templatePath)
     replaces doc ss
     // This should be wrapped in try...
     try 
@@ -105,11 +107,14 @@ let makeHeaders (worksheet:Excel.Worksheet) : string list =
 let makeSearches (headers: string list) (row:TableRow) : SearchList = 
     List.zip headers <| rowValues row
 
-let processInputLine (headers: string list) (app:Word.Application) (row:TableRow) : unit =
+let processInputLine (app:Word.Application) (headers: string list) (row:TableRow) : unit =
     let sitename = safeName (row.[1] :?> string)
     let outputpath  = outfileName sitename
     let searches = makeSearches headers row
     process1 app templateLoc outputpath searches
+    
+let replacesDoc (wordApp:Word.ApplicationClass) (outpath:string) (replaces:SearchList) : unit =
+    process1 wordApp templateLoc outpath replaces
 
 let main () = 
     let wordApp = new Word.ApplicationClass (Visible = true) 
@@ -121,7 +126,7 @@ let main () =
     for ix = 1016 to findRowCount worksheet do   // TEMP HACK
     // for ix = 2 to findRowCount worksheet do
         let rowi = TableRow(worksheet.Cells.Rows.[ix] :?> Excel.Range)
-        processInputLine headers wordApp rowi
+        processInputLine wordApp headers rowi
     // Tear down...
     workbook.Close(SaveChanges = false)
     wordApp.Quit()

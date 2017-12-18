@@ -35,7 +35,7 @@ let connString =
     sprintf "Data Source=%s;Version=3;" dbSrc
 
 
-let test01 () = 
+let deleteData () = 
     let query1 = "DELETE FROM all_sites;"
     let deleteProc = execNonQuery query1
     runSQLiteConn deleteProc connString
@@ -54,12 +54,16 @@ let test03 () =
     runSQLiteConn insertProc connString
 
 let makeInsertQuery (row:ImportRow) : string =
-    sprintf "INSERT INTO all_sites (sainum, installation_name, location_name, full_address, grid_ref) VALUES ('%s','%s','%s','%s','%s');"
+    sprintf "INSERT INTO all_sites (%s) VALUES ('%s','%s','%s','%s','%s','%s','%s','%s');"
+        "sainum, installation_name, location_name, postcode, full_address, grid_ref, ops_contact, asset_type"
         (cleanseValue row.InstReference)
         (cleanseValue row.InstCommonName)
         (cleanseValue row.SiteCommonName)
+        (cleanseValue row.``Post Code``)
         (cleanseValue row.``Full Address``)
         (cleanseValue row.LocationReference)
+        (cleanseValue row.``Operational Responsibility``)
+        (cleanseValue row.AssetType)
 
 
 let main () : unit = 

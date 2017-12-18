@@ -4,7 +4,6 @@ open ClosedXML
 
 type ClosedXMLSheet = ClosedXML.Excel.IXLWorksheet
 
-
 type ClosedXMLWriter<'a> = 
     ClosedXMLWriter of (ClosedXMLSheet -> int -> ('a * int))
 
@@ -55,6 +54,6 @@ let tellHeaders (values:string list) : ClosedXMLWriter<unit> =
 let mapMz (fn: 'a -> ClosedXMLWriter<'b>) (xs: 'a list) : ClosedXMLWriter<unit> = 
     let rec work list = 
         match list with
-        | y :: ys -> bind (fn x) (fun _ -> work ys)
+        | y :: ys -> bind (fn y) (fun _ -> work ys)
         | [] -> unit ()
     work xs
