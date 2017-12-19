@@ -87,6 +87,33 @@ let rangeBetween (range:Word.Range) (leftText:string) (rightText:string) : optio
     Option.bind (fun r -> rangeToLeftOf r rightText) ans1
 
 
+let startsBefore (region1:Region) (region2:Region) : bool = 
+    region1.regionStart <= region2.regionStart
+
+let startsAfter (region1:Region) (region2:Region) : bool = 
+    region1.regionStart > region2.regionStart
+
+let tryRegionBeforeTarget (regions:Regions) (target:Region) : Region option = 
+    // Want to look at two positions in the list...
+    let rec proc rs = 
+        match rs with
+        | [] -> None
+        | [x] -> if startsAfter target x then Some x else None
+        | (x1::x2::xs) -> 
+            if startsBefore x1 target && startsAfter target x2 then Some x1 else proc (x2::xs)
+    proc (Seq.toList regions)
+
+let tryRegionAfterTarget (regions:Regions) (target:Region) : Region option = 
+    // Want to look at two positions in the list...
+    let rec proc rs = 
+        match rs with
+        | [] -> None
+        | [x] -> if startsAfter target x then Some x else None
+        | (x1::x2::xs) -> 
+            if startsBefore x1 target && startsAfter target x2 then Some x2 else proc (x2::xs)
+    proc (Seq.toList regions)
+    
+
 let tableRegions(doc:Word.Document) : Regions = 
     let tables : seq<Word.Table> = doc.Tables |> Seq.cast<Word.Table>
     makeRegions 
@@ -99,4 +126,10 @@ let sectionRegions(doc:Word.Document) : Regions =
     makeRegions 
         <| List.map (fun (o:Word.Section) -> extractRegion <| o.Range) (Seq.toList sections)
 
+let findText(range:Word.Range) (findText:string) : Region option = 
+    let mutable rng1 = range.Duplicate
+    let ans:bool = rng1.Find.Execute(FindText = rbox findText)
+    if ans then Some <| extractRegion rng1 else None
 
+
+     

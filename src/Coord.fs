@@ -302,16 +302,22 @@ module Coord =
         | 5 -> System.Convert.ToInt32 s
         | _ -> 0
 
-    let readOSGB36Grid (inputString:string) : OSGB36Grid = 
+    let tryReadOSGB36Grid (input:string) : OSGB36Grid option = 
         let getChar1 (groups:GroupCollection) = groups.[1].Value.[0]
         let getChar2 (groups:GroupCollection) = groups.[2].Value.[0]
-        match inputString with
+        match input with
         | Regex @"^([A-Za-z])([A-Za-z])\s*([0-9]+)$" groups -> 
-            let (e,n) = divideString (groups.[3].Value) in osgb36Grid (getChar1 groups) (getChar2 groups) e n
+            let (e,n) = divideString (groups.[3].Value)
+            Some <| osgb36Grid (getChar1 groups) (getChar2 groups) e n
         | Regex @"^([A-Za-z])([A-Za-z])\s*([0-9]+)\s+([0-9]+)$" groups -> 
             let e = decodeRefNumber <| groups.[3].Value
             let n = decodeRefNumber <| groups.[4].Value
-            osgb36Grid (getChar1 groups) (getChar2 groups) e n
-        | _ -> failwith "err"
+            Some <| osgb36Grid (getChar1 groups) (getChar2 groups) e n
+        | _ -> None
 
-        // TODO try version
+    let readOSGB36Grid (input:string) : OSGB36Grid = 
+        match tryReadOSGB36Grid input with
+        | Some(x) -> x
+        | None -> failwith <| sprintf "readOSGB36Grid - could not read '%s'" input
+
+

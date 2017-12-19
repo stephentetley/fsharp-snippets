@@ -38,11 +38,19 @@ let defaultIfNull (defaultValue:string) (check:string) =
     | null -> defaultValue
     | _ -> check
 
+let correctGridRef (input:string) : string = 
+    match input with 
+    | null -> sprintf "Invalid: %s" input
+    | _ -> match Coord.tryReadOSGB36Grid input with
+            | Some(pt) -> Coord.showOSGB36Grid pt
+            | None -> sprintf "Invalid: %s" input
+
+        
 let tellRow1 (row:InputRow) : ClosedXMLWriter<unit> = 
     // printfn "%s" (row.``Related AI Asset Name``)
     tellRow [ defaultIfNull "" <| row.``SAI of related asset``
             ; defaultIfNull "" <| row.``Related AI Asset Name``
-            ; defaultIfNull "" <| row.``Outlet NGR``
+            ; correctGridRef   <| row.``Outlet NGR``
             ; defaultIfNull "" <| row.``Receiving water/ environment``
             ]
 

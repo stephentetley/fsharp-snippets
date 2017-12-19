@@ -78,5 +78,15 @@ let test06 () =
         Seq.iter (printfn "%A") <| sectionRegions doc
         printfn "** Tables"
         Seq.iter (printfn "%A") <| tableRegions doc
-        
+        printfn "** Match 'Site'"
+        Seq.iter(printfn "%A") <| findallText (doc.Range()) "Site"
     runOnFileE (lift1 proc) testDoc
+
+let test07 () = 
+    let proc (doc:Word.Document) : unit = 
+        let table1 = doc.Tables.[1]
+        printfn ">>>\n%s\n<<<" (table1.Range.Text)
+        let region1 = extractRegion <| table1.Range
+        printfn ">>>\n%s\n<<<" (trimRange (doc.Range()) region1).Text
+    runOnFileE (lift1 proc) testDoc
+
