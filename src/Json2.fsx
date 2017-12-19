@@ -6,6 +6,9 @@ open Newtonsoft.Json
 
 #load "JsonOutput.fs"
 open JsonOutput
+#load "JsonInput.fs"
+open JsonInput
+
 
 let test01 () = 
     let json = JsonConvert.SerializeObject(1 : int)
@@ -92,4 +95,13 @@ let test07 () =
     genTokens outpath2
         |> Seq.iter (fun (t:JsonToken) -> printfn "Token: %A" t) 
     
- 
+let fibs : seq<int>  = Seq.unfold (fun (a,b) -> let c = a+b in Some (c, (b,c))) (0,1)
+// Testing to see if Seq is usable for lookahead
+let test08 () = 
+    let input = fibs
+    let a = Seq.head input
+    let b = Seq.head input
+    let input2 = Seq.tail input
+    let c = Seq.head input2
+    printf "%i %i %i .." a b c
+

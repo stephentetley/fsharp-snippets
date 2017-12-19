@@ -54,10 +54,10 @@ let tellArray (body:JsonOutput<'a>) : JsonOutput<'a> =
         handle.WriteEndArray ()
         ans
 
-let tellSimpleProperty (name:string) (object:obj) : JsonOutput<unit> = 
+let tellSimpleProperty (name:string) (value:obj) : JsonOutput<unit> = 
     JsonOutput <| fun (handle:JsonTextWriter) ->
         handle.WritePropertyName name
-        handle.WriteValue object
+        handle.WriteValue value
 
 let tellProperty (name:string) (body:JsonOutput<'a>) : JsonOutput<'a> = 
     JsonOutput <| fun (handle:JsonTextWriter) ->

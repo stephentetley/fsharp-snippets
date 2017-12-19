@@ -1,32 +1,42 @@
 ﻿module JsonInput
 
+open FSharp.Core
 open Newtonsoft.Json
 
 // JsonInput Monad
 // This is to help reading when we have input that is not
 // directly serialized from our own objects.
 
+
+// TODO - we can use a state monad with a token stream like Parsec
+// to get lookahead. 
+// We should only ever need 1-lookahead, but Parsec has arbitrary lookahead anyway.
+type Input = seq<JsonToken>
+
+// Tuple inside the answer rather than tuple with the answer, saves a constructor...
 type Result<'a> =
-    | Err of string
-    | Ok of 'a
+    | Err of Input * string
+    | Ok of Input * 'a
 
 
 
-type JsonInput<'a> = JsonInput of (JsonTextReader -> Result<'a>)
+type JsonInput<'a> = JsonInput of (Input -> Result<'a>)
 
-let inline private apply1 (ma : JsonInput<'a>) (handle:JsonTextReader) : Result<'a> = 
-    let (JsonInput f) = ma in f handle
+let inline private apply1 (ma : JsonInput<'a>) (input:Input) : Result<'a> = 
+    let (JsonInput f) = ma in f input
 
-let inline private unit (x:'a) : JsonInput<'a> = JsonInput (fun r -> Ok x)
+let inline private unit (x:'a) : JsonInput<'a> = JsonInput (fun s -> Ok(s,x))
 
 
 let inline private bind (ma:JsonInput<'a>) (f : 'a -> JsonInput<'b>) : JsonInput<'b> =
     JsonInput <| fun r -> 
         match apply1 ma r with
-        | Err msg -> Err msg
-        | Ok a -> apply1 (f a) r
+        | Ok(s1,a) -> apply1 (f a) s1
+        | Err(s1,msg) -> Err(s1,msg)
 
-let fail : JsonInput<'a> = JsonInput (fun r -> Err "JsonInput fail")
+        
+
+let fail : JsonInput<'a> = JsonInput (fun s -> Err(s,"JsonInput fail"))
 
 
 type JsonInputBuilder() = 
@@ -37,10 +47,20 @@ type JsonInputBuilder() =
 let (jsonInput:JsonInputBuilder) = new JsonInputBuilder()
 
 
-let runJsonInput (ma:JsonInput<'a>) (inputFile:string) : Result<'a> = 
+let private tokenize (inputFile:string) : Input  = seq { 
     use sr : System.IO.StreamReader = new System.IO.StreamReader(inputFile)
     use handle : JsonTextReader = new JsonTextReader(sr)
-    match ma with | JsonInput(f) -> f handle
+    while handle.Read() do
+    yield handle.TokenType }
+
+
+let runJsonInput (ma:JsonInput<'a>) (inputFile:string) : Choice<string,'a> = 
+    let input : Input  = tokenize inputFile
+    match ma with 
+    | JsonInput(f) -> 
+        match f input with
+        | Err(_,msg) -> Choice1Of2 msg
+        | Ok(_,a) -> Choice2Of2 a
 
 // There is no way to backtrack (i.e. return consumed tokens to the
 // input stream), therefore we can't have a try combinator.
@@ -53,7 +73,7 @@ let runJsonInput (ma:JsonInput<'a>) (inputFile:string) : Result<'a> =
 // Alternatively we could tokenize then parse, this would mean we can 
 // strip comments easily.
 
-
+(* TODO
 let private askToken(token:JsonToken) : JsonInput<unit> = 
     JsonInput <| fun (handle:JsonTextReader) ->
         try
@@ -107,8 +127,8 @@ let askProperty(body:JsonInput<'a>) : JsonInput<string*'a> =
     jsonInput { let! name = askPropertyName
                 let! value = body
                 return (name,value) }
-
-                (*
+*)
+(*               
 // Often we have simple (string*string) pairs to write
 let askSimpleDictionary (elems:(string*obj) list) : JsonInput<unit> = 
     JsonInput <| fun (handle:JsonTextReader) -> 
