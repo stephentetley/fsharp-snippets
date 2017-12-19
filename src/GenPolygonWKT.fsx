@@ -12,7 +12,9 @@ open Coord
 open GeoDistance
 
 
-// TODO - this is just a placeholder, it will probably use Postgis...
+// TODO - all this code is just a placeholder
+// Postgis can build bounding polygons so we should interface 
+// with that.
 
 type InputTable = 
     ExcelFile< @"G:\work\rtu\IS_barriers\IS_Barriers.xlsx",

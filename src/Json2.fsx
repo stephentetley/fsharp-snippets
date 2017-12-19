@@ -62,10 +62,12 @@ let test04 () =
 let outpath2 = System.IO.Path.Combine(__SOURCE_DIRECTORY__,"..",@"data\output2.json")
 
 let test05 () = 
-    let proc = tellDict [ "#NAME", "MALBURY" :> obj
-                        ; "#OID", "OBJ546" :> obj
-                        ; "#COUNT", 12 :> obj ]
-    runJsonOutput proc outpath2
+    let proc = 
+        tellSimpleDictionary 
+            <| [ "#NAME", "MALBURY" :> obj
+                ; "#OID", "OBJ546" :> obj
+                ; "#COUNT", 12 :> obj ]
+    runJsonOutput proc 4 outpath2
 
 // Values must be plain strings (or numbers)
 let deserializeKVs (input:string) : (string*string) list = 
@@ -77,4 +79,17 @@ let test06 () =
     printfn "%s" input
     let jObj  = deserializeKVs input
     printfn "%A" jObj
+
+let genTokens (path:string) : seq<JsonToken> =  
+    seq { 
+        use sr = new System.IO.StreamReader(outpath2)
+        use jr = new JsonTextReader(sr)
+        while jr.Read() do
+            yield jr.TokenType
+    }
+
+let test07 () = 
+    genTokens outpath2
+        |> Seq.iter (fun (t:JsonToken) -> printfn "Token: %A" t) 
+    
  

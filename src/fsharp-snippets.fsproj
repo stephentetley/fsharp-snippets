@@ -77,7 +77,7 @@
     <Compile Include="DocSoup\PathExpressions.fs" />
     <None Include="DocSoup\TestWord1.fsx" />
     <None Include="DocSoup\TestWE1.fsx" />
-    <None Include="DocSoup\TestWERange.fsx" />	
+    <None Include="DocSoup\TestWERange.fsx" />
     <Compile Include="FilePaths\Syntax.fs" />
     <Compile Include="FilePaths\FlatSyntax.fs" />
     <Compile Include="FilePaths\RoseTree.fs" />
@@ -96,7 +96,8 @@
     <Compile Include="Coord.fs" />
     <Compile Include="GeoDistance.fs" />
     <Compile Include="ExcelUtils.fs" />
-    <Compile Include="JsonOutput.fs" />	
+    <Compile Include="JsonInput.fs" />
+    <Compile Include="JsonOutput.fs" />
     <Compile Include="StringUtils.fs" />
     <Compile Include="PostgreSQLUtils.fs" />
     <Compile Include="SQLiteUtils.fs" />
@@ -121,12 +122,14 @@
     <None Include="TotalOrder2.fsx" />
     <None Include="GenPolygonWKT.fsx" />
     <None Include="WGS84ExcelCoord.fsx" />
+    <None Include="GenSiteFormsJson.fsx" />
     <None Include="WordFindReplace.fsx" />
     <None Include="TestPostgres.fsx" />
     <None Include="Consents.fsx" />
     <None Include="DbImportSites.fsx" />
     <None Include="GenUploadForm.fsx" />
-    <None Include="GenSiteList1.fsx" />	
+    <None Include="GenSiteList1.fsx" />
+    <None Include="CorrectGridRefs.fsx" />
     <COMReference Include="Microsoft Excel 16.0 Object Library">
       <Guid>{00020813-0000-0000-c000-000000000046}</Guid>
       <VersionMajor>1</VersionMajor>

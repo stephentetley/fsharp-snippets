@@ -12,6 +12,8 @@ open System.IO
 #load @"ExcelUtils.fs"
 open ExcelUtils
 
+#load "JsonInput.fs"
+open JsonInput
 
 // TODO this should use Json for the find/replace pairs
 
@@ -21,7 +23,7 @@ let allSubsitutions = @"G:\work\Projects\T0975_EDM2\site-list-for-GEN.xlsx"
 let sheetName = @"SITE_LIST"
 
 
-type SearchList = (string*string) list
+type ReplacesList = (string*string) list
 
 let doubleQuote (s:string) : string = "\"" + s + "\""
 
@@ -57,12 +59,12 @@ let replacer (x:Word.Document) (search:string) (replace:string) : bool =
     let ans2 = replaceRange <| header
     ans1 && ans2
 
-let replaces (x:Word.Document) (zs:SearchList) : unit = 
+let replaces (x:Word.Document) (zs:ReplacesList) : unit = 
     for z in zs do
         match z with | (a,b) -> ignore <| replacer x a b
 
 
-let process1 (app:Word.Application) (templatePath:string) (outpath:string) (ss:SearchList) = 
+let process1 (app:Word.Application) (templatePath:string) (outpath:string) (ss:ReplacesList) = 
     let doc = app.Documents.Open(FileName = refobj templatePath)
     replaces doc ss
     // This should be wrapped in try...
@@ -104,7 +106,7 @@ let makeHeaders (worksheet:Excel.Worksheet) : string list =
 
 
 // Caution - zipping may truncate
-let makeSearches (headers: string list) (row:TableRow) : SearchList = 
+let makeSearches (headers: string list) (row:TableRow) : ReplacesList = 
     List.zip headers <| rowValues row
 
 let processInputLine (app:Word.Application) (headers: string list) (row:TableRow) : unit =
@@ -113,7 +115,7 @@ let processInputLine (app:Word.Application) (headers: string list) (row:TableRow
     let searches = makeSearches headers row
     process1 app templateLoc outputpath searches
     
-let replacesDoc (wordApp:Word.ApplicationClass) (outpath:string) (replaces:SearchList) : unit =
+let replacesDoc (wordApp:Word.ApplicationClass) (outpath:string) (replaces:ReplacesList) : unit =
     process1 wordApp templateLoc outpath replaces
 
 let main () = 

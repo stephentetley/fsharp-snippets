@@ -3,7 +3,8 @@
 open Newtonsoft.Json
 
 // JsonOutput Monad
-// Output is to a handle so this is not strictly a writer monad
+// Output is to a handle so this is not really a writer monad
+// (all output must be sequential)
 
 type JsonOutput<'a> = JsonOutput of (JsonTextWriter -> 'a)
 
@@ -20,26 +21,51 @@ let fail : JsonOutput<'a> = JsonOutput (fun r -> failwith "JsonOutput fail")
 
 
 type JsonOutputBuilder() = 
-        member self.Return x = unit x
-        member self.Bind (p,f) = bind p f
-        member self.Zero () = unit ()
+    member self.Return x = unit x
+    member self.Bind (p,f) = bind p f
+    member self.Zero () = unit ()
 
 let (jsonOutput:JsonOutputBuilder) = new JsonOutputBuilder()
 
-let runJsonOutput (ma:JsonOutput<'a>) (outputFile:string) : 'a = 
+let runJsonOutput (ma:JsonOutput<'a>) (indent:int) (outputFile:string) : 'a = 
     use sw : System.IO.StreamWriter = new System.IO.StreamWriter(outputFile)
     use handle : JsonTextWriter = new JsonTextWriter(sw)
+    if indent > 0 then
+        handle.Formatting <- Formatting.Indented
+        handle.Indentation <- indent
+    else handle.Formatting <- Formatting.None
     match ma with | JsonOutput(f) -> f handle
 
+let tellValue (o:obj) : JsonOutput<unit> = 
+    JsonOutput <| fun (handle:JsonTextWriter) ->
+        handle.WriteValue o
 
-//let liftConn (proc:SQLite.SQLiteConnection -> 'a) : SQLiteConn<'a> = SQLiteConn proc
-    
-//let execNonQuery (statement:string) : SQLiteConn<int> = 
-//    SQLiteConn <| fun conn -> 
-//        let cmd : SQLiteCommand = new SQLiteCommand(statement, conn)
-//        cmd.ExecuteNonQuery ()
+let tellObject (body:JsonOutput<'a>) : JsonOutput<'a> = 
+    JsonOutput <| fun (handle:JsonTextWriter) ->
+        handle.WriteStartObject ()    
+        let ans = apply1 body handle
+        handle.WriteEndObject ()
+        ans
 
-let tellDict (elems:(string*obj) list) : JsonOutput<unit> = 
+let tellArray (body:JsonOutput<'a>) : JsonOutput<'a> = 
+    JsonOutput <| fun (handle:JsonTextWriter) ->
+        handle.WriteStartArray ()  
+        let ans = apply1 body handle
+        handle.WriteEndArray ()
+        ans
+
+let tellSimpleProperty (name:string) (object:obj) : JsonOutput<unit> = 
+    JsonOutput <| fun (handle:JsonTextWriter) ->
+        handle.WritePropertyName name
+        handle.WriteValue object
+
+let tellProperty (name:string) (body:JsonOutput<'a>) : JsonOutput<'a> = 
+    JsonOutput <| fun (handle:JsonTextWriter) ->
+        handle.WritePropertyName name
+        apply1 body handle
+
+// Often we have simple (string*string) pairs to write
+let tellSimpleDictionary (elems:(string*obj) list) : JsonOutput<unit> = 
     JsonOutput <| fun (handle:JsonTextWriter) -> 
         let write1 (name:string) (o:obj) : unit = 
             handle.WritePropertyName name

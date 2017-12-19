@@ -313,3 +313,5 @@ module Coord =
             let n = decodeRefNumber <| groups.[4].Value
             osgb36Grid (getChar1 groups) (getChar2 groups) e n
         | _ -> failwith "err"
+
+        // TODO try version
