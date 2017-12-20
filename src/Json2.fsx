@@ -2,12 +2,18 @@
 #r "Newtonsoft.Json"
 open Newtonsoft.Json
 
+open FSharp.Core
+
+#I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
+#r "FSharpx.Collections"
+open FSharpx.Collections
+
 // With Json.Net - we have low level methods if we want them
 
 #load "JsonOutput.fs"
 open JsonOutput
-#load "JsonInput.fs"
-open JsonInput
+#load "JsonOrderedInput.fs"
+open JsonOrderedInput
 
 
 let test01 () = 
@@ -92,7 +98,8 @@ let genTokens (path:string) : seq<JsonToken> =
     }
 
 let test07 () = 
-    genTokens outpath2
+    let allSubsitutions = @"G:\work\Projects\events2\survey-findreplace.json"
+    genTokens allSubsitutions
         |> Seq.iter (fun (t:JsonToken) -> printfn "Token: %A" t) 
     
 let fibs : seq<int>  = Seq.unfold (fun (a,b) -> let c = a+b in Some (c, (b,c))) (0,1)
@@ -105,3 +112,46 @@ let test08 () =
     let c = Seq.head input2
     printf "%i %i %i .." a b c
 
+type Dict = Map<string,string>
+
+let readDict (json:string) : Dict =  JsonConvert.DeserializeObject<Dict>(json)
+
+let test09 () = 
+    let json = @"{ 'name1': 'aardvark', 'name2': 'zebra' }"
+    printfn "%A" <| readDict json
+
+type Rec1 = { rec1File:string; rec1Dict:Dict }
+
+let readRec (json:string) : Rec1 =
+    let dict1 = readDict json // this doesn't work, it is <string,obj> not <string,string>
+    try 
+       let file = Map.find "File" dict1
+       let pairs = readDict <| Map.find "Names" dict1
+       { rec1File=file; rec1Dict=pairs }
+    with 
+        | _ -> failwith "Bad"
+
+let testInput = @"{ 'File' : 'output.doc', 'Names' : { } }"
+
+let test10 () = 
+    printfn "%A" <| readDict testInput
+
+type Token = 
+    { tokenType: JsonToken
+      tokenValue: obj }
+
+type Input = seq<Token>
+
+let private tokenize1 (inputFile:string) : Input  = seq { 
+    use sr : System.IO.StreamReader = new System.IO.StreamReader(inputFile)
+    use handle : JsonTextReader = new JsonTextReader(sr)
+    while handle.Read() do
+        let tokValue = 
+            match handle.Value with
+            | null -> () :> obj
+            | x -> x
+        yield {tokenType=handle.TokenType; tokenValue=tokValue} }
+
+let test11 () =
+    let allSubsitutions = @"G:\work\Projects\events2\survey-findreplace.json"
+    tokenize1 allSubsitutions

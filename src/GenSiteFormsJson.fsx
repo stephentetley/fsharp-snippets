@@ -19,8 +19,10 @@ type InputTable =
 type InputRow = InputTable.Row
 
 let safeName (input:string) : string = 
-    let bads = ['\\'; '/'; ':']
-    List.fold (fun s c -> s.Replace(c,'_')) (input.Trim()) bads
+    let bads1 = ['\\'; '/'; ':']
+    let bads2 = ["("; ")"; "["; "]"; "\n"]
+    let input1 :string = List.fold (fun s c -> s.Replace(c,'_')) (input.Trim()) bads1
+    List.fold (fun s c -> s.Replace(c,"")) input1 bads2
 
 let readRows () : InputRow list = 
     let workData = new InputTable()
@@ -29,7 +31,11 @@ let readRows () : InputRow list =
 
 let tellFileName (siteName:string) : JsonOutput<unit> =
     let clean = siteName.Trim() |> safeName
-    tellValue <| sprintf "%s EDM2 Survey.docx" clean
+    let docname = sprintf "%s EDM2 Survey.docx" clean
+    printfn "Clean is '%s'" clean
+    let filename = System.IO.Path.Combine(clean,docname) 
+    tellValue <| filename
+
 
 let tellReplaces(row:InputRow) : JsonOutput<unit> = 
     let cast1 (str:string) : obj = 
@@ -39,23 +45,22 @@ let tellReplaces(row:InputRow) : JsonOutput<unit> =
 
     tellSimpleDictionary 
         <|  [ "#SITENAME", cast1 <| row.Name
-            ; "#ASSETTYPE", cast1 <| row.Type
             ; "#SAINUMBER", cast1 <| row.``SAI Number``
-            ; "#OPERNAME", cast1 <| row.``Operational Responsibility`` 
-            ; "#SITEGRIDREF", cast1 <| row.``Site Grid Ref``
-            ; "#OUTFALLGRIDREF", cast1 <| row.``Outfall Grid Ref (Needs checking…)``
             ; "#SITEADDRESS", cast1 <| row.``Site Address``
             ; "#OPERSTATUS", cast1 <| ""
+            ; "#SITEGRIDREF", cast1 <| row.``Site Grid Ref``
+            ; "#ASSETTYPE", cast1 <| row.Type            
+            ; "#OPERNAME", cast1 <| row.``Operational Responsibility`` 
             ; "#WORKCATEGORY", cast1 <| row.``Work Category``
-            ; "#OUTFALLGRIDREF", cast1 <| ""
-            ; "#RECWATERCOURSE", cast1 <| ""
+            ; "#OUTFALLGRIDREF", cast1 <| row.``Outfall Grid Ref (from IW sheet)``
+            ; "#RECWATERCOURSE", cast1 <| row.``Receiving Watercourse``
             ]
 
 let tellRow1(row:InputRow) : JsonOutput<unit> = 
     printfn "%s" row.Name
     tellObject <|
         jsonOutput { do! tellProperty "FileName" (tellFileName row.Name)
-                   ; do! tellProperty "Replaces" (tellReplaces row) }
+                     do! tellProperty "Replaces" (tellReplaces row) }
 
 let main () : unit = 
     let rows = readRows ()
