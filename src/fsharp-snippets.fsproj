@@ -127,6 +127,7 @@
     <None Include="TestPostgres.fsx" />
     <None Include="Consents.fsx" />
     <None Include="DbImportSites.fsx" />
+    <None Include="DbImportEvents.fsx" />
     <None Include="GenUploadForm.fsx" />
     <None Include="GenSiteList1.fsx" />
     <None Include="CorrectGridRefs.fsx" />

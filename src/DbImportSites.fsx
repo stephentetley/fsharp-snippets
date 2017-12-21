@@ -1,6 +1,5 @@
 ﻿#I @"..\packages\System.Data.SQLite.Core.1.0.105.0\lib\net451"
 #r "System.Data.SQLite"
-
 open System.Data.SQLite
 
 #I @"C:\WINDOWS\assembly\GAC_MSIL\Microsoft.Office.Interop.Excel\15.0.0.0__71e9bce111e9429c"
@@ -14,12 +13,6 @@ open FSharp.ExcelProvider
 #load @"SQLiteUtils.fs"
 open SQLiteUtils
 
-#I @"..\packages\DocumentFormat.OpenXml.2.7.2\lib\net46\"
-#I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
-#I @"..\packages\ClosedXML.0.90.0\lib\net452\"
-#r "ClosedXML"
-#load @"ClosedXMLWriter.fs"
-open ClosedXMLWriter
 
 type ImportTable = 
     ExcelFile< @"G:\work\Projects\rtu\import_data\ImportData.xlsx",

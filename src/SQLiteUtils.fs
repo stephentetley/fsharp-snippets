@@ -13,7 +13,7 @@ let escapeValueText (s:string) : string =
     let escape (s1 :string) = s1.Replace("'", "''")
     match s with null -> "" | _ -> escape s
 
-let cleanseValue (s:string) : string = s.Trim() |> escapeValueText
+let cleanseValue (s:string) : string = (escapeValueText s).Trim() 
 
 
 // SQLiteConn Monad
