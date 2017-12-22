@@ -4,7 +4,10 @@
 open FSharpx.Collections
 open Newtonsoft.Json
 
-// OBSOLETE - go with FSharp.Data and JsonValue.Parse(..) 
+// ***** OBSOLETE *****
+// For "unpacking" Json when yoiu can't use automatic deserialization
+// go with FSharp.Data and JsonValue.Parse(..).
+//
 // This gives us an opaque Json tree, but we can navigate it 
 // (tree parsing).
 

@@ -83,6 +83,9 @@ let findColumnCount (worksheet:Excel.Worksheet) : int =
 let findRowCount (worksheet:Excel.Worksheet) : int =
     fst <| findLastCell worksheet
 
+
+ // This should be obsolete - we should be able to use 
+ // ClosedXMLWriter for batch writing and it is much faster...S
 type RowWriter<'a> = RowWriter of (Excel.Worksheet -> int -> ('a * int))
 
 let runRowWriter (ma:RowWriter<'a>) (sheet:Excel.Worksheet) : 'a =
@@ -106,18 +109,18 @@ let outputToNew (ma:RowWriter<'a>) (filename:string) (sheetname:string) : 'a =
 let inline apply1 (ma : RowWriter<'a>) (sheet:Excel.Worksheet) (i:int) : ('a * int) = 
     let (RowWriter f) = ma in f sheet i
 
-let unit (x:'a) : RowWriter<'a> = 
+let unitM (x:'a) : RowWriter<'a> = 
     RowWriter (fun r s -> (x,s))
 
-let bind (ma:RowWriter<'a>) (f : 'a -> RowWriter<'b>) : RowWriter<'b> =
+let bindM (ma:RowWriter<'a>) (f : 'a -> RowWriter<'b>) : RowWriter<'b> =
     RowWriter (fun r s -> let (a,s1) = apply1 ma r s in apply1 (f a) r s1)
 
 let fail : RowWriter<'a> = RowWriter (fun r s -> failwith "RowWriter fail")
 
 type RowWriterBuilder() = 
-        member self.Return x = unit x
-        member self.Bind (p,f) = bind p f
-        member self.Zero () = unit ()
+        member self.Return x = unitM x
+        member self.Bind (p,f) = bindM p f
+        member self.Zero () = unitM ()
 
 let (rowWriter:RowWriterBuilder) = new RowWriterBuilder()
 

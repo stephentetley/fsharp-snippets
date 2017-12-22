@@ -27,14 +27,6 @@ type JsonOutputBuilder() =
 
 let (jsonOutput:JsonOutputBuilder) = new JsonOutputBuilder()
 
-let runJsonOutput (ma:JsonOutput<'a>) (indent:int) (outputFile:string) : 'a = 
-    use sw : System.IO.StreamWriter = new System.IO.StreamWriter(outputFile)
-    use handle : JsonTextWriter = new JsonTextWriter(sw)
-    if indent > 0 then
-        handle.Formatting <- Formatting.Indented
-        handle.Indentation <- indent
-    else handle.Formatting <- Formatting.None
-    match ma with | JsonOutput(f) -> f handle
 
 // Common operations
 let fmapM (fn:'a -> 'b) (ma:JsonOutput<'a>) : JsonOutput<'b> = 
@@ -60,6 +52,16 @@ let mapMz (fn:'a -> JsonOutput<'b>) (xs:'a list) : JsonOutput<unit> =
 let forMz (xs:'a list) (fn:'a -> JsonOutput<'b>) : JsonOutput<unit> = mapMz fn xs
 
 // JsonOutput-specific operations
+
+let runJsonOutput (ma:JsonOutput<'a>) (indent:int) (outputFile:string) : 'a = 
+    use sw : System.IO.StreamWriter = new System.IO.StreamWriter(outputFile)
+    use handle : JsonTextWriter = new JsonTextWriter(sw)
+    if indent > 0 then
+        handle.Formatting <- Formatting.Indented
+        handle.Indentation <- indent
+    else handle.Formatting <- Formatting.None
+    match ma with | JsonOutput(f) -> f handle
+
 
 let tellValue (o:obj) : JsonOutput<unit> = 
     JsonOutput <| fun (handle:JsonTextWriter) ->

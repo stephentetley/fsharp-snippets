@@ -12,7 +12,8 @@ open FSharpx.Collections
 
 #load "JsonOutput.fs"
 open JsonOutput
-#load "JsonOrderedInput.fs"
+// TODO remove code that depends on this...
+#load "Obsolete\JsonOrderedInput.fs"
 open JsonOrderedInput
 
 

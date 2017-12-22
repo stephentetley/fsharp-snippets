@@ -86,6 +86,7 @@
     <None Include="FilePaths\TestFP2.fsx" />
     <None Include="FilePaths\TestFPRose.fsx" />
     <Compile Include="Obsolete\Fact.fs" />
+    <Compile Include="Obsolete\JsonOrderedInput.fs" />
     <None Include="Obsolete\ExcelIndexing.fsx" />
     <None Include="Obsolete\ExcelPairwise.fsx" />
     <None Include="Obsolete\ExcelTranspose.fsx" />
@@ -96,7 +97,6 @@
     <Compile Include="Coord.fs" />
     <Compile Include="GeoDistance.fs" />
     <Compile Include="ExcelUtils.fs" />
-    <Compile Include="JsonOrderedInput.fs" />
     <Compile Include="JsonOutput.fs" />
     <Compile Include="StringUtils.fs" />
     <Compile Include="PostgreSQLUtils.fs" />
