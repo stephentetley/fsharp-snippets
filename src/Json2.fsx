@@ -12,9 +12,7 @@ open FSharpx.Collections
 
 #load "JsonOutput.fs"
 open JsonOutput
-// TODO remove code that depends on this...
-#load "Obsolete\JsonOrderedInput.fs"
-open JsonOrderedInput
+
 
 
 let test01 () = 

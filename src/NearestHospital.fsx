@@ -7,9 +7,7 @@ open FSharp.ExcelProvider
 open Microsoft.Office.Interop
 
 #load "Coord.fs"
-#load "GeoDistance.fs"
 open Coord
-open GeoDistance
 
 
 type HospitalsTable = 
@@ -51,15 +49,15 @@ let buildHospitalList () =
                       |> Seq.toList
                       |> List.choose id
 
-type BestMatch = float<GeoDistance.kilometer> * Hospital1
+type BestMatch = float<Coord.kilometer> * Hospital1
 
 let findClosest (pt : Coord.WGS84Point) (hospitals:HospitalList) : BestMatch option =
     let find1 (dist,best) (hospital:Hospital1) = 
-        let dist1 = GeoDistance.haversineDistance pt hospital.LatLon
+        let dist1 = Coord.haversineDistance pt hospital.LatLon
         if dist1 <= dist then
             (dist1, Some hospital)
         else (dist,best)
-    List.fold find1 (50000.0<GeoDistance.kilometer>, None) hospitals 
+    List.fold find1 (50000.0<Coord.kilometer>, None) hospitals 
         |> fun (d,o) -> match o with 
                         | Some a -> Some (d,a)
                         | None -> None
@@ -83,7 +81,7 @@ let saveAndCloseWorkbook (workbook:Excel.Workbook) (filename:string)  : unit =
     app.DisplayAlerts <- true
     workbook.Close(SaveChanges = false)
 
-let writeRow (sheet:Excel.Worksheet) (rowindex:int) (uid:string) (oname:string) (address:string) (dist:float<GeoDistance.kilometer>) : unit = 
+let writeRow (sheet:Excel.Worksheet) (rowindex:int) (uid:string) (oname:string) (address:string) (dist:float<Coord.kilometer>) : unit = 
     sheet.Cells.Range(cellIndex "A" rowindex).Value2 <- uid
     sheet.Cells.Range(cellIndex "B" rowindex).Value2 <- oname
     sheet.Cells.Range(cellIndex "C" rowindex).Value2 <- address
@@ -98,7 +96,7 @@ let main () =
     let assetData = new DerivedAssets()
     let outputWorkbook : Excel.Workbook = app.Workbooks.Add()
     let outputWorksheet = outputWorkbook.Sheets.[1] :?> Excel.Worksheet
-    writeRow outputWorksheet 1 "UID" "Name" "Address" 0.0<GeoDistance.kilometer>
+    writeRow outputWorksheet 1 "UID" "Name" "Address" 0.0<Coord.kilometer>
     let mutable ix = 1
     let bestAddress (opt: BestMatch option) = 
         match opt with
@@ -110,7 +108,7 @@ let main () =
         | Some (dist,hospital) -> hospital.Name
     let bestDist (opt: BestMatch option) = 
         match opt with
-        | None -> 0.0<GeoDistance.kilometer>
+        | None -> 0.0<Coord.kilometer>
         | Some (dist,hospital) -> dist
     for (rowi:AssetRow) in assetData.Data do
         match rowi.Name with

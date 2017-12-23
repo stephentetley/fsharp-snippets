@@ -9,6 +9,8 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 module Coord = 
 
     // Units of measure make the internals very complicated (perhaps limit to the external interface?)
+    [<Measure>]
+    type kilometer
 
     // type metres = double    
     
@@ -321,3 +323,19 @@ module Coord =
         | None -> failwith <| sprintf "readOSGB36Grid - could not read '%s'" input
 
 
+
+    // Operates on WGS84Points i.e. Lat-Lon
+    let haversineDistance (p1 : WGS84Point) (p2 : WGS84Point) : float<kilometer> = 
+        let radius = 6371.000<kilometer>
+        let lat1R = deg2rad (float p1.Latitude)
+        let lat2R = deg2rad (float p2.Latitude)
+        let latDeltaR = deg2rad (float (p2.Latitude-p1.Latitude))
+        let lonDeltaR = deg2rad (float (p2.Longitude-p1.Longitude))
+        let a = Math.Sin(latDeltaR /2.0) * Math.Sin(latDeltaR /2.0) + 
+                Math.Cos(lat1R) * Math.Cos(lat2R) *
+                Math.Sin(lonDeltaR / 2.0) * Math.Sin(lonDeltaR/2.0)
+        
+        let c = 2.0 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1.0-a))
+
+        let ans= radius * c
+        ans

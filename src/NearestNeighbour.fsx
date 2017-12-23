@@ -12,8 +12,6 @@ open Coord
 #load "ExcelUtils.fs"
 open ExcelUtils
 
-#load "GeoDistance.fs"
-open GeoDistance
 
 
 type InputTable = 
@@ -51,17 +49,17 @@ let buildAssetList () =
         |> Seq.toList
         |> List.choose id
 
-type BestMatch = float<GeoDistance.kilometer> * Asset1
+type BestMatch = float<Coord.kilometer> * Asset1
 
 type OutputList = BestMatch list
 
 let findClosest (pt : Coord.WGS84Point) (assets:AssetSet) : BestMatch option =
     let find1 (dist,best) (asset:Asset1) = 
-        let dist1 = GeoDistance.haversineDistance pt asset.LatLon
+        let dist1 = Coord.haversineDistance pt asset.LatLon
         if dist1 <= dist then
             (dist1, Some asset)
         else (dist,best)
-    Set.fold find1 (50000.0<GeoDistance.kilometer>, None) assets 
+    Set.fold find1 (50000.0<Coord.kilometer>, None) assets 
         |> fun (d,o) -> match o with 
                         | Some a -> Some (d,a)
                         | None -> None
@@ -98,7 +96,7 @@ let generateWorkList (ancestor:Asset1) (worklist:AssetSet) : OutputList =
         match findStep a1 assets with
         | None -> ac
         | Some(ans,rest) -> step (snd ans) rest (ans :: ac) 
-    List.rev <| step ancestor worklist [(0.0<GeoDistance.kilometer>,ancestor)]
+    List.rev <| step ancestor worklist [(0.0<Coord.kilometer>,ancestor)]
 
 let main () = 
     // Run Excel as a visible application

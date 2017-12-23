@@ -7,9 +7,7 @@ open FSharp.ExcelProvider
 open Microsoft.Office.Interop
 
 #load "Coord.fs"
-#load "GeoDistance.fs"
 open Coord
-open GeoDistance
 
 
 type InputTable = 

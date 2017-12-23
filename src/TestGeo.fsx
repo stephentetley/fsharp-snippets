@@ -1,10 +1,9 @@
-﻿#load "Coord.fs"
-#load "GeoDistance.fs"
+﻿open System
 
-open Coord
-open GeoDistance
-open System
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
+
+#load "Coord.fs"
+open Coord
 
 let testZ1 = Coord.ns 3 (Seq.toList "352263")
 let testZ2 = Char.GetNumericValue '6'
@@ -40,7 +39,7 @@ let dover2 = {Coord.Eastings = 628458.0<meter>; Coord.Northings =  141168.0<mete
 
 let testD1 () = 
     match dover with
-    | Some d1 -> GeoDistance.haversineDistance (Coord.enToLatLon d1) (Coord.enToLatLon dover2)
+    | Some d1 -> Coord.haversineDistance (Coord.enToLatLon d1) (Coord.enToLatLon dover2)
     | None -> failwith "Bad"
 
 let read01 () = 
