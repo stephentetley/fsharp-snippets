@@ -35,12 +35,12 @@ module Coord =
     [<StructuredFormatDisplay("{Latitude}Lat {Longitude}Lon")>]
     type WGS84Point = { Latitude : float<degree>; Longitude : float<degree> }
 
-    let deg2rad (d : float) = (Math.PI/180.0) * d
+    let inline private deg2rad (d : float) = (Math.PI/180.0) * d
 
-    let rad2deg (r : float) = (180.0/Math.PI) * r
+    let inline private rad2deg (r : float) = (180.0/Math.PI) * r
 
     /// fromDMS :: Int -> Int -> Double -> DDegrees
-    let fromDMS (d : int) (m : int) (s : float) : float<degree> = 
+    let inline private fromDMS (d : int) (m : int) (s : float) : float<degree> = 
         LanguagePrimitives.FloatWithMeasure (float d + float m / 60.0 + s / 3600.0)
 
     // ellipsoid constants for Airy 1830
@@ -93,7 +93,7 @@ module Coord =
         let Md = ((35.0/24.0)*n3) * sin (3.0*phiMphi0) * cos (3.0*phiPphi0)
         b * F0 * (Ma - Mb + Mc - Md)
 
-    let latlonToEN ({Latitude = phidd; Longitude = lamdd} : WGS84Point) : OSGB36Point = 
+    let wgs84ToOSGB36Point ({Latitude = phidd; Longitude = lamdd} : WGS84Point) : OSGB36Point = 
         let phi = deg2rad (float phidd)
         let lam = deg2rad (float lamdd)
         let sinPhi = sin phi
@@ -120,7 +120,7 @@ module Coord =
 
 
 
-    let enToLatLon ({Eastings = E; Northings = N} : OSGB36Point) : WGS84Point =
+    let osgb36PointToWGS84 ({Eastings = E; Northings = N} : OSGB36Point) : WGS84Point =
         let rec makePhi p m = 
             if abs (float N - N0 - m) < 0.01 then 
                 p 
@@ -154,6 +154,8 @@ module Coord =
         ; Longitude = LanguagePrimitives.FloatWithMeasure (rad2deg lam) } 
 
 
+  
+
     /// OS Grid refs, see
     /// https://en.wikipedia.org/wiki/Ordnance_Survey_National_Grid
 
@@ -183,19 +185,6 @@ module Coord =
         let (eM, nM) = decodeMajor s
         let (em, nm) = decodeMinor t
         (eM + em, nM + nm)
-
-    let decodeOSGB36Grid10 (m : char) (mm : char) (east : float<meter>) (north : float<meter>) : OSGB36Point = 
-        let (majE, majN) = decodeAlpha m mm 
-        { Eastings = east + LanguagePrimitives.FloatWithMeasure majE
-        ; Northings = north + LanguagePrimitives.FloatWithMeasure majN }
-    
-    let decodeOSGB36Grid6 (m : char) (mm : char) east north = 
-        decodeOSGB36Grid10 m mm (east * 100.0<meter>) (north * 100.0<meter>) 
-    
-    let decodeOSGB36Grid8 (m : char) (mm : char) east north = 
-        decodeOSGB36Grid10 m mm (east * 10.0<meter>) (north * 10.0<meter>) 
-
-    /// Seq.toListmight be better...
 
     // Expects even length string
     let private readContigNumberPair (ss : string) : int*int = 
@@ -237,6 +226,13 @@ module Coord =
     let private makeOSGB36Grid (c1:char) (c2:char) (east:int) (north:int) : OSGB36Grid =  
         { Letter1 = c1; Letter2 = c2; Eastings = 1.0<meter> *float east; Northings = 1.0<meter> * float north  }
 
+        
+    let private makeOSGB36Point (m : char) (mm : char) (east : float<meter>) (north : float<meter>) : OSGB36Point = 
+        let (majE, majN) = decodeAlpha m mm 
+        { Eastings = east + LanguagePrimitives.FloatWithMeasure majE
+        ; Northings = north + LanguagePrimitives.FloatWithMeasure majN }
+    
+
     let osgb36PointToGrid ({Eastings = E; Northings = N} : OSGB36Point) : OSGB36Grid =  
         let major = findMajor (float E) (float N)
         let minor = findMinor (float E) (float N)
@@ -245,9 +241,15 @@ module Coord =
         { Letter1 = major; Letter2 = minor; Eastings = smallE; Northings = smallN }
     
     let osgb36GridToPoint (gridRef:OSGB36Grid) : OSGB36Point =
-        decodeOSGB36Grid10 gridRef.Letter1 gridRef.Letter2 gridRef.Eastings gridRef.Northings
-        
-    
+        makeOSGB36Point gridRef.Letter1 gridRef.Letter2 gridRef.Eastings gridRef.Northings
+
+
+    let osgb36GridToWGS84 (gridref : OSGB36Grid) : WGS84Point =
+        osgb36PointToWGS84 <| osgb36GridToPoint gridref
+
+    let wgs84ToOSGB36Grid (latlon : WGS84Point) : OSGB36Grid = 
+        osgb36PointToGrid <| wgs84ToOSGB36Point latlon
+
     // Needs 0 padding, width five
     let showOSGB36Grid (pt:OSGB36Grid) : string = 
         sprintf "%c%c%05i%05i" pt.Letter1 pt.Letter2 (int pt.Eastings) (int pt.Northings)
@@ -309,5 +311,5 @@ module Coord =
         
         let c = 2.0 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1.0-a))
 
-        let ans= radius * c
+        let ans = radius * c
         ans

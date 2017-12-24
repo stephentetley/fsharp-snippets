@@ -38,7 +38,7 @@ let buildAssetList () =
     let make1 (rowi : InputRow) : Asset1 option = 
         match rowi.``Site Name`` with 
         | null -> None
-        | _ -> let optPt = Option.map (Coord.enToLatLon << Coord.osgb36GridToPoint)
+        | _ -> let optPt = Option.map Coord.osgb36GridToWGS84
                             <| Coord.tryReadOSGB36Grid rowi.``Grid Ref``
                match optPt with
                | Some pt -> Some <| { Uid = rowi.``SAI Reference``

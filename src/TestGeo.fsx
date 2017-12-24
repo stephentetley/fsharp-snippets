@@ -11,8 +11,8 @@ let testZ2 = Char.GetNumericValue '6'
 let phi1 : float<Coord.degree> = Coord.fromDMS 52 39 27.2531
 let lam1 : float<Coord.degree> = Coord.fromDMS 1 43 4.5177
 
-let test01 = Coord.latlonToEN {Latitude = phi1; Longitude = lam1}
-let test02 = Coord.enToLatLon {Eastings = 651409.903<meter>; Northings = 313177.270<meter>}
+let test01 = Coord.wgs84ToOSGB36Point {Latitude = phi1; Longitude = lam1}
+let test02 = Coord.osgb36PointToWGS84 {Eastings = 651409.903<meter>; Northings = 313177.270<meter>}
 
 //let test03 = Coord.decodeMinor 'c' ;;
 //let testit c = Coord.decodeAlpha c
@@ -42,7 +42,7 @@ let dover2 = {Coord.Eastings = 628458.0<meter>; Coord.Northings =  141168.0<mete
 
 
 let testD1 () = 
-    Coord.haversineDistance (Coord.enToLatLon dover) (Coord.enToLatLon dover2)
+    Coord.haversineDistance (Coord.osgb36PointToWGS84 dover) (Coord.osgb36PointToWGS84 dover2)
 
 
 let read01 () = 

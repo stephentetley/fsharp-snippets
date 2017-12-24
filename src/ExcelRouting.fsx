@@ -35,8 +35,7 @@ let makeNode (ix:int) (rowi:RoutingRow) : Node option =
           longname = rowi.``Site Name``
           lat = float pt.Latitude
           lon = float pt.Longitude }
-    Option.map (mk1 << Coord.enToLatLon << Coord.osgb36GridToPoint) 
-        <| Coord.tryReadOSGB36Grid ngr
+    Option.map (mk1 << Coord.osgb36GridToWGS84) <| Coord.tryReadOSGB36Grid ngr
     
 let makeNodeList () : Node list = 
     let routingData = new RoutingTable()

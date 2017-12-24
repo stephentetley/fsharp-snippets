@@ -22,7 +22,7 @@ let test01 () =
     for (rowi:HospitalsRow) in hosiptalData.Data do
         match rowi.Name with
         | null -> printfn "<finished>"
-        | _ -> let pt = Option.map (Coord.enToLatLon << Coord.osgb36GridToPoint)
+        | _ -> let pt = Option.map Coord.osgb36GridToWGS84
                             <| Coord.tryReadOSGB36Grid rowi.``Grid Reference``
                printfn "%s, %s, %A" rowi.Name rowi.``Grid Reference`` pt
 
@@ -40,7 +40,7 @@ let buildHospitalList () =
     let make1 (rowi : HospitalsRow) : Hospital1 option = 
         match rowi.Name with 
         | null -> None
-        | _ -> let optPt = Option.map (Coord.enToLatLon << Coord.osgb36GridToPoint)
+        | _ -> let optPt = Option.map Coord.osgb36GridToWGS84
                                 <| Coord.tryReadOSGB36Grid rowi.``Grid Reference``
                match optPt with
                | Some pt -> Some <| { Name = rowi.Name
@@ -115,7 +115,7 @@ let main () =
     for (rowi:AssetRow) in assetData.Data do
         match rowi.Name with
         | null -> printfn "<finished>"
-        | _ -> let opt = Option.map (Coord.enToLatLon << Coord.osgb36GridToPoint)
+        | _ -> let opt = Option.map Coord.osgb36GridToWGS84
                             <| Coord.tryReadOSGB36Grid rowi.``Grid Ref``
                let best = match opt with
                           | None -> None

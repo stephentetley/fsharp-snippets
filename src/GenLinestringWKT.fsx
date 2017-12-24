@@ -26,7 +26,7 @@ let buildCoordDatabase () : CoordDB =
     let addLine (db:CoordDB) (rowi:InputRow) = 
         match rowi.``Site Name`` with
         | null -> db
-        | _ ->  let opt = Option.map (Coord.enToLatLon << Coord.osgb36GridToPoint)
+        | _ ->  let opt = Option.map Coord.osgb36GridToWGS84
                             <| Coord.tryReadOSGB36Grid  rowi.``Grid Ref``
                 match opt with
                 | Some(pt:Coord.WGS84Point) -> Map.add rowi.``Site Name`` pt db
