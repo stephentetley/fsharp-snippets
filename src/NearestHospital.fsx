@@ -9,6 +9,12 @@ open Microsoft.Office.Interop
 #load "Coord.fs"
 open Coord
 
+#I @"..\packages\DocumentFormat.OpenXml.2.7.2\lib\net46\"
+#I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
+#I @"..\packages\ClosedXML.0.90.0\lib\net452\"
+#r "ClosedXML"
+#load "ClosedXMLWriter.fs"
+open ClosedXMLWriter
 
 type HospitalsTable = 
     ExcelFile< @"G:\work\Accident-and-Emergency-Hospitals-Yorkshire.xlsx",
@@ -53,7 +59,7 @@ let buildHospitalList () =
 
 type BestMatch = float<Coord.kilometer> * Hospital1
 
-let findClosest (pt : Coord.WGS84Point) (hospitals:HospitalList) : BestMatch option =
+let tryClosestHosiptal (hospitals:HospitalList) (pt:Coord.WGS84Point) : BestMatch option =
     let find1 (dist,best) (hospital:Hospital1) = 
         let dist1 = Coord.haversineDistance pt hospital.LatLon
         if dist1 <= dist then
@@ -72,56 +78,45 @@ type DerivedAssets =
 
 type AssetRow = DerivedAssets.Row
 
-let cellIndex (col:string) (row:int) : string = 
-    sprintf "%s%d" col row
 
-let saveAndCloseWorkbook (workbook:Excel.Workbook) (filename:string)  : unit =
-    let app:Excel.Application = workbook.Application
-    // To disable overwrite alert
-    app.DisplayAlerts <- false
-    workbook.SaveAs(Filename = filename)
-    app.DisplayAlerts <- true
-    workbook.Close(SaveChanges = false)
+let readAssetRows () : AssetRow list = 
+    let assetData = new DerivedAssets()
+    // In this case filter on column "B" (aka 1)
+    // There are bad values in column "A"
+    let nullPred (row:AssetRow) = match row.GetValue(1) with null -> false | _ -> true
+    assetData.Data |> Seq.filter nullPred |> Seq.toList
 
-let writeRow (sheet:Excel.Worksheet) (rowindex:int) (uid:string) (oname:string) (address:string) (dist:float<Coord.kilometer>) : unit = 
-    sheet.Cells.Range(cellIndex "A" rowindex).Value2 <- uid
-    sheet.Cells.Range(cellIndex "B" rowindex).Value2 <- oname
-    sheet.Cells.Range(cellIndex "C" rowindex).Value2 <- address
-    sheet.Cells.Range(cellIndex "D" rowindex).Value2 <- dist
+let decodeBest (opt: BestMatch option) : string*string*float<Coord.kilometer>  = 
+    match opt with
+    | None -> ("Not found (ERROR)", "Not found (ERROR)", 0.0<Coord.kilometer>)
+    | Some (dist,hospital) -> (hospital.Name, hospital.AddressString, dist)
 
+let defaultIfNull (defaultValue:string) (check:string) = 
+    match check with 
+    | null -> defaultValue
+    | _ -> check
+
+let tellRow1 (hospitals:HospitalList) (row:AssetRow) : ClosedXMLWriter<unit> = 
+    let opt = Option.map Coord.osgb36GridToWGS84
+                            <| Coord.tryReadOSGB36Grid row.``Grid Ref``
+    let best = Option.bind (tryClosestHosiptal hospitals) opt
+    let (name,addr,dist) = decodeBest best 
+    tellRow [ defaultIfNull "" <| row.UID
+            ; defaultIfNull "" <| row.Name
+            ; name
+            ; addr
+            ; sprintf "%f" (float dist)
+            ]
+
+let headers = [ "UID"; "Name"; "Hospital"; "Hospital Address"; "Distance" ]
+
+let outputFile = @"G:\work\hospitals-output3.xlsx"
 
 let main () = 
-    // Run Excel as a visible application
-    let app = new Excel.ApplicationClass(Visible = true) 
-    let outputPath = @"G:\work\hospitals-output2.xlsx"
     let hosiptalData = buildHospitalList ()
-    let assetData = new DerivedAssets()
-    let outputWorkbook : Excel.Workbook = app.Workbooks.Add()
-    let outputWorksheet = outputWorkbook.Sheets.[1] :?> Excel.Worksheet
-    writeRow outputWorksheet 1 "UID" "Name" "Address" 0.0<Coord.kilometer>
-    let mutable ix = 1
-    let bestAddress (opt: BestMatch option) = 
-        match opt with
-        | None -> "Not found (ERROR)"
-        | Some (dist,hospital) -> hospital.AddressString
-    let bestName (opt: BestMatch option) = 
-        match opt with
-        | None -> "Not found (ERROR)"
-        | Some (dist,hospital) -> hospital.Name
-    let bestDist (opt: BestMatch option) = 
-        match opt with
-        | None -> 0.0<Coord.kilometer>
-        | Some (dist,hospital) -> dist
-    for (rowi:AssetRow) in assetData.Data do
-        match rowi.Name with
-        | null -> printfn "<finished>"
-        | _ -> let opt = Option.map Coord.osgb36GridToWGS84
-                            <| Coord.tryReadOSGB36Grid rowi.``Grid Ref``
-               let best = match opt with
-                          | None -> None
-                          | Some pt -> findClosest pt hosiptalData
-               ix <- ix + 1
-               writeRow outputWorksheet ix rowi.UID rowi.Name (bestAddress best) (bestDist best)
-               printfn "%s,%s,%O,%A" rowi.UID rowi.Name (bestName best) (bestDist best)
-    saveAndCloseWorkbook outputWorkbook outputPath
-    app.Quit()
+    let assetData = readAssetRows ()
+    let proc = 
+        closedXMLWriter { do! tellHeaders headers
+                          do! mapMz (tellRow1 hosiptalData) assetData }
+    outputToNew proc outputFile "Hospitals"  
+

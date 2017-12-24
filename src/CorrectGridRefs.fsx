@@ -23,7 +23,7 @@ type InputTable =
 
 type InputRow = InputTable.Row
 
-let readRows () : InputRow list = 
+let readInputRows () : InputRow list = 
     let workData = new InputTable()
     // In this case filter on column "B" (aka 1)
     // There are bad values in column "A"
@@ -58,7 +58,7 @@ let outFile : string =
     @"G:\work\Projects\events2\Discharge-outfalls-CORRECTED.xlsx"
 
 let main () : unit = 
-    let input = readRows ()
+    let input = readInputRows ()
     let proc = 
         closedXMLWriter { do! tellHeaders headers
                           do! mapMz tellRow1 input }
