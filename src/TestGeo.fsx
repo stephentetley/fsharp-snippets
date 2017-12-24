@@ -42,7 +42,7 @@ let dover2 = {Coord.Eastings = 628458.0<meter>; Coord.Northings =  141168.0<mete
 
 
 let testD1 () = 
-    Coord.haversineDistance (Coord.osgb36PointToWGS84 dover) (Coord.osgb36PointToWGS84 dover2)
+    Coord.haversineDistanceOGSB36Point dover dover2
 
 
 let read01 () = 

@@ -87,6 +87,7 @@
     <None Include="FilePaths\TestFPRose.fsx" />
     <Compile Include="Obsolete\Fact.fs" />
     <Compile Include="Obsolete\JsonOrderedInput.fs" />
+    <Compile Include="Obsolete\XlsWriter.fs" />
     <None Include="Obsolete\ExcelIndexing.fsx" />
     <None Include="Obsolete\ExcelPairwise.fsx" />
     <None Include="Obsolete\ExcelTranspose.fsx" />

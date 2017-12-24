@@ -313,3 +313,10 @@ module Coord =
 
         let ans = radius * c
         ans
+
+    let haversineDistanceOGSB36Point (p1:OSGB36Point) (p2:OSGB36Point) : float<kilometer> = 
+        haversineDistance (osgb36PointToWGS84 p1) (osgb36PointToWGS84 p2) 
+
+    let haversineDistanceOGSB36Grid (g1:OSGB36Grid) (g2:OSGB36Grid) : float<kilometer> = 
+        haversineDistance (osgb36GridToWGS84 g1) (osgb36GridToWGS84 g2) 
+

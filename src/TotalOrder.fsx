@@ -9,6 +9,10 @@ open FSharp.ExcelProvider
 #load @"ExcelUtils.fs"
 open ExcelUtils
 
+// TODO - should use ClosedXMLWriter
+#load @"Obsolete\XlsWriter.fs"
+open XlsWriter
+
 
 let outpath = @"G:\work\Projects\ultrasonics\ultrasonic-updates.xlsx"
 let headers =  
