@@ -15,7 +15,7 @@ open Coord
 // with that.
 
 type InputTable = 
-    ExcelFile< @"G:\work\rtu\IS_barriers\IS_Barriers.xlsx",
+    ExcelFile< @"G:\work\Projects\rtu\IS_barriers\IS_Barriers.xlsx",
                SheetName = "RTU AR",
                ForceString = true >
 
@@ -30,7 +30,9 @@ let buildCoordDatabase () : CoordDB =
     let addLine (db:CoordDB) (rowi:InputRow) = 
         match rowi.``Site Name`` with
         | null -> db
-        | _ ->  let opt = Option.map Coord.enToLatLon  <| Coord.fromOSGridRef10 rowi.``Grid Ref``
+        | _ ->  let opt = Option.map (Coord.enToLatLon << Coord.osgb36GridToPoint)
+                            <| Coord.tryReadOSGB36Grid  rowi.``Grid Ref``
+
                 match opt with
                 | Some(pt:Coord.WGS84Point) -> Map.add rowi.``Site Name`` pt db
                 | None ->db
@@ -38,29 +40,29 @@ let buildCoordDatabase () : CoordDB =
         |> Seq.fold addLine Map.empty
  
 
-let genWKT (order:string list) (db:CoordDB) : string =
-    let make1 (pt:Coord.WGS84Point) : string = sprintf "%f %f" pt.Longitude pt.Latitude
-    let coords =
-        List.fold (fun ac name -> 
-            match Map.tryFind name db with
-            | Some(pt) -> (pt :: ac)
-            | None -> ac)
-            []
-            order
-    let body = String.concat "," <| List.map make1 coords
-    sprintf "oid;wkt\n1;\"LINESTRING(%s)\"" body
+//let genWKT (order:string list) (db:CoordDB) : string =
+//    let make1 (pt:Coord.WGS84Point) : string = sprintf "%f %f" pt.Longitude pt.Latitude
+//    let coords =
+//        List.fold (fun ac name -> 
+//            match Map.tryFind name db with
+//            | Some(pt) -> (pt :: ac)
+//            | None -> ac)
+//            []
+//            order
+//    let body = String.concat "," <| List.map make1 coords
+//    sprintf "oid;wkt\n1;\"LINESTRING(%s)\"" body
 
-let outpath = @"G:\work\rtu\IS_barriers\polygons.csv"
+//let outpath = @"G:\work\rtu\IS_barriers\polygons.csv"
 
  
 
-let main () = 
-    let db = buildCoordDatabase ()
-    let siteOrder : string list = 
-        System.IO.File.ReadLines(inputList)
-            |> Seq.filter (fun (s:string) -> not <| System.String.IsNullOrEmpty s)
-            |> Seq.toList
-    let output = genWKT siteOrder db
-    System.IO.File.WriteAllText (outpath, output)
-    printfn "%s" output
+//let main () = 
+//    let db = buildCoordDatabase ()
+//    let siteOrder : string list = 
+//        System.IO.File.ReadLines(inputList)
+//            |> Seq.filter (fun (s:string) -> not <| System.String.IsNullOrEmpty s)
+//            |> Seq.toList
+//    let output = genWKT siteOrder db
+//    System.IO.File.WriteAllText (outpath, output)
+//    printfn "%s" output
 

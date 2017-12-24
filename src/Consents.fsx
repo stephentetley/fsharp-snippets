@@ -10,7 +10,7 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 open Coord
 
 type ConsentsTable = 
-    ExcelFile< @"G:\work\Projects\T0975_EDM2\Consents-eastings-northings.xlsx",
+    ExcelFile< @"G:\work\Projects\events2\Consents-eastings-northings.xlsx",
                SheetName = "Sheet1",
                ForceString = false >
 
@@ -35,7 +35,7 @@ let printRow (sw:System.IO.StreamWriter) (row:ConsentsRow) : unit =
                 let N = row.``Outfall NGRN`` * 1.0<meter>
                 { Coord.Eastings = E;
                   Coord.Northings = N }
-           let gridref = Coord.fromOSGB36Point pt
+           let gridref = Coord.osgb36PointToGrid pt
            fprintf sw "%s,\"%s\",%s\n" 
                         row.``AIB Reference``
                         row.``Common Name`` 

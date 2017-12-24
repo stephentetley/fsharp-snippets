@@ -11,7 +11,7 @@ open Coord
 
 
 type InputTable = 
-    ExcelFile< @"G:\work\rtu\IS_barriers\IS_Barriers.xlsx",
+    ExcelFile< @"G:\work\Projects\rtu\IS_barriers\IS_Barriers.xlsx",
                SheetName = "RTU AR",
                ForceString = true >
 
@@ -26,7 +26,8 @@ let buildCoordDatabase () : CoordDB =
     let addLine (db:CoordDB) (rowi:InputRow) = 
         match rowi.``Site Name`` with
         | null -> db
-        | _ ->  let opt = Option.map Coord.enToLatLon  <| Coord.fromOSGridRef10 rowi.``Grid Ref``
+        | _ ->  let opt = Option.map (Coord.enToLatLon << Coord.osgb36GridToPoint)
+                            <| Coord.tryReadOSGB36Grid  rowi.``Grid Ref``
                 match opt with
                 | Some(pt:Coord.WGS84Point) -> Map.add rowi.``Site Name`` pt db
                 | None ->db

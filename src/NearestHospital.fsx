@@ -22,7 +22,8 @@ let test01 () =
     for (rowi:HospitalsRow) in hosiptalData.Data do
         match rowi.Name with
         | null -> printfn "<finished>"
-        | _ -> let pt = Option.map Coord.enToLatLon  <| Coord.fromOSGridRef10 rowi.``Grid Reference``
+        | _ -> let pt = Option.map (Coord.enToLatLon << Coord.osgb36GridToPoint)
+                            <| Coord.tryReadOSGB36Grid rowi.``Grid Reference``
                printfn "%s, %s, %A" rowi.Name rowi.``Grid Reference`` pt
 
 [<StructuredFormatDisplay("{Name} ({LatLon})")>]
@@ -39,7 +40,8 @@ let buildHospitalList () =
     let make1 (rowi : HospitalsRow) : Hospital1 option = 
         match rowi.Name with 
         | null -> None
-        | _ -> let optPt = Option.map Coord.enToLatLon  <| Coord.fromOSGridRef10 rowi.``Grid Reference``
+        | _ -> let optPt = Option.map (Coord.enToLatLon << Coord.osgb36GridToPoint)
+                                <| Coord.tryReadOSGB36Grid rowi.``Grid Reference``
                match optPt with
                | Some pt -> Some <| { Name = rowi.Name
                                     ; AddressString = sprintf "%s\n%s\n%s\n%s" rowi.Name rowi.Telephone rowi.Address rowi.Postcode
@@ -113,7 +115,8 @@ let main () =
     for (rowi:AssetRow) in assetData.Data do
         match rowi.Name with
         | null -> printfn "<finished>"
-        | _ -> let opt = Option.map Coord.enToLatLon  <| Coord.fromOSGridRef10 rowi.``Grid Ref``
+        | _ -> let opt = Option.map (Coord.enToLatLon << Coord.osgb36GridToPoint)
+                            <| Coord.tryReadOSGB36Grid rowi.``Grid Ref``
                let best = match opt with
                           | None -> None
                           | Some pt -> findClosest pt hosiptalData
