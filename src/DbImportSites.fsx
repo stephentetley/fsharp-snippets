@@ -31,7 +31,7 @@ let connString =
 let deleteData () = 
     let query1 = "DELETE FROM all_sites;"
     let deleteProc = execNonQuery query1
-    runSQLiteConn deleteProc connString
+    ignore <| runSQLiteConn deleteProc connString
 
 let test02 () : unit = 
     let query1 : string = "SELECT * FROM all_sites"
@@ -39,12 +39,12 @@ let test02 () : unit =
         while reader.Read() do
             printf "%s '%s'\n" (reader.GetString(0)) (reader.GetString(1)) 
     let proc = execReader query1 readProc
-    runSQLiteConn proc connString
+    ignore <| runSQLiteConn proc connString
 
 let test03 () = 
     let query1 : string = "INSERT INTO all_sites (sainum, sitename) VALUES ('SAI0000TEST', 'NAME/TEST');"
     let insertProc = withTransaction <| execNonQuery query1
-    runSQLiteConn insertProc connString
+    ignore <| runSQLiteConn insertProc connString
 
 let makeInsertQuery (row:ImportRow) : string =
     sprintf "INSERT INTO all_sites (%s) VALUES ('%s','%s','%s','%s','%s','%s','%s','%s');"
@@ -65,6 +65,6 @@ let main () : unit =
     let rows = importData.Data |> Seq.filter nullPred |> Seq.toList
     let rowProc (row:ImportRow) : SQLiteConn<int> = execNonQuery <| makeInsertQuery row
     let insertProc = withTransaction <| forMz rows rowProc
-    runSQLiteConn insertProc connString
+    ignore <| runSQLiteConn insertProc connString
 
 

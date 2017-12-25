@@ -83,6 +83,21 @@ let traverseMz (fn: 'a -> ClosedXMLWriter<'b>) (source:seq<'a>) : ClosedXMLWrite
         let (s1,_) = seqMapAccumL (fun st x -> apply1 (fn x) sheet st) rowIx source in (s1,())
 
 
+let mapiM (fn: 'a -> int -> ClosedXMLWriter<'b>) (xs: 'a list) : ClosedXMLWriter<'b list> = 
+    let rec work ac ix list = 
+        match list with
+        | y :: ys -> bindM (fn y ix) (fun b -> work (b::ac) (ix+1) ys)
+        | [] -> unitM <| List.rev ac
+    work [] 0 xs
+
+
+let mapiMz (fn: 'a -> int -> ClosedXMLWriter<'b>) (xs: 'a list) : ClosedXMLWriter<unit> = 
+    let rec work ix list = 
+        match list with
+        | y :: ys -> bindM (fn y ix) (fun _ -> work (ix+1) ys)
+        | [] -> unitM ()
+    work 0 xs
+
 // ClosedXMLWriter-specific operations
 
 let tellRow (values:string list) : ClosedXMLWriter<unit> =

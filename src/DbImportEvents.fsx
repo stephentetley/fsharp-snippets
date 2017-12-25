@@ -46,7 +46,7 @@ let test02 () : unit =
         while reader.Read() do
             printf "%s '%s'\n" (reader.GetString(0)) (reader.GetString(1)) 
     let proc = execReader query1 readProc
-    runSQLiteConn proc connString
+    ignore <| runSQLiteConn proc connString
 
 
 
@@ -80,7 +80,7 @@ let insertPermits () : unit =
     let allrows = importData.Data |> Seq.filter nullPred |> Seq.toList
     let permitInsProc (row:ImportRow) : SQLiteConn<int> = execNonQuery <| makeInsertPermit row
     let insertProc = withTransaction <| forMz allrows permitInsProc
-    runSQLiteConn insertProc connString
+    ignore <| runSQLiteConn insertProc connString
 
 
 let insertSites () : unit = 
@@ -91,7 +91,7 @@ let insertSites () : unit =
         importData.Data |> Seq.filter nullPred |> Seq.distinctBy distProc |> Seq.toList
     let siteInsProc (row:ImportRow) : SQLiteConn<int> = execNonQuery <| makeInsertSite row
     let insertProc = withTransaction <| forMz siterows siteInsProc
-    runSQLiteConn insertProc connString
+    ignore <| runSQLiteConn insertProc connString
 
 
 let insertIWPermits () : unit = 
@@ -100,4 +100,4 @@ let insertIWPermits () : unit =
     let allrows = iwData.Data |> Seq.filter nullPred |> Seq.toList
     let iwInsProc (row:IWRow) : SQLiteConn<int> = execNonQuery <| makeInsertIWPermit row
     let insertProc = withTransaction <| forMz allrows iwInsProc
-    runSQLiteConn insertProc connString
+    ignore <| runSQLiteConn insertProc connString

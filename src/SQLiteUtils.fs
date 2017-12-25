@@ -17,19 +17,31 @@ let cleanseValue (s:string) : string = (escapeValueText s).Trim()
 
 
 // SQLiteConn Monad
+type Result<'a> = 
+    | Ok of 'a
+    | Err of string
 
-type SQLiteConn<'a> = SQLiteConn of (SQLite.SQLiteConnection -> 'a)
+let private resultToChoice (result:Result<'a>) : Choice<string,'a> =
+    match result with
+    | Err(msg) -> Choice1Of2(msg)
+    | Ok(a) -> Choice2Of2(a)
 
-let inline private apply1 (ma : SQLiteConn<'a>) (conn:SQLite.SQLiteConnection) : 'a = 
+// A Reader-Error monad
+type SQLiteConn<'a> = SQLiteConn of (SQLite.SQLiteConnection -> Result<'a>)
+
+let inline private apply1 (ma : SQLiteConn<'a>) (conn:SQLite.SQLiteConnection) : Result<'a> = 
     let (SQLiteConn f) = ma in f conn
 
-let inline private unitM (x:'a) : SQLiteConn<'a> = SQLiteConn (fun r -> x)
+let inline private unitM (x:'a) : SQLiteConn<'a> = SQLiteConn (fun _ -> Ok(x))
 
 
 let inline private bindM (ma:SQLiteConn<'a>) (f : 'a -> SQLiteConn<'b>) : SQLiteConn<'b> =
-    SQLiteConn (fun r -> let a = apply1 ma r in apply1 (f a) r)
+    SQLiteConn <| fun conn -> 
+        match apply1 ma conn with
+        | Ok(a) -> apply1 (f a) conn
+        | Err(msg) -> Err(msg)
 
-let fail : SQLiteConn<'a> = SQLiteConn (fun r -> failwith "SQLiteConn fail")
+let fail : SQLiteConn<'a> = SQLiteConn (fun r -> Err "SQLiteConn fail")
 
 
 type SQLiteConnBuilder() = 
@@ -44,8 +56,10 @@ let (sqliteConn:SQLiteConnBuilder) = new SQLiteConnBuilder()
 // Common operations
 let fmapM (fn:'a -> 'b) (ma:SQLiteConn<'a>) : SQLiteConn<'b> = 
     SQLiteConn <| fun conn ->
-        let ans = apply1 ma conn in fn ans
-        
+       match apply1 ma conn with
+       | Ok(ans) -> Ok <| fn ans
+       | Err(msg) -> Err(msg)
+
 let mapM (fn:'a -> SQLiteConn<'b>) (xs:'a list) : SQLiteConn<'b list> = 
     let rec work ac ys = 
         match ys with
@@ -66,22 +80,32 @@ let forMz (xs:'a list) (fn:'a -> SQLiteConn<'b>) : SQLiteConn<unit> = mapMz fn x
 
 
 // SQLiteConn specific operations
-let runSQLiteConn (ma:SQLiteConn<'a>) (connString:string) : 'a = 
+let throwError (msg:string) : SQLiteConn<'a> = 
+    SQLiteConn <| fun _ -> Err(msg)
+
+let runSQLiteConn (ma:SQLiteConn<'a>) (connString:string) : Choice<string,'a> = 
     let dbconn = new SQLiteConnection(connString)
     dbconn.Open()
     let a = match ma with | SQLiteConn(f) -> f dbconn
     dbconn.Close()
-    a
+    resultToChoice a
+
     
-let liftConn (proc:SQLite.SQLiteConnection -> 'a) : SQLiteConn<'a> = SQLiteConn proc
+let liftConn (proc:SQLite.SQLiteConnection -> 'a) : SQLiteConn<'a> = 
+    SQLiteConn <| fun conn -> 
+        try 
+            let ans = proc conn in Ok (ans)
+        with
+        | ex -> Err(ex.ToString())
+
     
 let execNonQuery (statement:string) : SQLiteConn<int> = 
-    SQLiteConn <| fun conn -> 
+    liftConn <| fun conn -> 
         let cmd : SQLiteCommand = new SQLiteCommand(statement, conn)
         cmd.ExecuteNonQuery ()
 
 let execReader (statement:string) (proc:SQLite.SQLiteDataReader -> 'a) : SQLiteConn<'a> =
-    SQLiteConn <| fun conn -> 
+    liftConn <| fun conn -> 
         let cmd : SQLiteCommand = new SQLiteCommand(statement, conn)
         let reader : SQLiteDataReader = cmd.ExecuteReader()
         let ans = proc reader
@@ -92,6 +116,10 @@ let execReader (statement:string) (proc:SQLite.SQLiteDataReader -> 'a) : SQLiteC
 let withTransaction (ma:SQLiteConn<'a>) : SQLiteConn<'a> = 
     SQLiteConn <| fun conn -> 
         let trans = conn.BeginTransaction(System.Data.IsolationLevel.ReadCommitted)
-        let ans = apply1 ma conn
-        trans.Commit ()
-        ans
+        try 
+            let ans = apply1 ma conn
+            match ans with
+            | Ok(a) -> trans.Commit () ; ans
+            | Err(msg) -> trans.Rollback () ; ans
+        with 
+        | ex -> trans.Rollback() ; Err( ex.ToString() )
