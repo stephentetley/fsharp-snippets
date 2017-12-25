@@ -6,9 +6,11 @@ open FSharp.ExcelProvider
 #r "Microsoft.Office.Interop.Excel"
 open Microsoft.Office.Interop
 
-#load "Coord.fs"
-open Coord
+#load "Geo.fs"
+open Geo
 
+// TODO - should use CsvWriter...
+// Csv is favoured over Xls so it can be imported into QGIS
 
 type InputTable = 
     ExcelFile< @"G:\work\Projects\rtu\IS_barriers\IS_Barriers.xlsx",
@@ -18,7 +20,7 @@ type InputTable =
 type InputRow = InputTable.Row
 
 
-type CoordDB = Map<string,Coord.WGS84Point>
+type CoordDB = Map<string, Coord.WGS84Point>
 
 
 let buildCoordDatabase () : CoordDB = 
@@ -37,12 +39,13 @@ let buildCoordDatabase () : CoordDB =
 
 type OrderGroups = (string list) list
 
-let genLINESTRING (coords:Coord.WGS84Point list) : string =
-    let make1 (pt:Coord.WGS84Point) : string = sprintf "%f %f" pt.Longitude pt.Latitude
-    let body = String.concat "," <| List.map make1 coords
-    sprintf "\"LINESTRING(%s)\"" body
+// Can go into Coord...
+//let genLINESTRING (coords:Coord.WGS84Point list) : string =
+//    let make1 (pt:Coord.WGS84Point) : string = sprintf "%f %f" pt.Longitude pt.Latitude
+//    let body = String.concat "," <| List.map make1 coords
+//    sprintf "\"LINESTRING(%s)\"" body
 
-let findPoints (sites:string list)  (db:CoordDB) : Coord.WGS84Point list = 
+let findPoints (sites:string list)  (db:CoordDB) : Geo.Coord.WGS84Point list = 
     List.fold (fun ac name -> 
         match Map.tryFind name db with
         | Some(pt) -> (pt :: ac)
@@ -53,7 +56,7 @@ let findPoints (sites:string list)  (db:CoordDB) : Coord.WGS84Point list =
 let genWKT (orders:OrderGroups) (db:CoordDB) : string =
     let pointGroups = List.map (fun ss -> findPoints ss db) orders
     let textlines = 
-        List.mapi (fun i pts -> sprintf "%i;%s" (i+1) (genLINESTRING pts)) pointGroups
+        List.mapi (fun i pts -> sprintf "%i;%s" (i+1) (Wkt.genLINESTRING pts)) pointGroups
     String.concat "\n" ("oid;wkt" :: textlines)
 
 let partition (lines:string list) : OrderGroups = 
@@ -70,9 +73,9 @@ let partition (lines:string list) : OrderGroups =
             else go xs (x::ac1) acAll
     go lines [] []
 
-let outpath = @"G:\work\rtu\IS_barriers\siteorder-output.csv"
+let outpath = @"G:\work\Projects\rtu\IS_barriers\siteorder-output.csv"
 
-let inputList = @"G:\work\rtu\IS_barriers\sites-in-order.txt"
+let inputList = @"G:\work\Projects\rtu\IS_barriers\sites-in-order.txt"
  
 
 let main () = 

@@ -1,12 +1,13 @@
-﻿namespace Coord
+﻿namespace Geo
 
 open System
 open System.Text.RegularExpressions
 open Microsoft.FSharp.Core
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 
-
 module Coord = 
+
+    // kilometer and degree can probably go into their own module...
 
     // Units of measure make the internals very complicated (perhaps limit to the external interface?)
     [<Measure>]
@@ -40,7 +41,7 @@ module Coord =
     let inline private rad2deg (r : float) = (180.0/Math.PI) * r
 
     /// fromDMS :: Int -> Int -> Double -> DDegrees
-    let inline private fromDMS (d : int) (m : int) (s : float) : float<degree> = 
+    let makeDegree (d : int) (m : int) (s : float) : float<degree> = 
         LanguagePrimitives.FloatWithMeasure (float d + float m / 60.0 + s / 3600.0)
 
     // ellipsoid constants for Airy 1830
@@ -320,3 +321,9 @@ module Coord =
     let haversineDistanceOGSB36Grid (g1:OSGB36Grid) (g2:OSGB36Grid) : float<kilometer> = 
         haversineDistance (osgb36GridToWGS84 g1) (osgb36GridToWGS84 g2) 
 
+module Wkt = 
+
+    let genLINESTRING (coords:Coord.WGS84Point list) : string =
+        let make1 (pt:Coord.WGS84Point) : string = sprintf "%f %f" pt.Longitude pt.Latitude
+        let body = String.concat "," <| List.map make1 coords
+        sprintf "\"LINESTRING(%s)\"" body

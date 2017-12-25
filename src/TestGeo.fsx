@@ -2,14 +2,14 @@
 
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 
-#load "Coord.fs"
-open Coord
+#load "Geo.fs"
+open Geo
 
 
 let testZ2 = Char.GetNumericValue '6'
 
-let phi1 : float<Coord.degree> = Coord.fromDMS 52 39 27.2531
-let lam1 : float<Coord.degree> = Coord.fromDMS 1 43 4.5177
+let phi1 : float<Coord.degree> = Coord.makeDegree 52 39 27.2531
+let lam1 : float<Coord.degree> = Coord.makeDegree 1 43 4.5177
 
 let test01 = Coord.wgs84ToOSGB36Point {Latitude = phi1; Longitude = lam1}
 let test02 = Coord.osgb36PointToWGS84 {Eastings = 651409.903<meter>; Northings = 313177.270<meter>}

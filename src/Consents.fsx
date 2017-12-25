@@ -6,8 +6,8 @@ open FSharp.ExcelProvider
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 
 
-#load "Coord.fs"
-open Coord
+#load "Geo.fs"
+open Geo
 
 type ConsentsTable = 
     ExcelFile< @"G:\work\Projects\events2\Consents-eastings-northings.xlsx",

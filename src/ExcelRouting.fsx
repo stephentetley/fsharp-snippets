@@ -2,8 +2,8 @@
 #r "ExcelProvider.dll"
 open FSharp.ExcelProvider
 
-#load "Coord.fs"
-open Coord
+#load "Geo.fs"
+open Geo
 
 
 type RoutingTable = 

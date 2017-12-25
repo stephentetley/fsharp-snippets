@@ -6,9 +6,11 @@ open FSharp.ExcelProvider
 #r "Microsoft.Office.Interop.Excel"
 open Microsoft.Office.Interop
 
-#load "Coord.fs"
-open Coord
+#load "Geo.fs"
+open Geo
 
+#I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
+#r "FSharpx.Collections"
 #I @"..\packages\DocumentFormat.OpenXml.2.7.2\lib\net46\"
 #I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
 #I @"..\packages\ClosedXML.0.90.0\lib\net452\"

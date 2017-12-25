@@ -95,7 +95,7 @@
     <None Include="Obsolete\TestFact.fsx" />
     <None Include="Obsolete\XlsTrim.fsx" />
     <None Include="Obsolete\XlsTrim2.fsx" />
-    <Compile Include="Coord.fs" />
+    <Compile Include="Geo.fs" />
     <Compile Include="ExcelUtils.fs" />
     <Compile Include="JsonOutput.fs" />
     <Compile Include="StringUtils.fs" />

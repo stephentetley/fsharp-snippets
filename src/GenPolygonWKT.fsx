@@ -6,8 +6,8 @@ open FSharp.ExcelProvider
 #r "Microsoft.Office.Interop.Excel"
 open Microsoft.Office.Interop
 
-#load "Coord.fs"
-open Coord
+#load "Geo.fs"
+open Geo
 
 
 // TODO - all this code is just a placeholder
