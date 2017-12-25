@@ -322,8 +322,68 @@ module Coord =
         haversineDistance (osgb36GridToWGS84 g1) (osgb36GridToWGS84 g2) 
 
 module Wkt = 
+    
+    let parens (s:string) : string = sprintf "(%s)" s
+
+    let inline private printPoint (coord:Coord.WGS84Point) : string = 
+        sprintf "%f %f" coord.Longitude coord.Latitude
+
+    let inline private printPointList (coords:Coord.WGS84Point list) : string = 
+        String.concat ", " <| List.map printPoint coords
+    
+    let inline private printPointListParens (coords:Coord.WGS84Point list) : string = 
+        String.concat ", " <| List.map (parens << printPoint) coords
+
+    let inline private printListOfPointLists (listoflists:Coord.WGS84Point list list) = 
+        let nonempties = List.filter (not << List.isEmpty) listoflists
+        String.concat ", " <| List.map (parens << printPointList) nonempties 
+
+
+    let private closePolygon (coords:Coord.WGS84Point list) : Coord.WGS84Point list = 
+        match coords with
+        | [] -> []
+        | (hd::xs) -> 
+            let rec proc ac rest = 
+                match rest with
+                | [] -> List.rev ac
+                | [y] -> 
+                    if y = hd then List.rev (y::ac) else List.rev (hd::y::ac)
+                | (y::ys) -> proc (y::ac) ys
+            proc [hd] xs 
+
+    let genPOINT (coord:Coord.WGS84Point) : string = 
+        sprintf  "POINT(%f %f)" coord.Longitude coord.Latitude
+
 
     let genLINESTRING (coords:Coord.WGS84Point list) : string =
-        let make1 (pt:Coord.WGS84Point) : string = sprintf "%f %f" pt.Longitude pt.Latitude
-        let body = String.concat "," <| List.map make1 coords
-        sprintf "\"LINESTRING(%s)\"" body
+        match coords with
+        | [] -> "LINESTRING EMPTY"
+        | _ -> sprintf "\"LINESTRING(%s)\"" (printPointList coords)
+
+    // User must ensure points are in counter-clockwise direction
+    let genPOLYGON1 (coords:Coord.WGS84Point list) : string =
+        match coords with
+        | [] -> "POLYGON EMPTY"
+        | _ -> 
+            let closedlist = closePolygon coords
+            sprintf "\"POLYGON(%s)\"" (printPointList closedlist)       
+
+    // User must ensure exterior points are in counter-clockwise direction
+    // and interior polygon points are in clockwise direction.
+    let genPOLYGON (exterior:Coord.WGS84Point list) (interiors:Coord.WGS84Point list list) : string =
+        match exterior with
+        | [] -> "POLYGON EMPTY"
+        | _ -> 
+            let closeExt = closePolygon exterior
+            let closedInts = List.map closePolygon interiors
+            match closedInts with
+            | [] -> sprintf "\"POLYGON(%s)\"" (printPointList closeExt)   
+            | _ -> 
+                sprintf "\"POLYGON((%s), %s)\"" (printPointList closeExt) (printListOfPointLists closedInts)
+                    
+    let genMULTIPOINT (coords:Coord.WGS84Point list) : string =
+        match coords with
+        | [] -> "MULTIPOINT EMPTY"
+        | _ -> sprintf "\"MULTIPOINT(%s)\"" (printPointListParens coords)
+
+    // TODO MULTILINESTRING MULTIPOLYGON and reading...
