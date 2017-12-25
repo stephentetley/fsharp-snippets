@@ -32,7 +32,7 @@ type SQLiteConn<'a> = SQLiteConn of (SQLite.SQLiteConnection -> Result<'a>)
 let inline private apply1 (ma : SQLiteConn<'a>) (conn:SQLite.SQLiteConnection) : Result<'a> = 
     let (SQLiteConn f) = ma in f conn
 
-let inline private unitM (x:'a) : SQLiteConn<'a> = SQLiteConn (fun _ -> Ok(x))
+let inline private unitM (x:'a) : SQLiteConn<'a> = SQLiteConn (fun _ -> Ok x)
 
 
 let inline private bindM (ma:SQLiteConn<'a>) (f : 'a -> SQLiteConn<'b>) : SQLiteConn<'b> =
@@ -80,9 +80,6 @@ let forMz (xs:'a list) (fn:'a -> SQLiteConn<'b>) : SQLiteConn<unit> = mapMz fn x
 
 
 // SQLiteConn specific operations
-let throwError (msg:string) : SQLiteConn<'a> = 
-    SQLiteConn <| fun _ -> Err(msg)
-
 let runSQLiteConn (ma:SQLiteConn<'a>) (connString:string) : Choice<string,'a> = 
     let dbconn = new SQLiteConnection(connString)
     dbconn.Open()
@@ -90,6 +87,8 @@ let runSQLiteConn (ma:SQLiteConn<'a>) (connString:string) : Choice<string,'a> =
     dbconn.Close()
     resultToChoice a
 
+let throwError (msg:string) : SQLiteConn<'a> = 
+    SQLiteConn <| fun _ -> Err(msg)
     
 let liftConn (proc:SQLite.SQLiteConnection -> 'a) : SQLiteConn<'a> = 
     SQLiteConn <| fun conn -> 
