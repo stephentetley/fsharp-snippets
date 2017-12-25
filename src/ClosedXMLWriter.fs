@@ -1,5 +1,8 @@
 ﻿module ClosedXMLWriter
 
+// For Seq.tail
+open FSharpx.Collections
+
 open ClosedXML
 
 type ClosedXMLSheet = ClosedXML.Excel.IXLWorksheet
@@ -60,7 +63,24 @@ let mapMz (fn: 'a -> ClosedXMLWriter<'b>) (xs: 'a list) : ClosedXMLWriter<unit> 
         | [] -> unitM ()
     work xs
 
-let forMz (xs:'a list) (fn:'a -> ClosedXMLWriter<'b>) : ClosedXMLWriter<unit> = mapMz fn xs
+// This is the natural implementation for a traverseM with a state monad
+let private seqMapAccumL (fn:'st -> 'a -> ('st * 'b)) (state:'st) (source:seq<'a>) : ('st * seq<'b>) = 
+    let rec work (st:'st) (src:seq<'a>) = 
+        if Seq.isEmpty src then (st, seq{ yield! [] })
+        else 
+            let a = Seq.head src
+            let (st1,b) = fn st a
+            let (st2,rest) = work st1 (Seq.tail src)
+            (st2, seq { yield b; yield! rest })
+    work state source
+
+let traverseM (fn: 'a -> ClosedXMLWriter<'b>) (source:seq<'a>) : ClosedXMLWriter<seq<'b>> = 
+    ClosedXMLWriter <| fun sheet rowIx ->
+        seqMapAccumL (fun st x -> apply1 (fn x) sheet st) rowIx source
+
+let traverseMz (fn: 'a -> ClosedXMLWriter<'b>) (source:seq<'a>) : ClosedXMLWriter<unit> = 
+    ClosedXMLWriter <| fun sheet rowIx ->
+        let (s1,_) = seqMapAccumL (fun st x -> apply1 (fn x) sheet st) rowIx source in (s1,())
 
 
 // ClosedXMLWriter-specific operations

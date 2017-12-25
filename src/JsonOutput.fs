@@ -51,6 +51,18 @@ let mapMz (fn:'a -> JsonOutput<'b>) (xs:'a list) : JsonOutput<unit> =
 
 let forMz (xs:'a list) (fn:'a -> JsonOutput<'b>) : JsonOutput<unit> = mapMz fn xs
 
+let traverseM (fn: 'a -> JsonOutput<'b>) (source:seq<'a>) : JsonOutput<seq<'b>> = 
+    JsonOutput <| fun handle ->
+        Seq.map (fun x -> let mf = fn x in apply1 mf handle) source
+
+// Need to be strict - hence use a fold
+let traverseMz (fn: 'a -> JsonOutput<'b>) (source:seq<'a>) : JsonOutput<unit> = 
+    JsonOutput <| fun handle ->
+        Seq.fold (fun ac x -> 
+                    let ans  = apply1 (fn x) handle in ac) 
+                 () 
+                 source 
+
 // JsonOutput-specific operations
 
 let runJsonOutput (ma:JsonOutput<'a>) (indent:int) (outputFile:string) : 'a = 

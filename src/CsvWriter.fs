@@ -7,6 +7,7 @@ let quoteField (input:string) : string =
     | null -> "\"\""
     | _ -> sprintf "\"%s\"" (input.Replace("\"", "\"\""))
 
+// Quote a field containing comma
 let testQuoteField (input:string) : string = 
     match input with
         | null -> "\"\""

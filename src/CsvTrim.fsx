@@ -52,3 +52,26 @@ let test01 () : unit =
 
 let test02 () = 
     printfn "%s" <| quoteField "\"Hello.\" said Peter."
+
+// thinking about how to implement traverseM for a state monad...
+let twolist : seq<string> = seq {
+    yield "one"
+    yield "two"
+    yield! [] }
+
+let test03 () = Seq.toList twolist
+
+let seqMapAccumL (fn:'st -> 'a -> ('st * 'b)) (state:'st) (source:seq<'a>) : ('st * seq<'b>) = 
+    let rec work (st:'st) (src:seq<'a>) = 
+        if Seq.isEmpty src then (st, seq{ yield! [] })
+        else 
+            let a = Seq.head src
+            let (st1,b) = fn st a
+            let (st2,rest) = work st1 (Seq.tail src)
+            (st2, seq { yield b; yield! rest })
+    work state source
+
+let test04 () = 
+    let input = ["a"; "b"; "c"]
+    seqMapAccumL (fun st a -> (st+1, String.replicate st a)) 1 (List.toSeq input)
+
