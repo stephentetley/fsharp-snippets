@@ -8,9 +8,9 @@ open Microsoft.Office.Interop
 
 #load "Geo.fs"
 open Geo
+#load "CsvWriter.fs"
+open CsvWriter
 
-// TODO - should use CsvWriter...
-// Csv is favoured over Xls so it can be imported into QGIS
 
 type InputTable = 
     ExcelFile< @"G:\work\Projects\rtu\IS_barriers\IS_Barriers.xlsx",
@@ -32,18 +32,13 @@ let buildCoordDatabase () : CoordDB =
                             <| Coord.tryReadOSGB36Grid  rowi.``Grid Ref``
                 match opt with
                 | Some(pt:Coord.WGS84Point) -> Map.add rowi.``Site Name`` pt db
-                | None ->db
+                | None -> db
     inputData.Data 
         |> Seq.fold addLine Map.empty
  
 
 type OrderGroups = (string list) list
 
-// Can go into Coord...
-//let genLINESTRING (coords:Coord.WGS84Point list) : string =
-//    let make1 (pt:Coord.WGS84Point) : string = sprintf "%f %f" pt.Longitude pt.Latitude
-//    let body = String.concat "," <| List.map make1 coords
-//    sprintf "\"LINESTRING(%s)\"" body
 
 let findPoints (sites:string list)  (db:CoordDB) : Geo.Coord.WGS84Point list = 
     List.fold (fun ac name -> 
@@ -53,11 +48,14 @@ let findPoints (sites:string list)  (db:CoordDB) : Geo.Coord.WGS84Point list =
         []
         sites
 
-let genWKT (orders:OrderGroups) (db:CoordDB) : string =
+let genWKT (orders:OrderGroups) (db:CoordDB) : CsvWriter<unit> =
     let pointGroups = List.map (fun ss -> findPoints ss db) orders
-    let textlines = 
-        List.mapi (fun i pts -> sprintf "%i;%s" (i+1) (Wkt.genLINESTRING pts)) pointGroups
-    String.concat "\n" ("oid;wkt" :: textlines)
+    csvWriter { 
+        do! tellRow ["oid"; "wkt"] 
+        do! mapiMz (fun pts i -> 
+                        tellRow [ sprintf "%i" (i+1)
+                                ; Wkt.genLINESTRING pts ]) pointGroups }
+
 
 let partition (lines:string list) : OrderGroups = 
     let safecons (xs:string list) (xss:OrderGroups) = 
@@ -84,6 +82,5 @@ let main () =
         System.IO.File.ReadLines(inputList)
             |> Seq.toList 
             |> partition
-    let output = genWKT siteOrders db
-    System.IO.File.WriteAllText (outpath, output)
-    printfn "%s" output
+    outputToNew (genWKT siteOrders db) outpath ";"
+

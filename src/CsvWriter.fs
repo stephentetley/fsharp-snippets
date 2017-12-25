@@ -80,7 +80,19 @@ let traverseMz (fn: 'a -> CsvWriter<'b>) (source:seq<'a>) : CsvWriter<unit> =
                  () 
                  source 
 
+let mapiM (fn: 'a -> int -> CsvWriter<'b>) (xs: 'a list) : CsvWriter<'b list> = 
+    let rec work ac ix list = 
+        match list with
+        | y :: ys -> bindM (fn y ix) (fun b -> work (b::ac) (ix+1) ys)
+        | [] -> unitM <| List.rev ac
+    work [] 0 xs
 
+let mapiMz (fn: 'a -> int -> CsvWriter<'b>) (xs: 'a list) : CsvWriter<unit> = 
+    let rec work ix list = 
+        match list with
+        | y :: ys -> bindM (fn y ix) (fun _ -> work (ix+1) ys)
+        | [] -> unitM ()
+    work 0 xs
 
 // CsvWriter-specific operations
 
