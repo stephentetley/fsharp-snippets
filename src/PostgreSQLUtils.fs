@@ -75,6 +75,13 @@ let runPGSQLConn (ma:PGSQLConn<'a>) (connString:string) : Choice<string,'a> =
 let throwError (msg:string) : PGSQLConn<'a> = 
     PGSQLConn <| fun _ -> Err(msg)
 
+let annotateError (msg:string) (ma:PGSQLConn<'a>) : PGSQLConn<'a> = 
+    PGSQLConn <| fun conn -> 
+        match apply1 ma conn with
+        | Err(_) -> Err msg
+        | Ok(a) -> Ok a
+
+
 let liftConn (proc:NpgsqlConnection -> 'a) : PGSQLConn<'a> = 
     PGSQLConn <| fun conn -> 
         try 

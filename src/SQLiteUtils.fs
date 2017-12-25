@@ -89,7 +89,13 @@ let runSQLiteConn (ma:SQLiteConn<'a>) (connString:string) : Choice<string,'a> =
 
 let throwError (msg:string) : SQLiteConn<'a> = 
     SQLiteConn <| fun _ -> Err(msg)
-    
+
+let annotateError (msg:string) (ma:SQLiteConn<'a>) : SQLiteConn<'a> = 
+    SQLiteConn <| fun conn -> 
+        match apply1 ma conn with
+        | Err(_) -> Err msg
+        | Ok(a) -> Ok a
+        
 let liftConn (proc:SQLite.SQLiteConnection -> 'a) : SQLiteConn<'a> = 
     SQLiteConn <| fun conn -> 
         try 
