@@ -1,50 +1,42 @@
-﻿// Use FSharp.Data for CSV processing
-
+﻿// Use FSharp.Data for CSV reading
 #I @"..\packages\FSharp.Data.2.3.3\lib\net40"
 #r @"FSharp.Data.dll"
 open FSharp.Data
 
-// Use Excel for csv-to-xls and xls-to-csv
+// Use Excel for csv-to-xls and xls-to-csv (defined in ExcelUtils)
 #I @"C:\WINDOWS\assembly\GAC_MSIL\Microsoft.Office.Interop.Excel\15.0.0.0__71e9bce111e9429c"
 #r "Microsoft.Office.Interop.Excel"
 open Microsoft.Office.Interop
-
-
 #load "ExcelUtils.fs"
 open ExcelUtils
 
+#load "CsvWriter.fs"
+open CsvWriter
 
-// NOTE - CSV processing is very fast
+// NOTE - CSV processing with FSharp.Data is very fast
 // To trim basic (macro-free) Xls files, going to and from CSV looks like
-// a good choice, given that Excel is very slow.
-
-//let inpath = System.IO.Path.Combine(__SOURCE_DIRECTORY__,"..","data/rts.csv")
-//let outpath = System.IO.Path.Combine(__SOURCE_DIRECTORY__,"..","data/rts.out.csv")
-
-let inpath = @"G:\work\rtu\RTS\RTS-outstation-dump.csv"
-let outpath = @"G:\work\rtu\RTS\RTS-outstation-dump-TRIM1.csv"
+// a good choice, given that reading and writing Excel is very slow.
 
 
-// Err... Headers don't seem to be double quoted if contain commas
-// but subsequent rows are okay. This doesn't fix things... 
-let safe (s:string) : string =
-    if s.Contains(",") then sprintf "\"%s\"" s else s
+let inpath = @"G:\work\Projects\rtu\RTS\RTS-outstation-dump.csv"
+let outpath = @"G:\work\Projects\rtu\RTS\RTS-outstation-dump-TRIM2.csv"
 
-let truncRow (parent:CsvFile) (rowi:CsvRow) : CsvRow = 
-    let cols = Array.map (fun (x : string) -> x.Trim()) rowi.Columns
-    new CsvRow(parent, cols)
+
+
+let truncRow (row:CsvRow) : string list = 
+    let cols = Array.map (fun (x : string) -> testQuoteField <| x.Trim()) row.Columns
+    Array.toList cols
 
 let trimCSV (inputFile:string) (outputFile:string) (csvHasHeaders:bool): unit =
     let csv = CsvFile.Load(uri=inputFile, hasHeaders=csvHasHeaders, quote='"')
-    let trimRow : CsvRow -> CsvRow = truncRow csv
-    let out = csv.Map (System.Func<CsvRow,CsvRow>trimRow)
-    out.Save(path = outputFile, separator=',')
+    let proc = 
+        traverseMz (fun (row:CsvRow) -> tellRow (truncRow row)) csv.Rows
+    outputToNew proc outputFile ","           
+
 
 let main () = 
-    let rtsIn = CsvFile.Load(inpath)
-    let tr = fun row -> truncRow rtsIn row
-    let out = rtsIn.Map  (System.Func<CsvRow,CsvRow>tr)
-    out.Save(path = outpath, separator=',')
+    trimCSV inpath outpath false
+
 
 
 // Note - this test case has headers with commas that are double quoted.
@@ -57,3 +49,6 @@ let test01 () : unit =
     covertToCSV input csv1
     trimCSV csv1 csv2 false 
     covertToXlOpenXML csv2 output 
+
+let test02 () = 
+    printfn "%s" <| quoteField "\"Hello.\" said Peter."

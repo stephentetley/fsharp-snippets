@@ -102,6 +102,7 @@
     <Compile Include="PostgreSQLUtils.fs" />
     <Compile Include="SQLiteUtils.fs" />
     <Compile Include="ClosedXMLWriter.fs" />
+    <Compile Include="CsvWriter.fs" />
     <None Include="CsvTrim.fsx" />
     <None Include="TestGeo.fsx" />
     <None Include="Json1.fsx" />

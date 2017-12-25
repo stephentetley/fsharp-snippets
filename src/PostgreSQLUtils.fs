@@ -19,9 +19,9 @@ let fail : PGSQLConn<'a> = PGSQLConn (fun r -> failwith "PGSQLConn fail")
 
 
 type PGSQLConnBuilder() = 
-        member self.Return x = unitM x
-        member self.Bind (p,f) = bindM p f
-        member self.Zero () = unitM ()
+    member self.Return x = unitM x
+    member self.Bind (p,f) = bindM p f
+    member self.Zero () = unitM ()
 
 let (pgsqlConn:PGSQLConnBuilder) = new PGSQLConnBuilder()
 

@@ -33,9 +33,9 @@ let fail : SQLiteConn<'a> = SQLiteConn (fun r -> failwith "SQLiteConn fail")
 
 
 type SQLiteConnBuilder() = 
-        member self.Return x = unitM x
-        member self.Bind (p,f) = bindM p f
-        member self.Zero () = unitM ()
+    member self.Return x = unitM x
+    member self.Bind (p,f) = bindM p f
+    member self.Zero () = unitM ()
 
 let (sqliteConn:SQLiteConnBuilder) = new SQLiteConnBuilder()
 

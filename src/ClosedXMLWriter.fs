@@ -32,9 +32,9 @@ let fail : ClosedXMLWriter<'a> =
     ClosedXMLWriter (fun r s -> failwith "ClosedXMLWriter fail")
 
 type ClosedXMLWriterBuilder() = 
-        member self.Return x = unitM x
-        member self.Bind (p,f) = bindM p f
-        member self.Zero () = unitM ()
+    member self.Return x = unitM x
+    member self.Bind (p,f) = bindM p f
+    member self.Zero () = unitM ()
 
 let closedXMLWriter:ClosedXMLWriterBuilder = new ClosedXMLWriterBuilder()
 
@@ -51,12 +51,17 @@ let mapM (fn: 'a -> ClosedXMLWriter<'b>) (xs: 'a list) : ClosedXMLWriter<'b list
         | [] -> unitM <| List.rev ac
     work [] xs
 
+let forM (xs:'a list) (fn:'a -> ClosedXMLWriter<'b>) : ClosedXMLWriter<'b list> = mapM fn xs
+
 let mapMz (fn: 'a -> ClosedXMLWriter<'b>) (xs: 'a list) : ClosedXMLWriter<unit> = 
     let rec work list = 
         match list with
         | y :: ys -> bindM (fn y) (fun _ -> work ys)
         | [] -> unitM ()
     work xs
+
+let forMz (xs:'a list) (fn:'a -> ClosedXMLWriter<'b>) : ClosedXMLWriter<unit> = mapMz fn xs
+
 
 // ClosedXMLWriter-specific operations
 
