@@ -8,6 +8,8 @@ open FSharp.ExcelProvider
 
 open System
 
+#load "CsvWriter.fs"
+open CsvWriter
 
 // Just names. ps> dir | select -exp name
 let directoryListing = @"G:\work\Projects\rtu\dir.txt"
@@ -41,13 +43,14 @@ let buildListing () =
         |> Seq.filter emptyPred
         |> Seq.sort
 
-let processUpdate (sw:System.IO.StreamWriter) (name:string) : unit = 
-    fprintf sw "%s,To make\n" name
+let processUpdate (name:string) : CsvWriter<unit> = 
+    tellRow [ name; "To make"]
 
-let processMaster (sw:System.IO.StreamWriter) (row:MasterRow) : unit = ()
+let processMaster (row:MasterRow) : CsvWriter<unit> = 
+    csvWriter.Return ()
 
-let processMatch (sw:System.IO.StreamWriter) (row:MasterRow) (name:string) : unit =
-    fprintf sw "%s,Exists\n" name
+let processMatch (row:MasterRow) (name:string) : CsvWriter<unit> =
+    tellRow [ name; "Exists" ]
 
 let compareElements (row:MasterRow) (name:string) : int = 
     let name1 = noPunctuation <| name.Trim()
@@ -56,25 +59,25 @@ let compareElements (row:MasterRow) (name:string) : int =
     // printfn "'%s' => '%s'" prefix name1
     compare prefix name1
 
-let processLists (sw:System.IO.StreamWriter) (xs:MasterRow list) (ys:string list) : unit = 
+let processLists (xs:MasterRow list) (ys:string list) : CsvWriter<unit> = 
     let rec go ms us = 
         match (ms,us) with
-        | [], us1 -> List.iter (processUpdate sw) us1
-        | ms1, [] -> List.iter (processMaster sw) ms1
+        | [], us1 -> mapMz processUpdate us1
+        | ms1, [] -> mapMz processMaster ms1
         | (m::ms1, u::us1) -> 
             match compareElements m u with
-            | x when x < 0 -> let _ = processMaster sw m
-                              go ms1 us
-            | x when x = 0 -> let _ = processMatch sw m u
-                              go ms1 us1
-            | x when x > 0 -> let _ = processUpdate sw u
-                              go ms us1
+            | x when x < 0 -> csvWriter { do! processMaster m
+                                          do! go ms1 us }
+            | x when x = 0 -> csvWriter { do! processMatch m u
+                                          do! go ms1 us1 }
+            | x when x > 0 -> csvWriter { do! processUpdate u
+                                          do! go ms us1 }
             | x -> failwith (sprintf "Weird pattern failure: %d" x)
     go xs ys
 
 let main () = 
     let master = buildMaster ()
     let updates = buildListing ()
-    use sw = new System.IO.StreamWriter(@"G:\work\Projects\rtu\manuals-TODO.csv")
-    processLists sw (master |> Seq.toList) (updates |> Seq.toList)
-    sw.Close() 
+    let outFile = @"G:\work\Projects\rtu\manuals-TODO.csv"
+    let proc = processLists (master |> Seq.toList) (updates |> Seq.toList)
+    outputToNew proc outFile ","
