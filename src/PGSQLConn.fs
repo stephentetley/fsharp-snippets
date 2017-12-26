@@ -2,17 +2,9 @@
 
 open Npgsql
 
+open SqlUtils
+
 // SQLiteConn Monad
-type Result<'a> = 
-    | Ok of 'a
-    | Err of string
-
-let private resultToChoice (result:Result<'a>) : Choice<string,'a> =
-    match result with
-    | Err(msg) -> Choice1Of2(msg)
-    | Ok(a) -> Choice2Of2(a)
-
-
 type PGSQLConn<'a> = PGSQLConn of (NpgsqlConnection -> Result<'a>)
 
 let inline private apply1 (ma : PGSQLConn<'a>) (conn:NpgsqlConnection) : Result<'a> = 

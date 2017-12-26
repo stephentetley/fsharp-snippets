@@ -5,28 +5,10 @@ open System.IO
 open System.Data
 open System.Data.SQLite
 
+open SqlUtils
 
 
-// Helpers for values
-
-let escapeValueText (s:string) : string = 
-    let escape (s1 :string) = s1.Replace("'", "''")
-    match s with null -> "" | _ -> escape s
-
-let cleanseValue (s:string) : string = (escapeValueText s).Trim() 
-
-
-// SQLiteConn Monad
-type Result<'a> = 
-    | Ok of 'a
-    | Err of string
-
-let private resultToChoice (result:Result<'a>) : Choice<string,'a> =
-    match result with
-    | Err(msg) -> Choice1Of2(msg)
-    | Ok(a) -> Choice2Of2(a)
-
-// A Reader-Error monad
+// SQLiteConn Monad - a Reader-Error monad
 type SQLiteConn<'a> = SQLiteConn of (SQLite.SQLiteConnection -> Result<'a>)
 
 let inline private apply1 (ma : SQLiteConn<'a>) (conn:SQLite.SQLiteConnection) : Result<'a> = 

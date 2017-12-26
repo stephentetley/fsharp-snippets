@@ -1,5 +1,28 @@
 ﻿module SqlUtils
 
+
+// Answer type for connection monads.
+
+type Result<'a> = 
+    | Ok of 'a
+    | Err of string
+
+let resultToChoice (result:Result<'a>) : Choice<string,'a> =
+    match result with
+    | Err(msg) -> Choice1Of2(msg)
+    | Ok(a) -> Choice2Of2(a)
+
+// Helpers for values
+
+let escapeValueText (s:string) : string = 
+    let escape (s1 :string) = s1.Replace("'", "''")
+    match s with null -> "" | _ -> escape s
+
+let cleanseValue (s:string) : string = (escapeValueText s).Trim() 
+
+
+
+
 type ColumnNames = string list
 
 // Pack a value as a dynamic type together with its rendering function
@@ -33,7 +56,7 @@ let sqlINSERT (tableName:string) (values:InsertValues) : string =
 let stringValue (column:string) (value:string) : InsertValue = 
     // TODO escaping special chars to add...
     let render (o:obj) = 
-        let s = o :?> string in sprintf "'%s'" s
+        let s = o :?> string in sprintf "'%s'" (cleanseValue s)
     { columnName = column
     ; renderFun = render
     ; dynValue = value :> obj

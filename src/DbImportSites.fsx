@@ -10,6 +10,7 @@ open Microsoft.Office.Interop
 #r "ExcelProvider.dll"
 open FSharp.ExcelProvider
 
+#load @"SqlUtils.fs"
 #load @"SQLiteConn.fs"
 open SQLiteConn
 
