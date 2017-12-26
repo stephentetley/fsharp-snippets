@@ -10,8 +10,8 @@ open Microsoft.Office.Interop
 #r "ExcelProvider.dll"
 open FSharp.ExcelProvider
 
-#load @"SQLiteUtils.fs"
-open SQLiteUtils
+#load @"SQLiteConn.fs"
+open SQLiteConn
 
 
 type ImportTable = 

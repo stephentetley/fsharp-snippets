@@ -1,4 +1,4 @@
-﻿module PostgreSQLUtils
+﻿module PGSQLConn
 
 open Npgsql
 

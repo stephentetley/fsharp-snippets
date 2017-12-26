@@ -100,8 +100,8 @@
     <Compile Include="JsonOutput.fs" />
     <Compile Include="StringUtils.fs" />
     <Compile Include="SqlUtils.fs" />
-    <Compile Include="PostgreSQLUtils.fs" />
-    <Compile Include="SQLiteUtils.fs" />
+    <Compile Include="PGSQLConn.fs" />
+    <Compile Include="SQLiteConn.fs" />
     <Compile Include="ClosedXMLWriter.fs" />
     <Compile Include="CsvWriter.fs" />
     <None Include="CsvTrim.fsx" />

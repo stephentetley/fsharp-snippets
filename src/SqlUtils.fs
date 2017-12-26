@@ -1,13 +1,13 @@
 ﻿module SqlUtils
 
-type FieldNames = string list
+type ColumnNames = string list
 
 // Pack a value as a dynamic type together with its rendering function
 // and field name
 type InsertValue = 
-    { fieldName : string
+    { columnName : string
     ; renderFun : obj -> string
-    ; fieldValue : obj
+    ; dynValue : obj
     }
 
 type InsertValues = InsertValue list
@@ -15,11 +15,11 @@ type InsertValues = InsertValue list
 let private parens (input:string) : string = 
     sprintf "(%s)" input
 
-let fieldsList (fields:FieldNames) : string =
-    String.concat ", " fields
+let columnsList (columns:ColumnNames) : string =
+    String.concat ", " columns
 
 let renderValue (value:InsertValue) : string = 
-    value.renderFun <| value.fieldValue
+    value.renderFun <| value.dynValue
 
 let valuesList (values:InsertValues) : string = 
     String.concat ", " <| List.map renderValue values
@@ -27,31 +27,31 @@ let valuesList (values:InsertValues) : string =
 let sqlINSERT (tableName:string) (values:InsertValues) : string = 
     sprintf "INSERT INTO %s (%s) VALUES (%s);"
             tableName
-            (fieldsList <| List.map (fun v -> v.fieldName) values)
+            (columnsList <| List.map (fun v -> v.columnName) values)
             (valuesList values)
 
-let stringValue (field:string) (value:string) : InsertValue = 
+let stringValue (column:string) (value:string) : InsertValue = 
     // TODO escaping special chars to add...
     let render (o:obj) = 
         let s = o :?> string in sprintf "'%s'" s
-    { fieldName = field
+    { columnName = column
     ; renderFun = render
-    ; fieldValue = value :> obj
+    ; dynValue = value :> obj
     }
 
-let intValue (field:string) (value:int) : InsertValue = 
+let intValue (column:string) (value:int) : InsertValue = 
     let render (o:obj) = 
         let i = o :?> int in sprintf "%d" i
-    { fieldName = field
+    { columnName = column
     ; renderFun = render
-    ; fieldValue = value :> obj
+    ; dynValue = value :> obj
     }
 
 
-let floatValue (field:string) (value:float) : InsertValue = 
+let floatValue (column:string) (value:float) : InsertValue = 
     let render (o:obj) = 
         let d = o :?> float in sprintf "%f" d
-    { fieldName = field
+    { columnName = column
     ; renderFun = render
-    ; fieldValue = value :> obj
+    ; dynValue = value :> obj
     }

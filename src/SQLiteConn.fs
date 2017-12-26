@@ -1,4 +1,4 @@
-﻿module SQLiteUtils
+﻿module SQLiteConn
 
 open System
 open System.IO

@@ -14,8 +14,8 @@ open Microsoft.Office.Interop
 #r "ExcelProvider.dll"
 open FSharp.ExcelProvider
 
-#load @"SQLiteUtils.fs"
-open SQLiteUtils
+#load @"SQLiteConn.fs"
+open SQLiteConn
 
 #I @"..\packages\DocumentFormat.OpenXml.2.7.2\lib\net46\"
 #I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
