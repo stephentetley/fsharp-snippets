@@ -5,6 +5,17 @@ open FSharp.ExcelProvider
 #load "Geo.fs"
 open Geo
 
+#load "SqlUtils.fs"
+open SqlUtils
+
+// Use PostGIS's pgr_tsp function
+// This was written to generate a sql file that could be 
+// loaded/run at PostgreSQL's command line.
+// It should be reworked to use Npgsql / PGSQLConn.
+
+// Implementation note:
+// PostGIS (pgr_tsp) seems to like (or need) a numeric
+// id on the coordinate table.
 
 type RoutingTable = 
     ExcelFile< @"G:\work\Projects\pgrouting\Erskine Site List.xlsx",
@@ -75,6 +86,10 @@ let furthestNorth (nodes: Node list) : int option =
 let furthestSouth (nodes: Node list) : int option = 
     findNodeIndex (fun elem ac ->  elem.lat < ac.lat) nodes
 
+
+// Change to use explicit field names as that is more robust:
+// INSERT INTO temp_routing (id, point_code, ...) VALUES (1, 'Z001', 'MAYBURY', ...);
+//
 let genINSERT (sb:System.Text.StringBuilder) (tableName: string) (nodes: Node list) : unit =
     List.iter 
         (fun node -> 
@@ -86,6 +101,16 @@ let genINSERT (sb:System.Text.StringBuilder) (tableName: string) (nodes: Node li
                 node.lat
                 node.lon)
         nodes
+
+// This is the new style...
+let genINSERT1 (node:Node) : string = 
+    sqlINSERT "temp_routing" 
+        <|  [ intValue      "id"            node.index
+            ; stringValue   "point_code"    node.sitecode
+            ; stringValue   "point_name"    node.sitecode
+            ; floatValue    "wgs84lat"      node.lat
+            ; floatValue    "wgs84lon"      node.lon ]
+
 
 let genSQL (nodes: Node list) (tableName:string)  (first:int) (last:int) : string = 
     let sb = System.Text.StringBuilder ()

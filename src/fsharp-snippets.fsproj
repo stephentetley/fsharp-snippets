@@ -99,6 +99,7 @@
     <Compile Include="ExcelUtils.fs" />
     <Compile Include="JsonOutput.fs" />
     <Compile Include="StringUtils.fs" />
+    <Compile Include="SqlUtils.fs" />
     <Compile Include="PostgreSQLUtils.fs" />
     <Compile Include="SQLiteUtils.fs" />
     <Compile Include="ClosedXMLWriter.fs" />
