@@ -1,7 +1,8 @@
 ﻿#I @"..\packages\Npgsql.3.2.6\lib\net451\"
+#I @"..\packages\System.Threading.Tasks.Extensions.4.3.0\lib\portable-net45+win8+wp8+wpa81"
 #r "Npgsql"
 open Npgsql
-#I @"..\packages\System.Threading.Tasks.Extensions.4.3.0\lib\portable-net45+win8+wp8+wpa81"
+
 
 #load @"SqlUtils.fs"
 #load "PGSQLConn.fs"

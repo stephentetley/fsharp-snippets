@@ -62,12 +62,12 @@ let forMz (xs:'a list) (fn:'a -> SQLiteConn<'b>) : SQLiteConn<unit> = mapMz fn x
 
 
 // SQLiteConn specific operations
-let runSQLiteConn (ma:SQLiteConn<'a>) (connString:string) : Choice<string,'a> = 
+let runSQLiteConn (ma:SQLiteConn<'a>) (connString:string) : Result<'a> = 
     let dbconn = new SQLiteConnection(connString)
     dbconn.Open()
     let a = match ma with | SQLiteConn(f) -> f dbconn
     dbconn.Close()
-    resultToChoice a
+    a
 
 let throwError (msg:string) : SQLiteConn<'a> = 
     SQLiteConn <| fun _ -> Err(msg)

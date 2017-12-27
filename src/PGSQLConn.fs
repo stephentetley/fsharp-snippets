@@ -57,12 +57,12 @@ let forMz (xs:'a list) (fn:'a -> PGSQLConn<'b>) : PGSQLConn<unit> = mapMz fn xs
 
 
 // PGSQLConn-specific operations
-let runPGSQLConn (ma:PGSQLConn<'a>) (connString:string) : Choice<string,'a> = 
+let runPGSQLConn (ma:PGSQLConn<'a>) (connString:string) : Result<'a> = 
     let dbconn = new NpgsqlConnection(connString)
     dbconn.Open()
     let a = match ma with | PGSQLConn(f) -> f dbconn
     dbconn.Close()
-    resultToChoice a
+    a
 
 let throwError (msg:string) : PGSQLConn<'a> = 
     PGSQLConn <| fun _ -> Err(msg)
