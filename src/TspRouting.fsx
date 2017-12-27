@@ -2,6 +2,12 @@
 #r "ExcelProvider.dll"
 open FSharp.ExcelProvider
 
+#I @"..\packages\FSharp.Data.2.3.3\lib\net40"
+#r @"FSharp.Data.dll"
+open FSharp.Data
+open FSharp.Data.JsonExtensions
+
+
 #load "Geo.fs"
 open Geo
 
@@ -17,6 +23,10 @@ open SqlUtils
 // PostGIS (pgr_tsp) seems to like (or need) a numeric
 // id on the coordinate table.
 
+
+// TODO - we should not be tied to the type provider of a particular spreadsheet. 
+// Ideally input should be Json or something already in the form of List<Node>.
+
 type RoutingTable = 
     ExcelFile< @"G:\work\Projects\pgrouting\Erskine Site List.xlsx",
                SheetName = "Site List",
@@ -24,23 +34,54 @@ type RoutingTable =
 
 type RoutingRow = RoutingTable.Row
 
-type Node = 
+type DbRecord = 
     { index : int
       sitecode : string 
       longname : string
       lat : float
       lon : float }
 
+type JsonRecord =
+    { uid: string
+      name: string
+      osgb36NGR: string }
+
+// The Json input file is an array of JsonRecords
+
+// Structure is known!
+// We have a JsonValue object which we can "tree parse".
+let extractor (jsonValue:JsonValue) : JsonRecord list = 
+    let extrObj (value:JsonValue) : JsonRecord = 
+        { uid = value.["uid"].AsString()
+          name = value.["name"].AsString()
+          osgb36NGR = value.["osgb36NGR"].AsString() }
+    [ for v in jsonValue -> extrObj v ]
+
+let readInputJson (fileName:string) : JsonRecord list = 
+    fileName 
+        |> System.IO.File.ReadAllText
+        |> JsonValue.Parse 
+        |> extractor 
+
+let testSOFAR () = readInputJson @"G:\work\Projects\pgrouting\routing_data1.json"
+
+let tryMakeDbRecord (ix:int) (input:JsonRecord) : DbRecord option = 
+    let proc (ngr:Coord.OSGB36Grid) : DbRecord =  
+        let wgs84 = Coord.osgb36GridToWGS84 ngr
+        { index= ix; sitecode = input.uid; longname = input.name; 
+          lat = float wgs84.Latitude; 
+          lon = float wgs84.Longitude }
+    Option.map proc (Coord.tryReadOSGB36Grid <| input.osgb36NGR) 
 
 
 // TODO rowi.NGR causes what initially appears very obscure error location/message
 // if it is null.
-let makeNode (ix:int) (rowi:RoutingRow) : Node option = 
+let makeNode (ix:int) (rowi:RoutingRow) : DbRecord option = 
     let ngr = 
         match rowi.NGR with
-        | null -> "ERROR"    // Coord.fromOSGridRef10 will politely fail
+        | null -> "ERROR"    
         | value -> value      
-    let mk1 (pt:Coord.WGS84Point) : Node = 
+    let mk1 (pt:Coord.WGS84Point) : DbRecord = 
         { index = ix
           sitecode = rowi.``SAI Number``
           longname = rowi.``Site Name``
@@ -48,9 +89,9 @@ let makeNode (ix:int) (rowi:RoutingRow) : Node option =
           lon = float pt.Longitude }
     Option.map (mk1 << Coord.osgb36GridToWGS84) <| Coord.tryReadOSGB36Grid ngr
     
-let makeNodeList () : Node list = 
+let makeNodeList () : DbRecord list = 
     let routingData = new RoutingTable()
-    let make1 (i:int) (rowi:RoutingRow) : (Node option * int) = 
+    let make1 (i:int) (rowi:RoutingRow) : (DbRecord option * int) = 
         match rowi.``SAI Number`` with
         | null -> (None,i)
         | _ -> 
@@ -66,12 +107,12 @@ let makeNodeList () : Node list =
                 |> Seq.toList
                 |> List.choose id
 
-let findIndex (nodes: Node list) (longName:string) : int option = 
+let findIndex (nodes: DbRecord list) (longName:string) : int option = 
     Option.map (fun o -> o.index)
         <| List.tryFind (fun node -> longName = node.longname) nodes
 
-let findNodeIndex (cmp : Node -> Node -> bool) (nodes: Node list) : int option = 
-    let find1 (ac: Node option) (elem:Node) = 
+let findNodeIndex (cmp : DbRecord -> DbRecord -> bool) (nodes: DbRecord list) : int option = 
+    let find1 (ac: DbRecord option) (elem:DbRecord) = 
         match ac with
         | None -> Some elem
         | Some ac1 -> 
@@ -80,17 +121,17 @@ let findNodeIndex (cmp : Node -> Node -> bool) (nodes: Node list) : int option =
             else ac
     Option.map (fun o -> o.index)  <| List.fold find1 None nodes
 
-let furthestNorth (nodes: Node list) : int option = 
+let furthestNorth (nodes: DbRecord list) : int option = 
     findNodeIndex (fun elem ac ->  elem.lat > ac.lat) nodes
 
-let furthestSouth (nodes: Node list) : int option = 
+let furthestSouth (nodes: DbRecord list) : int option = 
     findNodeIndex (fun elem ac ->  elem.lat < ac.lat) nodes
 
 
 // Change to use explicit field names as that is more robust:
 // INSERT INTO temp_routing (id, point_code, ...) VALUES (1, 'Z001', 'MAYBURY', ...);
 //
-let genINSERT (sb:System.Text.StringBuilder) (tableName: string) (nodes: Node list) : unit =
+let genINSERT (sb:System.Text.StringBuilder) (tableName: string) (nodes: DbRecord list) : unit =
     List.iter 
         (fun node -> 
             Printf.bprintf sb "INSERT INTO %s VALUES (%d,'%s','%s',%f,%f);\n" 
@@ -103,7 +144,7 @@ let genINSERT (sb:System.Text.StringBuilder) (tableName: string) (nodes: Node li
         nodes
 
 // This is the new style...
-let genINSERT1 (node:Node) : string = 
+let genINSERT1 (node:DbRecord) : string = 
     sqlINSERT "temp_routing" 
         <|  [ intValue      "id"            node.index
             ; stringValue   "point_code"    node.sitecode
@@ -111,8 +152,8 @@ let genINSERT1 (node:Node) : string =
             ; floatValue    "wgs84lat"      node.lat
             ; floatValue    "wgs84lon"      node.lon ]
 
-
-let genSQL (nodes: Node list) (tableName:string)  (first:int) (last:int) : string = 
+// No need to CREATE TABLE - do that within PostgreSQL...
+let genSQL (nodes: DbRecord list) (tableName:string)  (first:int) (last:int) : string = 
     let sb = System.Text.StringBuilder ()
     Printf.bprintf sb "-- DROP TABLE %s;\n\n" tableName
     Printf.bprintf sb "CREATE TABLE %s (\n" tableName

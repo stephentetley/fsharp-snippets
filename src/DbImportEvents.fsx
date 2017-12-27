@@ -11,6 +11,7 @@ open Microsoft.Office.Interop
 open FSharp.ExcelProvider
 
 #load @"SqlUtils.fs"
+open SqlUtils
 #load @"SQLiteConn.fs"
 open SQLiteConn
 

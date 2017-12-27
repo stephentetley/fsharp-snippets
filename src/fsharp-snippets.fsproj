@@ -116,7 +116,7 @@
     <None Include="Regex1.fsx" />
     <None Include="Regex2.fsx" />
     <None Include="SQLite1.fsx" />
-    <None Include="ExcelRouting.fsx" />
+    <None Include="TspRouting.fsx" />
     <None Include="NearestHospital.fsx" />
     <None Include="NearestNeighbour.fsx" />
     <None Include="GenLinestringWKT.fsx" />
