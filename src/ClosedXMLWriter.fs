@@ -18,12 +18,6 @@ let runClosedXMLWriter (ma:ClosedXMLWriter<'a>) (sheet:ClosedXMLSheet) : 'a =
     match ma with
     | ClosedXMLWriter(f) -> snd <| f sheet 1
 
-let outputToNew (ma:ClosedXMLWriter<'a>) (fileName:string) (sheetName:string) : 'a =
-    let outputbook : ClosedXML.Excel.XLWorkbook = new ClosedXML.Excel.XLWorkbook()
-    let outputsheet : ClosedXML.Excel.IXLWorksheet = outputbook.Worksheets.Add(sheetName)
-    let ans = runClosedXMLWriter ma outputsheet
-    outputbook.SaveAs(fileName)
-    ans
 
 let inline apply1 (ma : ClosedXMLWriter<'a>) (sheet:ClosedXMLSheet) (i:int) : (int * 'a) = 
     let (ClosedXMLWriter f) = ma in f sheet i
@@ -67,6 +61,8 @@ let mapMz (fn: 'a -> ClosedXMLWriter<'b>) (xs: 'a list) : ClosedXMLWriter<unit> 
         | [] -> unitM ()
     work xs
 
+let forMz (xs:'a list) (fn:'a -> ClosedXMLWriter<'b>) : ClosedXMLWriter<unit> = mapMz fn xs
+
 // This is the natural implementation for a traverseM with a state monad
 let private seqMapAccumL (fn:'st -> 'a -> ('st * 'b)) (state:'st) (source:seq<'a>) : ('st * seq<'b>) = 
     let rec work (st:'st) (src:seq<'a>) = 
@@ -103,6 +99,13 @@ let mapiMz (fn: 'a -> int -> ClosedXMLWriter<'b>) (xs: 'a list) : ClosedXMLWrite
     work 0 xs
 
 // ClosedXMLWriter-specific operations
+
+let outputToNew (ma:ClosedXMLWriter<'a>) (fileName:string) (sheetName:string) : 'a =
+    let outputbook : ClosedXML.Excel.XLWorkbook = new ClosedXML.Excel.XLWorkbook()
+    let outputsheet : ClosedXML.Excel.IXLWorksheet = outputbook.Worksheets.Add(sheetName)
+    let ans = runClosedXMLWriter ma outputsheet
+    outputbook.SaveAs(fileName)
+    ans
 
 let tellRow (values:string list) : ClosedXMLWriter<unit> =
     ClosedXMLWriter <| fun sheet rowIx ->

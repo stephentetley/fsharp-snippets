@@ -12,8 +12,6 @@ open FSharp.Data.JsonExtensions
 #r "Npgsql"
 open Npgsql
 
-
-
 #load "Geo.fs"
 open Geo
 
@@ -21,6 +19,16 @@ open Geo
 open SqlUtils
 #load "PGSQLConn.fs"
 open PGSQLConn
+
+
+#I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
+#r "FSharpx.Collections"
+#I @"..\packages\DocumentFormat.OpenXml.2.7.2\lib\net46\"
+#I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
+#I @"..\packages\ClosedXML.0.90.0\lib\net452\"
+#r "ClosedXML"
+#load "ClosedXMLWriter.fs"
+open ClosedXMLWriter
 
 // Use PostGIS's pgr_tsp function
 // This was written to generate a sql file that could be 
@@ -110,7 +118,7 @@ let genINSERT1 (rec1:DbRecord) : string =
 
 
 let pgInsertRecords (records:DbRecord list) : PGSQLConn<int> = 
-    fmapM (List.sum) <| withTransaction (forM records (execNonQuery  << genINSERT1))
+    PGSQLConn.fmapM (List.sum) <| withTransaction (PGSQLConn.forM records (execNonQuery  << genINSERT1))
 
 let pgInitializeTable : PGSQLConn<int> = 
     execNonQuery "TRUNCATE TABLE temp_routing;"
@@ -148,13 +156,36 @@ let genTSPQuery (startPt:DbRecord) (endPt:DbRecord) : string =
         ORDER BY seq;
         """, (startPt.Index), (endPt.Index))
 
-let pgTSPQuery (startPt:DbRecord) (endPt:DbRecord) : PGSQLConn<unit> = 
+// Force the seq to a List otherwise the connection appears to close with returning
+// any values.
+let pgTSPQuery (startPt:DbRecord) (endPt:DbRecord) : PGSQLConn<DbRecord list> = 
     let query = genTSPQuery startPt endPt
     let procM (reader:NpgsqlDataReader) = 
-        while reader.Read() do 
-            printfn "seq:%i code:%s" (reader.GetInt64(0)) (reader.GetString(3)) 
-    execReader query procM                
+        seq { 
+            while reader.Read() do 
+                let (orec:DbRecord) = 
+                    { Index     = int <| reader.GetInt64(2)
+                      SiteCode  = reader.GetString(3)
+                      LongName  = reader.GetString(4)
+                      Wgs84Lat  = float <| reader.GetDouble(5)
+                      Wgs84Lon  = float <| reader.GetDouble(6) }
+                yield orec} |> Seq.toList
+            // printfn "seq:%i code:%s" (reader.GetInt64(0)) (reader.GetString(3)) 
+    execReader query procM 
+
+let outputXslx (records:DbRecord list) (fileName:string) : unit = 
+    let procM = 
+        ClosedXMLWriter.forMz records 
+            <| fun orec -> tellRow [ orec.SiteCode
+                                   ; orec.LongName
+                                   ; sprintf "%f" orec.Wgs84Lat
+                                   ; sprintf "%f" orec.Wgs84Lon ]
+
+    outputToNew procM fileName "Routes"
+
+
 let main (pwd:string) : unit = 
+    let outputPath= @"G:\work\Projects\pgrouting\routing_output.xlsx"
     let records = makeDBRecords <| readInputJson @"G:\work\Projects\pgrouting\routing_data1.json"
     let conn = makeConnString pwd "spt_geo"
     let procM = pgsqlConn { let! _ = pgInitializeTable
@@ -165,7 +196,9 @@ let main (pwd:string) : unit =
     | Ok(i) -> 
         match (tryFindFurthestNorth records, tryFindFurthestSouth records) with
         | (Some(north) , Some(south)) ->
-            ignore <| runPGSQLConn (pgTSPQuery north south) conn
+            match runPGSQLConn (pgTSPQuery north south) conn with
+            | Err(msg) -> printfn "ERR: %s" msg
+            | Ok(results) -> outputXslx results outputPath
         | _ -> printfn "Err - no north and south"
 
 /// OLD 
