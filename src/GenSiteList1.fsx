@@ -14,6 +14,10 @@ open Microsoft.Office.Interop
 #r "ExcelProvider.dll"
 open FSharp.ExcelProvider
 
+#I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
+#r "FSharpx.Collections"
+#load @"ResultMonad.fs"
+#load @"SqlUtils.fs"
 #load @"SQLiteConn.fs"
 open SQLiteConn
 
@@ -47,7 +51,7 @@ type SqlDB =
 let dbCtx = SqlDB.GetDataContext()
 
 let query01 = 
-    query { for site in dbCtx.Main.AllSites do
+    query { for site in  dbCtx.Main.AllSites do
             where (site.Sainum = "SAI00262693")
             select (site)
         }

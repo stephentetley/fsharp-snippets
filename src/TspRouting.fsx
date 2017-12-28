@@ -163,18 +163,13 @@ let genTSPQuery (startPt:DbRecord) (endPt:DbRecord) : string =
 // any values.
 let pgTSPQuery (startPt:DbRecord) (endPt:DbRecord) : PGSQLConn<DbRecord list> = 
     let query = genTSPQuery startPt endPt
-    let procM (reader:NpgsqlDataReader) = 
-        seq { 
-            while reader.Read() do 
-                let (orec:DbRecord) = 
-                    { Index     = int <| reader.GetInt64(2)
-                      SiteCode  = reader.GetString(3)
-                      LongName  = reader.GetString(4)
-                      Wgs84Lat  = float <| reader.GetDouble(5)
-                      Wgs84Lon  = float <| reader.GetDouble(6) }
-                yield orec} |> Seq.toList
-            // printfn "seq:%i code:%s" (reader.GetInt64(0)) (reader.GetString(3)) 
-    execReader query procM 
+    let procM (reader:NpgsqlDataReader) : DbRecord = 
+        { Index     = int <| reader.GetInt64(2)
+          SiteCode  = reader.GetString(3)
+          LongName  = reader.GetString(4)
+          Wgs84Lat  = float <| reader.GetDouble(5)
+          Wgs84Lon  = float <| reader.GetDouble(6) }
+    execReaderList query procM          // for some reason execReaderList does not work and we have to inline it here...
 
 let outputXslx (records:DbRecord list) (fileName:string) : unit = 
     let proc1 (orec:DbRecord) (ix:int) : ClosedXMLWriter<unit> = 

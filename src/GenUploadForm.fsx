@@ -11,6 +11,11 @@ open Microsoft.Office.Interop
 #r "ExcelProvider.dll"
 open FSharp.ExcelProvider
 
+#I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
+#r "FSharpx.Collections"
+#load @"ResultMonad.fs"
+open ResultMonad
+#load @"SqlUtils.fs"
 #load @"SQLiteConn.fs"
 open SQLiteConn
 
@@ -34,7 +39,10 @@ let findSAI (name:string) : string =
         sprintf "SELECT sainum FROM all_sites WHERE sitename='%s';" (realName name)        
     let readProc (reader : SQLiteDataReader) = 
         if reader.Read() then reader.GetString(0) else ""
-    runSQLiteConn (execReader query1 readProc) connString
+    match runSQLiteConn (execReader query1 readProc) connString with
+    | Err(msg) -> failwith <| sprintf "Cannot finf SAI %s" name
+    | Ok(a) -> a
+
 
 let test04 () : string = findSAI "CUDWORTH/NO 2 STW"
     

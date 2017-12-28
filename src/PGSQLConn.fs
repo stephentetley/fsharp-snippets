@@ -95,6 +95,32 @@ let execReader (statement:string) (proc:NpgsqlDataReader -> 'a) : PGSQLConn<'a> 
         reader.Close()
         ans
 
+// The read procedure (proc) is expected to read from a single row.
+// We have seen this procedure read too many lines in user code
+let execReaderList (statement:string) (proc:NpgsqlDataReader -> 'a) : PGSQLConn<'a list> =
+    liftConn <| fun conn -> 
+        let cmd : NpgsqlCommand = new NpgsqlCommand(statement, conn)
+        let reader = cmd.ExecuteReader()
+        let resultset = 
+            seq { while reader.Read() do
+                    let ans = proc reader
+                    yield ans }  |> Seq.toList
+        reader.Close()
+        resultset
+
+// The read procedure (proc) is expected to read from a single row.
+let execReaderArray (statement:string) (proc:NpgsqlDataReader -> 'a) : PGSQLConn<'a []> =
+    liftConn <| fun conn -> 
+        let cmd : NpgsqlCommand = new NpgsqlCommand(statement, conn)
+        let reader = cmd.ExecuteReader()
+        let resultset = 
+            seq { while reader.Read() do
+                    let ans = proc reader
+                    yield ans }  |> Seq.toArray
+        reader.Close()
+        resultset
+
+
 // With error handling added to the monad we should be able to rollback instead...
 let withTransaction (ma:PGSQLConn<'a>) : PGSQLConn<'a> = 
     PGSQLConn <| fun conn -> 

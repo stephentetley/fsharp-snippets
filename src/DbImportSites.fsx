@@ -10,7 +10,11 @@ open Microsoft.Office.Interop
 #r "ExcelProvider.dll"
 open FSharp.ExcelProvider
 
+#I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
+#r "FSharpx.Collections"
+#load @"ResultMonad.fs"
 #load @"SqlUtils.fs"
+open SqlUtils
 #load @"SQLiteConn.fs"
 open SQLiteConn
 
