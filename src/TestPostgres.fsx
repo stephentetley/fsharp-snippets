@@ -47,9 +47,7 @@ let test04 (pwd:string) =
     let connstring = makeConnString pwd "spt_geo" 
     let query = @"SELECT ST_AsGeoJSON(ST_GeomFromText('MULTIPOINT(50 5, 150 30, 50 10, 10 10)')) ;"
     let proc = 
-        execReader query <| fun reader -> 
-            while reader.Read() do 
-               printfn "%s" (reader.GetString(0)) 
+        execReaderSingleton query <| fun reader -> printfn "%s" (reader.GetString(0))
     ignore <| runPGSQLConn proc connstring 
 
 

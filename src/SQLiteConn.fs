@@ -100,6 +100,51 @@ let execReader (statement:string) (proc:SQLite.SQLiteDataReader -> 'a) : SQLiteC
         reader.Close()
         ans
 
+// The read procedure (proc) is expected to read from a single row.
+let execReaderList (statement:string) (proc:SQLite.SQLiteDataReader -> 'a) : SQLiteConn<'a list> =
+    liftConn <| fun conn -> 
+        let cmd : SQLiteCommand = new SQLiteCommand(statement, conn)
+        let reader = cmd.ExecuteReader()
+        let resultset = 
+            seq { while reader.Read() do
+                    let ans = proc reader
+                    yield ans }  |> Seq.toList
+        reader.Close()
+        resultset
+
+// The read procedure (proc) is expected to read from a single row.
+let execReaderArray (statement:string) (proc:SQLite.SQLiteDataReader -> 'a) : SQLiteConn<'a []> =
+    liftConn <| fun conn -> 
+        let cmd : SQLiteCommand = new SQLiteCommand(statement, conn)
+        let reader = cmd.ExecuteReader()
+        let resultset = 
+            seq { while reader.Read() do
+                    let ans = proc reader
+                    yield ans }  |> Seq.toArray
+        reader.Close()
+        resultset
+
+
+// The read procedure (proc) is expected to read from a single row.
+// The query should return exactly one row.
+let execReaderSingleton (statement:string) (proc:SQLite.SQLiteDataReader -> 'a) : SQLiteConn<'a> =
+    SQLiteConn <| fun conn -> 
+        try 
+            let cmd : SQLiteCommand = new SQLiteCommand(statement, conn)
+            let reader = cmd.ExecuteReader()
+            if reader.Read() then
+                let ans = proc reader
+                let hasMore =  reader.Read()
+                reader.Close()
+                if not hasMore then
+                    Ok <| ans
+                else 
+                    Err <| "execReaderSingleton - too many results."
+            else
+                reader.Close ()
+                Err <| "execReaderSingleton - no results."
+        with
+        | ex -> Err(ex.ToString())
 
 let withTransaction (ma:SQLiteConn<'a>) : SQLiteConn<'a> = 
     SQLiteConn <| fun conn -> 

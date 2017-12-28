@@ -96,7 +96,6 @@ let execReader (statement:string) (proc:NpgsqlDataReader -> 'a) : PGSQLConn<'a> 
         ans
 
 // The read procedure (proc) is expected to read from a single row.
-// We have seen this procedure read too many lines in user code
 let execReaderList (statement:string) (proc:NpgsqlDataReader -> 'a) : PGSQLConn<'a list> =
     liftConn <| fun conn -> 
         let cmd : NpgsqlCommand = new NpgsqlCommand(statement, conn)
@@ -120,6 +119,27 @@ let execReaderArray (statement:string) (proc:NpgsqlDataReader -> 'a) : PGSQLConn
         reader.Close()
         resultset
 
+
+// The read procedure (proc) is expected to read from a single row.
+// The query should return exactly one row.
+let execReaderSingleton (statement:string) (proc:NpgsqlDataReader -> 'a) : PGSQLConn<'a> =
+    PGSQLConn <| fun conn -> 
+        try 
+            let cmd : NpgsqlCommand = new NpgsqlCommand(statement, conn)
+            let reader = cmd.ExecuteReader()
+            if reader.Read() then
+                let ans = proc reader
+                let hasMore =  reader.Read()
+                reader.Close()
+                if not hasMore then
+                    Ok <| ans
+                else 
+                    Err <| "execReaderSingleton - too many results."
+            else
+                reader.Close ()
+                Err <| "execReaderSingleton - no results."
+        with
+        | ex -> Err(ex.ToString())
 
 // With error handling added to the monad we should be able to rollback instead...
 let withTransaction (ma:PGSQLConn<'a>) : PGSQLConn<'a> = 
