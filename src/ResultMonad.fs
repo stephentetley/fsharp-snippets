@@ -1,5 +1,6 @@
 ﻿module ResultMonad
 
+
 // For Seq.tail
 open FSharpx.Collections
 

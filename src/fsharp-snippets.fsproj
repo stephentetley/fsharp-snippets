@@ -98,6 +98,7 @@
     <Compile Include="ResultMonad.fs" />
     <Compile Include="Geo.fs" />
     <Compile Include="ExcelUtils.fs" />
+    <Compile Include="JsonExtractor.fs" />
     <Compile Include="JsonOutput.fs" />
     <Compile Include="StringUtils.fs" />
     <Compile Include="SqlUtils.fs" />

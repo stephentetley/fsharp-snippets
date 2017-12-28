@@ -323,7 +323,7 @@ module Coord =
 
 module Wkt = 
     
-    let parens (s:string) : string = sprintf "(%s)" s
+    let inline private parens (s:string) : string = sprintf "(%s)" s
 
     let inline private printPoint (coord:Coord.WGS84Point) : string = 
         sprintf "%f %f" coord.Longitude coord.Latitude
@@ -350,10 +350,11 @@ module Wkt =
                     if y = hd then List.rev (y::ac) else List.rev (hd::y::ac)
                 | (y::ys) -> proc (y::ac) ys
             proc [hd] xs 
+    
+
 
     let genPOINT (coord:Coord.WGS84Point) : string = 
         sprintf  "POINT(%f %f)" coord.Longitude coord.Latitude
-
 
     let genLINESTRING (coords:Coord.WGS84Point list) : string =
         match coords with
