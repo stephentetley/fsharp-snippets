@@ -15,12 +15,6 @@ open Npgsql
 #load "Geo.fs"
 open Geo
 
-#load "ResultMonad.fs"
-open ResultMonad
-#load "SqlUtils.fs"
-open SqlUtils
-#load "PGSQLConn.fs"
-open PGSQLConn
 
 
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
@@ -31,6 +25,22 @@ open PGSQLConn
 #r "ClosedXML"
 #load "ClosedXMLWriter.fs"
 open ClosedXMLWriter
+
+
+#load "ResultMonad.fs"
+open ResultMonad
+#load "SqlUtils.fs"
+open SqlUtils
+#load "PGSQLConn.fs"
+open PGSQLConn
+
+
+#I @"..\packages\Newtonsoft.Json.10.0.2\lib\net45"
+#r "Newtonsoft.Json"
+open Newtonsoft.Json
+#load "JsonOutput.fs"
+open JsonOutput
+
 
 // Use PostGIS's pgr_tsp function
 // This was written to generate a sql file that could be 
@@ -178,23 +188,31 @@ let outputXslx (records:DbRecord list) (fileName:string) : unit =
                           do! foriMz records proc1 } 
     outputToNew procM fileName "Routes"
 
+let findStartAndEnd (findStart:DbRecord list -> DbRecord option) 
+                    (findEnd:DbRecord list -> DbRecord option)
+                    (records:DbRecord list) : Result<DbRecord*DbRecord> = 
+    match (findStart records, findEnd records) with
+        | (Some(start1) , Some(end1)) -> Ok(start1,end1)
+        | (Some(_), None) -> Err "Cannot find end"
+        | (None, Some(_)) -> Err "Cannot find start"
+        | (_,_) -> Err "Cannot start and end records"
 
 let main (pwd:string) : unit = 
     let outputPath= @"G:\work\Projects\pgrouting\routing_output.xlsx"
     let records = makeDBRecords <| readInputJson @"G:\work\Projects\pgrouting\routing_data1.json"
     let conn = makeConnString pwd "spt_geo"
-    let procM = pgsqlConn { let! _   = pgInitializeTable
-                            let! ans = pgInsertRecords records 
-                            return ans }
-    match runPGSQLConn procM conn with
-    | Err(msg) -> printfn "ERR: %s" msg
-    | Ok(i) -> 
-        match (tryFindFurthestNorth records, tryFindFurthestSouth records) with
-        | (Some(north) , Some(south)) ->
-            match runPGSQLConn (pgTSPQuery north south) conn with
-            | Err(msg) -> printfn "ERR: %s" msg
-            | Ok(results) -> outputXslx results outputPath
-        | _ -> printfn "Err - no north and south"
+    let procSetup = 
+        pgsqlConn { let! _   = pgInitializeTable
+                    let! ans = pgInsertRecords records 
+                    return ans }
+    let ans = 
+        runResultWithError 
+            <| resultMonad { 
+                let! count1        = runPGSQLConn procSetup conn
+                let! (start1,end1) = findStartAndEnd tryFindFurthestNorth tryFindFurthestSouth records
+                let! results       = runPGSQLConn (pgTSPQuery start1 end1) conn
+                do! liftAction (outputXslx results outputPath)  }
+    printfn "%A" ans
 
 
 
@@ -207,117 +225,32 @@ let main (pwd:string) : unit =
 // TODO - we should not be tied to the type provider of a particular spreadsheet. 
 // Ideally input should be Json or something already in the form of List<Node>.
 
-type RoutingTable = 
+type ImportTable = 
     ExcelFile< @"G:\work\Projects\pgrouting\Erskine Site List.xlsx",
                SheetName = "Site List",
                ForceString = true >
 
-type RoutingRow = RoutingTable.Row
+type ImportRow = ImportTable.Row
 
-// TODO rowi.NGR causes what initially appears very obscure error location/message
-// if it is null.
-let makeNode (ix:int) (rowi:RoutingRow) : DbRecord option = 
-    let ngr = 
-        match rowi.NGR with
-        | null -> "ERROR"    
-        | value -> value      
-    let mk1 (pt:Coord.WGS84Point) : DbRecord = 
-        { Index = ix
-          SiteCode = rowi.``SAI Number``
-          LongName = rowi.``Site Name``
-          Wgs84Lat = float pt.Latitude
-          Wgs84Lon = float pt.Longitude }
-    Option.map (mk1 << Coord.osgb36GridToWGS84) <| Coord.tryReadOSGB36Grid ngr
-    
-let makeNodeList () : DbRecord list = 
-    let routingData = new RoutingTable()
-    let make1 (i:int) (rowi:RoutingRow) : (DbRecord option * int) = 
-        match rowi.``SAI Number`` with
-        | null -> (None,i)
-        | _ -> 
-            let optPt = makeNode i rowi
-            match optPt with
-            | None -> (None,i) 
-            | Some node -> (Some node, i+1)
-    match routingData.Data with
-    // | null -> failwith "Mynull"
-    | aseq -> aseq 
-                |> Seq.mapFold make1 1
-                |> fst
-                |> Seq.toList
-                |> List.choose id
+let buildImports () : ImportRow list  =
+    let importData = new ImportTable()
+    let nullPred (row:ImportRow) = match row.GetValue(0) with null -> false | _ -> true
+    importData.Data |> Seq.filter nullPred |> Seq.toList
 
-let findIndex (nodes: DbRecord list) (longName:string) : int option = 
-    Option.map (fun o -> o.Index)
-        <| List.tryFind (fun node -> longName = node.LongName) nodes
+let genJSON (rows:ImportRow list) : JsonOutput<unit> = 
+    let cast1 (str:string) : obj = 
+         match str with
+         | null -> "" :> obj
+         | _ -> str.Trim() :> obj
+    tellArray 
+        <| forMz rows (fun (row:ImportRow) -> 
+            tellSimpleDictionary 
+                <|  [ "UID", cast1 <| row.``SAI Number``
+                    ; "Name", cast1 <| row.``Site Name``
+                    ; "OSGB36NGR", cast1 <| row.NGR ] )
 
+let main2 () : unit = 
+    let outputPath = @"G:\work\Projects\pgrouting\routing_data1.json"
+    let rows = buildImports ()
+    ignore <| runJsonOutput (genJSON rows) 2 outputPath
 
-
-
-// Change to use explicit field names as that is more robust:
-// INSERT INTO temp_routing (id, point_code, ...) VALUES (1, 'Z001', 'MAYBURY', ...);
-//
-let genINSERT (sb:System.Text.StringBuilder) (tableName: string) (nodes: DbRecord list) : unit =
-    List.iter 
-        (fun node -> 
-            Printf.bprintf sb "INSERT INTO %s VALUES (%d,'%s','%s',%f,%f);\n" 
-                tableName
-                node.Index
-                node.SiteCode
-                node.LongName
-                node.Wgs84Lat
-                node.Wgs84Lon)
-        nodes
-
-
-
-// No need to CREATE TABLE - do that within PostgreSQL...
-let genSQL (nodes: DbRecord list) (tableName:string)  (first:int) (last:int) : string = 
-    let sb = System.Text.StringBuilder ()
-    Printf.bprintf sb "-- DROP TABLE %s;\n\n" tableName
-    Printf.bprintf sb "CREATE TABLE %s (\n" tableName
-    ignore <| sb.AppendLine "    id integer NOT NULL,"
-    ignore <| sb.AppendLine "    codename character varying(30) NOT NULL,"
-    ignore <| sb.AppendLine "    longname character varying(150) NOT NULL,"
-    ignore <| sb.AppendLine "    lat double precision,"
-    ignore <| sb.AppendLine "    lon double precision"
-    ignore <| sb.AppendLine ");\n"
-    Printf.bprintf sb "ALTER TABLE ONLY %s\n" tableName
-    Printf.bprintf sb "    ADD CONSTRAINT pk_%s_id PRIMARY KEY (id);\n\n" tableName
-
-    ignore <| sb.AppendLine "BEGIN;"
-    genINSERT sb tableName nodes
-    ignore <| sb.AppendLine "COMMIT;\n"
-
-    ignore <| sb.AppendLine ""
-    ignore <| sb.AppendLine "SELECT seq, t.id1, p.id, p.codename, p.longname, p.lat, p.lon"
-    ignore <| sb.AppendLine "FROM"
-    ignore <| sb.AppendLine "	pgr_tsp("
-    ignore <| sb.AppendLine "		'SELECT id, lon as x, lat as y"
-    Printf.bprintf sb  "		FROM %s',\n" tableName
-    Printf.bprintf sb  "		%d,\n" first
-    Printf.bprintf sb  "		%d\n" last
-    ignore <| sb.AppendLine "	) As t"
-    ignore <| sb.AppendLine "	INNER JOIN"
-    Printf.bprintf sb   "	%s As p\n" tableName
-    ignore <| sb.AppendLine "    ON t.id2 = p.id"
-    ignore <| sb.AppendLine "ORDER BY seq;"
-    sb.ToString ()
-
-
-let test01 () = 
-    let routingData = new RoutingTable()
-    for (rowi:RoutingRow) in routingData.Data do
-        match rowi.``SAI Number`` with
-        | null -> printfn "<finished>"
-        | _ -> printfn "%s, %s" rowi.``SAI Number`` rowi.``Site Name``
-
-
-let outpath = @"G:\work\Projects\pgrouting\outputbuffer.sql"
-let mainOLD () = 
-    let nodes = makeNodeList ()
-    let start = Option.get <| tryFindFurthestNorth nodes
-    let final = Option.get <| tryFindFurthestSouth nodes
-    let sql = genSQL nodes "batteries" start.Index final.Index
-    System.IO.File.WriteAllText (outpath, sql)
-    printfn "%s" sql

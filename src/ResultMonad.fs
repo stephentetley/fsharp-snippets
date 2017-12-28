@@ -32,7 +32,7 @@ type ResultBuilder() =
     member self.Bind (p,f) = bindM p f
     member self.Zero () = unitM ()
 
-let (resultBuilder:ResultBuilder) = new ResultBuilder()
+let (resultMonad:ResultBuilder) = new ResultBuilder()
 
 // Common monadic operations
 let fmapM (fn:'a -> 'b) (ma:Result<'a>) : Result<'b> = 
@@ -97,6 +97,21 @@ let apM (mf:Result<'a ->'b>) (ma:Result<'a>) : Result<'b> =
 
 
 // Result sepcific operations
+let runResult (failure: string -> 'b) (success: 'a -> 'b) (ma:Result<'a>) : 'b = 
+    match ma with
+    | Err(msg) -> failure msg
+    | Ok(a) -> success a
+
+let resultToOption (ma:Result<'a>) : Option<'a> = 
+    match ma with
+    | Err(_) -> None
+    | Ok(a) -> Some a
+
+let runResultWithError (ma:Result<'a>) : 'a = 
+    match ma with
+    | Err(msg) -> failwith msg
+    | Ok(a) -> a
+
 
 let throwError (msg:string) : Result<'a> = Err msg
 
@@ -105,3 +120,10 @@ let swapError (msg:string) (ma:Result<'a>) : Result<'a> =
     | Err(_) -> Err msg
     | Ok(a) -> Ok a
 
+
+let liftAction (action:'a) : Result<'a> = 
+    try
+        let ans = action
+        Ok ans
+    with
+    | ex -> Err <| ex.ToString()
