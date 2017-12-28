@@ -90,6 +90,7 @@ let mapiM (fn: 'a -> int -> ClosedXMLWriter<'b>) (xs: 'a list) : ClosedXMLWriter
         | [] -> unitM <| List.rev ac
     work [] 0 xs
 
+let foriM (xs: 'a list) (fn: 'a -> int -> ClosedXMLWriter<'b>) : ClosedXMLWriter<'b list> = mapiM fn xs
 
 let mapiMz (fn: 'a -> int -> ClosedXMLWriter<'b>) (xs: 'a list) : ClosedXMLWriter<unit> = 
     let rec work ix list = 
@@ -97,6 +98,8 @@ let mapiMz (fn: 'a -> int -> ClosedXMLWriter<'b>) (xs: 'a list) : ClosedXMLWrite
         | y :: ys -> bindM (fn y ix) (fun _ -> work (ix+1) ys)
         | [] -> unitM ()
     work 0 xs
+
+let foriMz (xs: 'a list)  (fn: 'a -> int -> ClosedXMLWriter<'b>) : ClosedXMLWriter<unit> = mapiMz fn xs
 
 // ClosedXMLWriter-specific operations
 

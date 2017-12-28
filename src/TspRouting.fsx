@@ -15,6 +15,8 @@ open Npgsql
 #load "Geo.fs"
 open Geo
 
+#load "ResultMonad.fs"
+open ResultMonad
 #load "SqlUtils.fs"
 open SqlUtils
 #load "PGSQLConn.fs"
@@ -40,15 +42,6 @@ open ClosedXMLWriter
 // id on the coordinate table.
 
 
-// TODO - we should not be tied to the type provider of a particular spreadsheet. 
-// Ideally input should be Json or something already in the form of List<Node>.
-
-type RoutingTable = 
-    ExcelFile< @"G:\work\Projects\pgrouting\Erskine Site List.xlsx",
-               SheetName = "Site List",
-               ForceString = true >
-
-type RoutingRow = RoutingTable.Row
 
 let makeConnString (pwd:string) (dbname:string) : string = 
     let fmt : Printf.StringFormat<(string -> string -> string)> = "Host=localhost;Username=postgres;Password=%s;Database=%s";
@@ -174,13 +167,15 @@ let pgTSPQuery (startPt:DbRecord) (endPt:DbRecord) : PGSQLConn<DbRecord list> =
     execReader query procM 
 
 let outputXslx (records:DbRecord list) (fileName:string) : unit = 
+    let proc1 (orec:DbRecord) (ix:int) : ClosedXMLWriter<unit> = 
+        tellRow   [ (ix + 1).ToString()
+                  ; orec.SiteCode
+                  ; orec.LongName
+                  ; orec.Wgs84Lat.ToString()
+                  ; orec.Wgs84Lon.ToString() ]
     let procM = 
-        ClosedXMLWriter.forMz records 
-            <| fun orec -> tellRow [ orec.SiteCode
-                                   ; orec.LongName
-                                   ; sprintf "%f" orec.Wgs84Lat
-                                   ; sprintf "%f" orec.Wgs84Lon ]
-
+        closedXMLWriter { do! tellHeaders ["Order"; "Code"; "Name"; "Latitude"; "Longitude"]
+                          do! foriMz records proc1 } 
     outputToNew procM fileName "Routes"
 
 
@@ -188,7 +183,7 @@ let main (pwd:string) : unit =
     let outputPath= @"G:\work\Projects\pgrouting\routing_output.xlsx"
     let records = makeDBRecords <| readInputJson @"G:\work\Projects\pgrouting\routing_data1.json"
     let conn = makeConnString pwd "spt_geo"
-    let procM = pgsqlConn { let! _ = pgInitializeTable
+    let procM = pgsqlConn { let! _   = pgInitializeTable
                             let! ans = pgInsertRecords records 
                             return ans }
     match runPGSQLConn procM conn with
@@ -201,7 +196,24 @@ let main (pwd:string) : unit =
             | Ok(results) -> outputXslx results outputPath
         | _ -> printfn "Err - no north and south"
 
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+
 /// OLD 
+
+
+// TODO - we should not be tied to the type provider of a particular spreadsheet. 
+// Ideally input should be Json or something already in the form of List<Node>.
+
+type RoutingTable = 
+    ExcelFile< @"G:\work\Projects\pgrouting\Erskine Site List.xlsx",
+               SheetName = "Site List",
+               ForceString = true >
+
+type RoutingRow = RoutingTable.Row
+
 // TODO rowi.NGR causes what initially appears very obscure error location/message
 // if it is null.
 let makeNode (ix:int) (rowi:RoutingRow) : DbRecord option = 

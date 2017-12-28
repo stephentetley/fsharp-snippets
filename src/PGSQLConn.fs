@@ -2,6 +2,7 @@
 
 open Npgsql
 
+open ResultMonad
 open SqlUtils
 
 // SQLiteConn Monad

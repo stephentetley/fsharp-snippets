@@ -28,7 +28,7 @@ type JsonOutputBuilder() =
 let (jsonOutput:JsonOutputBuilder) = new JsonOutputBuilder()
 
 
-// Common operations
+// Common monadic operations
 let fmapM (fn:'a -> 'b) (ma:JsonOutput<'a>) : JsonOutput<'b> = 
     JsonOutput <| fun (handle:JsonTextWriter) ->
         let ans = apply1 ma handle in fn ans

@@ -1,16 +1,6 @@
 ﻿module SqlUtils
 
 
-// Answer type for connection monads.
-
-type Result<'a> = 
-    | Ok of 'a
-    | Err of string
-
-let resultToChoice (result:Result<'a>) : Choice<string,'a> =
-    match result with
-    | Err(msg) -> Choice1Of2(msg)
-    | Ok(a) -> Choice2Of2(a)
 
 // Helpers for values
 

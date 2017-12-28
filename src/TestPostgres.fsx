@@ -4,8 +4,9 @@
 open Npgsql
 
 
+#load @"ResultMonad.fs"
 #load @"SqlUtils.fs"
-#load "PGSQLConn.fs"
+#load @"PGSQLConn.fs"
 open PGSQLConn
 
 
