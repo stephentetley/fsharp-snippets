@@ -17,6 +17,7 @@ open Npgsql
 #load @"ResultMonad.fs"
 #load @"SqlUtils.fs"
 #load @"PGSQLConn.fs"
+open ResultMonad
 open PGSQLConn
 
 #load "Geo.fs"
@@ -35,6 +36,10 @@ open Newtonsoft.Json
 open JsonOutput
 
 
+#load "CsvWriter.fs"
+open CsvWriter
+
+
 let makeConnString (pwd:string) (dbname:string) : string = 
     let fmt : Printf.StringFormat<(string -> string -> string)> = "Host=localhost;Username=postgres;Password=%s;Database=%s";
     sprintf fmt pwd dbname
@@ -45,7 +50,7 @@ let makeConnString (pwd:string) (dbname:string) : string =
 // with that (ST_ConvexHull)
 
 
-let jsonInput = @"G:\work\Projects\pgrouting\routing_data1.json"
+let jsonInput = @"G:\work\Projects\events2\concave_hull_data1.json"
 
 type Wgs84Multipoint = Coord.WGS84Point list
 type Osgb36Multipoint  = Coord.OSGB36Grid list
@@ -58,19 +63,16 @@ type InputData = (string * Osgb36Multipoint) list
 
 // Structure is known!
 // We have a JsonValue object which we can "tree parse".
-let extractor (jsonValue:JsonValue) : string list = 
-    let extrObj (value:JsonValue) : string = value.["OSGB36NGR"].AsString()
-    [ for v in jsonValue -> extrObj v ]
-
-let readInputJson (fileName:string) : string list = 
-    fileName 
-        |> System.IO.File.ReadAllText
-        |> JsonValue.Parse 
-        |> extractor 
 
 
-let extractorM : JsonExtractor<string list> = 
-    jsonArrayAsList (field "OSGB36NGR" jsonString)
+let extractorM : JsonExtractor<(string * string list) list> = 
+    jsonArrayAsList 
+        <| jsonExtractor { 
+                    let! resp = field "Responsibility" jsonString
+                    let! gridrefs = field "Outfalls" (jsonArrayAsList (field "OSGB36NGR" jsonString))
+                    return (resp,gridrefs)
+                }
+       
 
 
 let readInputs (inputs:string list) : Coord.WGS84Point list = 
@@ -84,10 +86,10 @@ let readInputs (inputs:string list) : Coord.WGS84Point list =
     work [] inputs
 
 
-let inputs () : Coord.WGS84Point list = 
-    readInputs <| ResultMonad.runResultWithError (extractFromFile extractorM jsonInput)
+let inputs () : (string * Coord.WGS84Point list) list = 
+    ResultMonad.runResultWithError (extractFromFile extractorM jsonInput)
+        |> List.map (fun (resp,gridrefs) -> (resp, readInputs gridrefs))
 
-let test01 () = inputs () |> List.take 14 |> Wkt.genMULTIPOINT 
 
 let genConvexHullQuery (points:Coord.WGS84Point list) : string = 
     System.String.Format("""
@@ -111,15 +113,33 @@ let genConcaveHullQuery (points:Coord.WGS84Point list) (targetPercent:float) : s
 // Note - Delimited Text Layers in QGIS might only be able to show a single type of WKT element:
 // i.e only POLYGONs, only MULTIPOINTs.
 
-let test02 () = inputs () |> List.take 14 |> genConvexHullQuery |> printfn "%s"
+//let test02 () = inputs () |> List.take 14 |> genConvexHullQuery |> printfn "%s"
 
-let test03 (pwd:string) = 
+
+let wktOutfile = @"G:\work\Projects\events2\wkt_concave_hulls1.csv"
+
+let main (pwd:string) = 
     let connstring = makeConnString pwd "spt_geo" 
-    let query = inputs () |> (fun pts -> genConcaveHullQuery pts 0.9)
-    let proc = 
-        execReaderSingleton query <| fun reader -> printfn "%s" (reader.GetString(0))
-    printfn "%s" query
-    runPGSQLConn proc connstring 
+    let groups = inputs () 
+    let pgProcOne (points:Coord.WGS84Point list) : PGSQLConn<string> = 
+        let query = genConcaveHullQuery points 0.9
+        execReaderSingleton query <| fun reader -> reader.GetString(0)
+
+    let pgProcAll : PGSQLConn<(int*string) list> = 
+        PGSQLConn.mapiM (fun (s,points) ix -> PGSQLConn.fmapM (fun ans -> (ix+1,ans)) <| pgProcOne points) groups 
+
+    let CsvProc (oidtexts:(int*string) list) : CsvWriter<unit> = 
+        csvWriter { 
+            do! tellRow ["oid"; "wkt"]
+            do! CsvWriter.forMz oidtexts (fun (a,b) -> tellRow [a.ToString(); quoteField b])
+        }
+
+    let (results1 :(int*string) list) = 
+        match runPGSQLConn pgProcAll connstring with
+        | Ok(a) -> a
+        | Err(msg) -> failwithf "FATAL: %s" msg
+
+    outputToNew (CsvProc results1) wktOutfile ","
 
 
 
@@ -150,13 +170,13 @@ let genJSON (groups: (string * ImportRow list) list) : JsonOutput<unit> =
          | _ -> str.Trim() :> obj
     let tellOutfalls (outfalls : ImportRow list) : JsonOutput<unit> = 
         tellArray  
-            <| forMz outfalls (fun (row:ImportRow) ->
+            <| JsonOutput.forMz outfalls (fun (row:ImportRow) ->
                 tellSimpleDictionary 
                     <|  [ "UID", cast1 <| row.``SAI Number``
                         ; "Name", cast1 <| row.Name
                         ; "OSGB36NGR", cast1 <| row.``Site Grid Ref`` ] )
     tellArray 
-        <| forMz groups (fun (group:(string * ImportRow list)) -> 
+        <| JsonOutput.forMz groups (fun (group:(string * ImportRow list)) -> 
             tellObject 
                 <| jsonOutput { 
                     do! tellProperty "Responsibility" (tellValue <| ((fst group) :> obj))

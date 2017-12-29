@@ -54,6 +54,19 @@ let mapMz (fn:'a -> PGSQLConn<'b>) (xs:'a list) : PGSQLConn<unit> =
         | z :: zs -> bindM (fn z) (fun _ -> work zs)
     work xs
 
+let mapiM (fn:'a -> int -> PGSQLConn<'b>) (xs:'a list) : PGSQLConn<'b list> = 
+    let rec work ac ix ys = 
+        match ys with
+        | [] -> unitM <| List.rev ac
+        | z :: zs -> bindM (fn z ix) (fun a -> work (a::ac) (ix+1) zs)
+    work [] 0 xs
+
+let mapiMz (fn:'a -> int -> PGSQLConn<'b>) (xs:'a list) : PGSQLConn<unit> = 
+    let rec work ix ys = 
+        match ys with
+        | [] -> unitM ()
+        | z :: zs -> bindM (fn z ix) (fun _ -> work (ix+1) zs)
+    work 0 xs
 let forMz (xs:'a list) (fn:'a -> PGSQLConn<'b>) : PGSQLConn<unit> = mapMz fn xs
 
 
