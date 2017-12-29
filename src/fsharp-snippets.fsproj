@@ -124,7 +124,7 @@
     <None Include="GenLinestringWKT.fsx" />
     <None Include="TotalOrder.fsx" />
     <None Include="TotalOrder2.fsx" />
-    <None Include="GenPolygonWKT.fsx" />
+    <None Include="WktConcaveHull.fsx" />
     <None Include="WGS84ExcelCoord.fsx" />
     <None Include="GenSiteFormsJson.fsx" />
     <None Include="WordFindReplace.fsx" />

@@ -214,11 +214,7 @@ let main (pwd:string) : unit =
 
 ///////////////////////////////////////////////////////////////////////////////
 
-/// OLD 
-
-
-// TODO - we should not be tied to the type provider of a particular spreadsheet. 
-// Ideally input should be Json or something already in the form of List<Node>.
+// Make input Json...
 
 type ImportTable = 
     ExcelFile< @"G:\work\Projects\pgrouting\Erskine Site List.xlsx",

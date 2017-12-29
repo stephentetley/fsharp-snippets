@@ -326,7 +326,7 @@ module Wkt =
     let inline private parens (s:string) : string = sprintf "(%s)" s
 
     let inline private printPoint (coord:Coord.WGS84Point) : string = 
-        sprintf "%f %f" coord.Longitude coord.Latitude
+        sprintf "%.5f %.5f" coord.Longitude coord.Latitude
 
     let inline private printPointList (coords:Coord.WGS84Point list) : string = 
         String.concat ", " <| List.map printPoint coords
