@@ -351,7 +351,7 @@ module Wkt =
                 | (y::ys) -> proc (y::ac) ys
             proc [hd] xs 
     
-
+    // Note - don't quote ouput, client code can do that if necessary
 
     let genPOINT (coord:Coord.WGS84Point) : string = 
         sprintf  "POINT(%f %f)" coord.Longitude coord.Latitude
@@ -359,7 +359,7 @@ module Wkt =
     let genLINESTRING (coords:Coord.WGS84Point list) : string =
         match coords with
         | [] -> "LINESTRING EMPTY"
-        | _ -> sprintf "\"LINESTRING(%s)\"" (printPointList coords)
+        | _ -> sprintf "LINESTRING(%s)" (printPointList coords)
 
     // User must ensure points are in counter-clockwise direction
     let genPOLYGON1 (coords:Coord.WGS84Point list) : string =
@@ -367,7 +367,7 @@ module Wkt =
         | [] -> "POLYGON EMPTY"
         | _ -> 
             let closedlist = closePolygon coords
-            sprintf "\"POLYGON(%s)\"" (printPointList closedlist)       
+            sprintf "POLYGON(%s)" (printPointList closedlist)       
 
     // User must ensure exterior points are in counter-clockwise direction
     // and interior polygon points are in clockwise direction.
@@ -378,13 +378,13 @@ module Wkt =
             let closeExt = closePolygon exterior
             let closedInts = List.map closePolygon interiors
             match closedInts with
-            | [] -> sprintf "\"POLYGON(%s)\"" (printPointList closeExt)   
+            | [] -> sprintf "POLYGON(%s)" (printPointList closeExt)   
             | _ -> 
-                sprintf "\"POLYGON((%s), %s)\"" (printPointList closeExt) (printListOfPointLists closedInts)
+                sprintf "POLYGON((%s), %s)" (printPointList closeExt) (printListOfPointLists closedInts)
                     
     let genMULTIPOINT (coords:Coord.WGS84Point list) : string =
         match coords with
         | [] -> "MULTIPOINT EMPTY"
-        | _ -> sprintf "\"MULTIPOINT(%s)\"" (printPointListParens coords)
+        | _ -> sprintf "MULTIPOINT(%s)" (printPointList coords)
 
     // TODO MULTILINESTRING MULTIPOLYGON and reading...

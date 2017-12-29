@@ -54,7 +54,7 @@ let genWKT (orders:OrderGroups) (db:CoordDB) : CsvWriter<unit> =
         do! tellRow ["oid"; "wkt"] 
         do! mapiMz (fun pts i -> 
                         tellRow [ sprintf "%i" (i+1)
-                                ; Wkt.genLINESTRING pts ]) pointGroups }
+                                ; quoteField <| Wkt.genLINESTRING pts ]) pointGroups }
 
 
 let partition (lines:string list) : OrderGroups = 

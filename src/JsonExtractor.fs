@@ -110,9 +110,17 @@ let field (name:string) (ma:JsonExtractor<'a>) : JsonExtractor<'a> =
         with
         | ex -> Err <| ex.ToString()
 
-let jsonString : JsonExtractor<string> = liftJson <| fun r -> r.AsString() 
 
+
+// Scalars
 let jsonBool : JsonExtractor<bool> = liftJson <| fun r -> r.AsBoolean()
+let jsonDateTime : JsonExtractor<System.DateTime> = liftJson <| fun r -> r.AsDateTime()
+let jsonDecimal : JsonExtractor<decimal> = liftJson <| fun r -> r.AsDecimal()
+let jsonFloat : JsonExtractor<float> = liftJson <| fun r -> r.AsFloat()
+let jsonGuid : JsonExtractor<System.Guid> = liftJson <| fun r -> r.AsGuid()
+let jsonInteger : JsonExtractor<int> = liftJson <| fun r -> r.AsInteger()
+let jsonInteger64 : JsonExtractor<int64> = liftJson <| fun r -> r.AsInteger64()
+let jsonString : JsonExtractor<string> = liftJson <| fun r -> r.AsString() 
 
 
 let jsonArrayOf (ma:JsonExtractor<'a>) : JsonExtractor<'a []> = 
@@ -121,4 +129,12 @@ let jsonArrayOf (ma:JsonExtractor<'a>) : JsonExtractor<'a []> =
         ResultMonad.fmapM Seq.toArray <| ResultMonad.traverseM (fun a -> apply1 ma a) arr 
 
 
+let jsonArrayAsList (ma:JsonExtractor<'a>) : JsonExtractor<'a list> = 
+    JsonExtractor <| fun r ->
+        let arr: JsonValue [] = [| for o in r -> o |]
+        ResultMonad.fmapM Seq.toList <| ResultMonad.traverseM (fun a -> apply1 ma a) arr 
 
+let jsonArrayAsSeq (ma:JsonExtractor<'a>) : JsonExtractor<seq<'a>> = 
+    JsonExtractor <| fun r ->
+        let arr: JsonValue [] = [| for o in r -> o |]
+        ResultMonad.traverseM (fun a -> apply1 ma a) arr 
