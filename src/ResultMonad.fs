@@ -41,6 +41,72 @@ let fmapM (fn:'a -> 'b) (ma:Result<'a>) : Result<'b> =
     | Err(msg) -> Err msg
     | Ok(a) -> Ok <| fn a
 
+let liftM (fn:'a -> 'r) (ma:Result<'a>) : Result<'r> = fmapM fn ma
+
+let liftM2 (fn:'a -> 'b -> 'r) (ma:Result<'a>) (mb:Result<'b>) : Result<'r> = 
+    match ma with
+    | Err(msg) -> Err msg
+    | Ok(a) -> 
+        match mb with 
+        | Err(msg) -> Err msg
+        | Ok(b) -> Ok (fn a b)
+
+let liftM3 (fn:'a -> 'b -> 'c -> 'r) (ma:Result<'a>) (mb:Result<'b>) (mc:Result<'c>) : Result<'r> = 
+    match ma with
+    | Err(msg) -> Err msg
+    | Ok(a) -> 
+        match mb with 
+        | Err(msg) -> Err msg
+        | Ok(b) -> 
+            match mc with 
+            | Err(msg) -> Err msg
+            | Ok(c) -> Ok (fn a b c)
+
+let liftM4 (fn:'a -> 'b -> 'c -> 'd -> 'r) (ma:Result<'a>) (mb:Result<'b>) (mc:Result<'c>) (md:Result<'d>) : Result<'r>= 
+    match ma with
+    | Err(msg) -> Err msg
+    | Ok(a) -> 
+        match mb with 
+        | Err(msg) -> Err msg
+        | Ok(b) -> 
+            match mc with 
+            | Err(msg) -> Err msg
+            | Ok(c) -> 
+                match md with
+                | Err(msg) -> Err msg
+                | Ok(d) -> Ok (fn a b c d)
+
+let liftM5 (fn:'a -> 'b -> 'c -> 'd -> 'e -> 'r) (ma:Result<'a>) (mb:Result<'b>) (mc:Result<'c>) (md:Result<'d>) (me:Result<'e>) : Result<'r>= 
+    match ma with
+    | Err(msg) -> Err msg
+    | Ok(a) -> 
+        match mb with 
+        | Err(msg) -> Err msg
+        | Ok(b) -> 
+            match mc with 
+            | Err(msg) -> Err msg
+            | Ok(c) -> 
+                match md with
+                | Err(msg) -> Err msg
+                | Ok(d) -> 
+                    match me with
+                    | Err(msg) -> Err msg
+                    | Ok(e) -> Ok (fn a b c d e)
+
+let tupleM2 (ma:Result<'a>) (mb:Result<'b>) : Result<'a * 'b> = 
+    liftM2 (fun a b -> (a,b)) ma mb
+
+let tupleM3 (ma:Result<'a>) (mb:Result<'b>) (mc:Result<'c>) : Result<'a * 'b * 'c> = 
+    liftM3 (fun a b c -> (a,b,c)) ma mb mc
+
+let tupleM4 (ma:Result<'a>) (mb:Result<'b>) (mc:Result<'c>) (md:Result<'d>) : Result<'a * 'b * 'c * 'd> = 
+    liftM4 (fun a b c d -> (a,b,c,d)) ma mb mc md
+
+let tupleM5 (ma:Result<'a>) (mb:Result<'b>) (mc:Result<'c>) (md:Result<'d>) (me:Result<'e>)  : Result<'a * 'b * 'c * 'd * 'e> = 
+    liftM5 (fun a b c d e -> (a,b,c,d,e)) ma mb mc md me
+
+// NOTE - FParsec defines flipped versions of liftM* (e.g. pipe2, pipe3, ...)
+
 let mapM (fn:'a -> Result<'b>) (xs:'a list) : Result<'b list> = 
     let rec work ac ys = 
         match ys with
@@ -95,7 +161,23 @@ let apM (mf:Result<'a ->'b>) (ma:Result<'a>) : Result<'b> =
         | Err(msg) -> Err msg
         | Ok(a) -> Ok <| fn a
 
+// Perform two actions in sequence. Ignore the results of the second action if both succeed.
+let seqL (ma:Result<'a>) (mb:Result<'b>) : Result<'a> = 
+    match ma with
+    | Err(msg) -> Err msg
+    | Ok(a) -> 
+        match mb with
+        | Err(msg) -> Err msg
+        | Ok(_) -> Ok a
 
+// Perform two actions in sequence. Ignore the results of the first action if both succeed.
+let seqR (ma:Result<'a>) (mb:Result<'b>) : Result<'b> = 
+    match ma with
+    | Err(msg) -> Err msg
+    | Ok(_) -> 
+        match mb with
+        | Err(msg) -> Err msg
+        | Ok(b) -> Ok b
 
 // Result sepcific operations
 let runResult (failure: string -> 'b) (success: 'a -> 'b) (ma:Result<'a>) : 'b = 
@@ -128,3 +210,19 @@ let liftAction (action:'a) : Result<'a> =
         Ok ans
     with
     | ex -> Err <| ex.ToString()
+
+
+// Catch failing computations, return None. 
+// Successful operations are returned as Some(_).
+let optional (ma:Result<'a>) : Result<'a option> = 
+    match ma with
+    | Err(_) -> Ok None
+    | Ok(a) -> Ok <| Some a
+
+// Perform an operation for its effect, ignore whether it succeeds or fails.
+// (Comptations always return ``Ok ()``)
+let optionalz (ma:Result<'a>) : Result<unit> = 
+    match ma with
+    | Err(_) -> Ok ()
+    | Ok(_) -> Ok ()
+

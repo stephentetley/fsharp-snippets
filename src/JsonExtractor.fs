@@ -41,14 +41,35 @@ let fmapM (fn:'a -> 'b) (ma:JsonExtractor<'a>) : JsonExtractor<'b> =
         | Err(msg) -> Err msg
         | Ok(a) -> Ok <| fn a
 
-let liftM2 (fn:'a -> 'b -> 'c) (ma:JsonExtractor<'a>) (mb:JsonExtractor<'b>) :JsonExtractor<'c> = 
+let liftM2 (fn:'a -> 'b -> 'r) (ma:JsonExtractor<'a>) (mb:JsonExtractor<'b>) : JsonExtractor<'r> = 
     JsonExtractor <| fun r ->
-        match apply1 ma r with
-        | Err(msg) -> Err msg
-        | Ok(a) ->
-            match apply1 mb r with
-            | Err(msg) -> Err msg
-            | Ok(b) -> Ok (fn a b) 
+        ResultMonad.liftM2 fn (apply1 ma r) (apply1 mb r)
+
+let liftM3 (fn:'a -> 'b -> 'c -> 'r) (ma:JsonExtractor<'a>) (mb:JsonExtractor<'b>) (mc:JsonExtractor<'c>) : JsonExtractor<'r> = 
+    JsonExtractor <| fun r ->
+        ResultMonad.liftM3 fn (apply1 ma r) (apply1 mb r) (apply1 mc r)
+
+let liftM4 (fn:'a -> 'b -> 'c -> 'd -> 'r) (ma:JsonExtractor<'a>) (mb:JsonExtractor<'b>) (mc:JsonExtractor<'c>) (md:JsonExtractor<'d>) : JsonExtractor<'r> = 
+    JsonExtractor <| fun r ->
+        ResultMonad.liftM4 fn (apply1 ma r) (apply1 mb r) (apply1 mc r) (apply1 md r)
+
+let liftM5 (fn:'a -> 'b -> 'c -> 'd -> 'e -> 'r) (ma:JsonExtractor<'a>) (mb:JsonExtractor<'b>) (mc:JsonExtractor<'c>) (md:JsonExtractor<'d>) (me:JsonExtractor<'e>) : JsonExtractor<'r> = 
+    JsonExtractor <| fun r ->
+        ResultMonad.liftM5 fn (apply1 ma r) (apply1 mb r) (apply1 mc r) (apply1 md r) (apply1 me r)
+
+
+let tupleM2 (ma:JsonExtractor<'a>) (mb:JsonExtractor<'b>) : JsonExtractor<'a * 'b> = 
+    liftM2 (fun a b -> (a,b)) ma mb
+
+let tupleM3 (ma:JsonExtractor<'a>) (mb:JsonExtractor<'b>) (mc:JsonExtractor<'c>) : JsonExtractor<'a * 'b * 'c> = 
+    liftM3 (fun a b c -> (a,b,c)) ma mb mc
+
+let tupleM4 (ma:JsonExtractor<'a>) (mb:JsonExtractor<'b>) (mc:JsonExtractor<'c>) (md:JsonExtractor<'d>) : JsonExtractor<'a * 'b * 'c * 'd> = 
+    liftM4 (fun a b c d -> (a,b,c,d)) ma mb mc md
+
+let tupleM5 (ma:JsonExtractor<'a>) (mb:JsonExtractor<'b>) (mc:JsonExtractor<'c>) (md:JsonExtractor<'d>) (me:JsonExtractor<'e>)  : JsonExtractor<'a * 'b * 'c * 'd * 'e> = 
+    liftM5 (fun a b c d e -> (a,b,c,d,e)) ma mb mc md me
+
 
 let apM (mf:JsonExtractor<'a -> 'b>) (ma:JsonExtractor<'a>) : JsonExtractor<'b> = 
     JsonExtractor <| fun r ->

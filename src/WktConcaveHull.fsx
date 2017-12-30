@@ -67,9 +67,9 @@ type InputData = (string * Osgb36Multipoint) list
 
 let extractorM : JsonExtractor<(string * string list) list> = 
     askArrayAsList 
-        <| JsonExtractor.liftM2 (fun a b -> (a,b)) 
-                                (field "Responsibility" askString)
-                                (field "Outfalls" (askArrayAsList (field "OSGB36NGR" askString)))
+        <| JsonExtractor.tupleM2 
+                (field "Responsibility" askString)
+                (field "Outfalls" (askArrayAsList (field "OSGB36NGR" askString)))
 
 
 let readInputs (inputs:string list) : Coord.WGS84Point list = 
