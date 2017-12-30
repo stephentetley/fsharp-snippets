@@ -66,13 +66,10 @@ type InputData = (string * Osgb36Multipoint) list
 
 
 let extractorM : JsonExtractor<(string * string list) list> = 
-    jsonArrayAsList 
-        <| jsonExtractor { 
-                    let! resp = field "Responsibility" jsonString
-                    let! gridrefs = field "Outfalls" (jsonArrayAsList (field "OSGB36NGR" jsonString))
-                    return (resp,gridrefs)
-                }
-       
+    askArrayAsList 
+        <| JsonExtractor.liftM2 (fun a b -> (a,b)) 
+                                (field "Responsibility" askString)
+                                (field "Outfalls" (askArrayAsList (field "OSGB36NGR" askString)))
 
 
 let readInputs (inputs:string list) : Coord.WGS84Point list = 
@@ -121,6 +118,7 @@ let wktOutfile = @"G:\work\Projects\events2\wkt_concave_hulls1.csv"
 let main (pwd:string) = 
     let connstring = makeConnString pwd "spt_geo" 
     let groups = inputs () 
+    printfn "%A" groups
     let pgProcOne (points:Coord.WGS84Point list) : PGSQLConn<string> = 
         let query = genConcaveHullQuery points 0.9
         execReaderSingleton query <| fun reader -> reader.GetString(0)
