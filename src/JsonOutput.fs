@@ -79,13 +79,45 @@ let tellValue (o:obj) : JsonOutput<unit> =
     JsonOutput <| fun (handle:JsonTextWriter) ->
         handle.WriteValue o
 
-let tellObject (body:JsonOutput<'a>) : JsonOutput<'a> = 
-    JsonOutput <| fun (handle:JsonTextWriter) ->
-        handle.WriteStartObject ()    
-        let ans = apply1 body handle
-        handle.WriteEndObject ()
-        ans
+// Scalars
+let tellBool (value:bool) : JsonOutput<unit> = tellValue (value :> obj)
 
+// Needs testing that this round trips with JsonExtractor
+let tellDateTime (value:System.DateTime) : JsonOutput<unit> = tellValue (value :> obj)
+
+let tellDecimal (value:decimal) : JsonOutput<unit> = tellValue (value :> obj)
+
+let tellFloat (value:float) : JsonOutput<unit> = tellValue (value :> obj)
+
+// Needs testing that this round trips with JsonExtractor
+let tellGuid (value:System.Guid) : JsonOutput<unit> = tellValue (value :> obj)
+
+let tellInteger (value:int) : JsonOutput<unit> = tellValue (value :> obj)
+
+let tellInteger64 (value:int64) : JsonOutput<unit> = tellValue (value :> obj)
+
+let tellString (value:string) : JsonOutput<unit> = 
+    match value with
+    | null -> tellValue ("" :> obj)
+    | _ -> tellValue (value :> obj)
+
+let tellProperty (name:string) (body:JsonOutput<unit>) : JsonOutput<unit> = 
+    JsonOutput <| fun (handle:JsonTextWriter) ->
+        handle.WritePropertyName name
+        apply1 body handle
+
+
+// An object can only contain properties, so a better interface is
+// tellObject (string * JsonOutput<'a>) list : JsonOutput<unit> = 
+
+let tellObject (body:(string * JsonOutput<unit>) list) : JsonOutput<unit> = 
+    JsonOutput <| fun (handle:JsonTextWriter) ->
+        handle.WriteStartObject ()
+        apply1 (forMz body (fun (name,proc) -> tellProperty name proc)) handle
+        handle.WriteEndObject ()
+        
+// A better interface would have more structure i.e. aknoledge that we have a list and
+// supply the element-processing function rather than the body as a whole...
 let tellArray (body:JsonOutput<'a>) : JsonOutput<'a> = 
     JsonOutput <| fun (handle:JsonTextWriter) ->
         handle.WriteStartArray ()  
@@ -93,16 +125,21 @@ let tellArray (body:JsonOutput<'a>) : JsonOutput<'a> =
         handle.WriteEndArray ()
         ans
 
+let tellListAsArray (values:'a list) (proc1:'a -> JsonOutput<unit>) : JsonOutput<unit> = 
+    JsonOutput <| fun (handle:JsonTextWriter) ->
+        handle.WriteStartArray ()  
+        apply1 (forMz values proc1) handle
+        handle.WriteEndArray ()
+
+
+// This should be superfluous...
 let tellSimpleProperty (name:string) (value:obj) : JsonOutput<unit> = 
     JsonOutput <| fun (handle:JsonTextWriter) ->
         handle.WritePropertyName name
         handle.WriteValue value
 
-let tellProperty (name:string) (body:JsonOutput<'a>) : JsonOutput<'a> = 
-    JsonOutput <| fun (handle:JsonTextWriter) ->
-        handle.WritePropertyName name
-        apply1 body handle
 
+// This should be superfluous...
 // Often we have simple (string*string) pairs to write
 let tellSimpleDictionary (elems:(string*obj) list) : JsonOutput<unit> = 
     JsonOutput <| fun (handle:JsonTextWriter) -> 

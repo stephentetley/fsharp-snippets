@@ -2,6 +2,7 @@
 
 open System
 open System.Text.RegularExpressions
+
 open Microsoft.FSharp.Core
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 
@@ -120,8 +121,9 @@ module Coord =
         { Eastings = E * 1.0<meter>; Northings = N * 1.0<meter> }
 
 
-
-    let osgb36PointToWGS84 ({Eastings = E; Northings = N} : OSGB36Point) : WGS84Point =
+    let osgb36PointToWGS84 (osgb36:OSGB36Point) : WGS84Point =
+        let E               = osgb36.Eastings
+        let N               = osgb36.Northings
         let rec makePhi p m = 
             if abs (float N - N0 - m) < 0.01 then 
                 p 
@@ -129,7 +131,6 @@ module Coord =
                 let phiNEW = (float N - N0 - m) / (a * F0) + p
                 let Mnew   = equationC3 phiNEW
                 makePhi phiNEW Mnew
-        
         let phi1'           = (float N - N0) / (a * F0) + phi0
         let M1              = equationC3 phi1'
         let phi'            = makePhi phi1' M1
@@ -198,14 +199,14 @@ module Coord =
             (0,0)
 
 
-    let private findMajor (E:float) (N:float) : char =
-        match (E,N) with
-        | _ when E >= 0.0 && E < 500000.0 && N >= 0.0 && N < 500000.0 -> 'S'
-        | _ when E >= 500000.0 && E < 1000000.0 && N >= 0.0 && N < 500000.0 -> 'T'
-        | _ when E >= 0.0 && E < 500000.0 && N >= 500000.0 && N < 1000000.0 -> 'N'
-        | _ when E >= 500000.0 && E < 1000000.0 && N >= 500000.0 && N < 1000000.0 -> 'O'
-        | _ when E >= 0.0 && E < 500000.0 && N >= 1000000.0 && N < 1500000.0 -> 'H'
-        | _ when E >= 500000.0 && E < 1000000.0 && N >= 1000000.0 && N < 1500000.0 -> 'J'
+    let private findMajor (easting:float) (northing:float) : char =
+        match (easting,northing) with
+        | _ when easting >= 0.0 && easting < 500000.0 && northing >= 0.0 && northing < 500000.0 -> 'S'
+        | _ when easting >= 500000.0 && easting < 1000000.0 && northing >= 0.0 && northing < 500000.0 -> 'T'
+        | _ when easting >= 0.0 && easting < 500000.0 && northing >= 500000.0 && northing < 1000000.0 -> 'N'
+        | _ when easting >= 500000.0 && easting < 1000000.0 && northing >= 500000.0 && northing < 1000000.0 -> 'O'
+        | _ when easting >= 0.0 && easting < 500000.0 && northing >= 1000000.0 && northing < 1500000.0 -> 'H'
+        | _ when easting >= 500000.0 && easting < 1000000.0 && northing >= 1000000.0 && northing < 1500000.0 -> 'J'
         | _ -> 'X'
 
     let private minorGrid : char[,] = 
@@ -215,9 +216,9 @@ module Coord =
                     [ 'Y'; 'T'; 'O'; 'J'; 'D' ];
                     [ 'Z'; 'U'; 'P'; 'K'; 'E' ]     ]
 
-    let private findMinor (E:float) (N:float) : char =
-        let modE = E % 500000.0
-        let modN = N % 500000.0
+    let private findMinor (easting:float) (northing:float) : char =
+        let modE = easting % 500000.0
+        let modN = northing % 500000.0
         let divE = int (modE / 100000.0)
         let divN = int <| modN / 100000.0
         if divE >=0 && divE < 5 && divN >= 0 && divN < 5 then
@@ -234,11 +235,11 @@ module Coord =
         ; Northings = north + LanguagePrimitives.FloatWithMeasure majN }
     
 
-    let osgb36PointToGrid ({Eastings = E; Northings = N} : OSGB36Point) : OSGB36Grid =  
-        let major = findMajor (float E) (float N)
-        let minor = findMinor (float E) (float N)
-        let smallE = E % 100000.0<meter>
-        let smallN = N % 100000.0<meter>
+    let osgb36PointToGrid ({Eastings = easting; Northings = northing} : OSGB36Point) : OSGB36Grid =  
+        let major = findMajor (float easting) (float northing)
+        let minor = findMinor (float easting) (float northing)
+        let smallE = easting % 100000.0<meter>
+        let smallN = northing % 100000.0<meter>
         { Letter1 = major; Letter2 = minor; Eastings = smallE; Northings = smallN }
     
     let osgb36GridToPoint (gridRef:OSGB36Grid) : OSGB36Point =

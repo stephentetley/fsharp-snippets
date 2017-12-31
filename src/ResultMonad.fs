@@ -211,6 +211,11 @@ let liftAction (action:'a) : Result<'a> =
     with
     | ex -> Err <| ex.ToString()
 
+// Left biased choice, if ``ma`` succeeds return its result, otherwise try ``mb``.
+let alt (ma:Result<'a>) (mb:Result<'a>) : Result<'a> = 
+    match ma with
+    | Err(_) -> mb
+    | Ok(a) -> Ok a
 
 // Catch failing computations, return None. 
 // Successful operations are returned as Some(_).

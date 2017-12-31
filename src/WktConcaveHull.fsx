@@ -162,24 +162,16 @@ let buildImports () : (string * ImportRow list) list  =
 
 
 let genJSON (groups: (string * ImportRow list) list) : JsonOutput<unit> = 
-    let cast1 (str:string) : obj = 
-         match str with
-         | null -> "" :> obj
-         | _ -> str.Trim() :> obj
     let tellOutfalls (outfalls : ImportRow list) : JsonOutput<unit> = 
-        tellArray  
-            <| JsonOutput.forMz outfalls (fun (row:ImportRow) ->
-                tellSimpleDictionary 
-                    <|  [ "UID", cast1 <| row.``SAI Number``
-                        ; "Name", cast1 <| row.Name
-                        ; "OSGB36NGR", cast1 <| row.``Site Grid Ref`` ] )
-    tellArray 
-        <| JsonOutput.forMz groups (fun (group:(string * ImportRow list)) -> 
-            tellObject 
-                <| jsonOutput { 
-                    do! tellProperty "Responsibility" (tellValue <| ((fst group) :> obj))
-                    do! tellProperty "Outfalls" (tellOutfalls <| snd group)
-                    } )
+        tellListAsArray outfalls 
+                        (fun (row:ImportRow) ->
+                            tellObject  [ "UID",        tellString <| row.``SAI Number``
+                                        ; "Name",       tellString <| row.Name
+                                        ; "OSGB36NGR",  tellString <| row.``Site Grid Ref`` ] )
+    tellListAsArray groups 
+                    (fun (group:(string * ImportRow list)) -> 
+                        tellObject [ "Responsibility",  tellValue <| ((fst group) :> obj)
+                                   ; "Outfalls",        tellOutfalls <| snd group ] )
 
 
 let main2 () : unit = 

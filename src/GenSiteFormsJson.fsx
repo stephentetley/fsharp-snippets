@@ -58,9 +58,8 @@ let tellReplaces(row:InputRow) : JsonOutput<unit> =
 
 let tellRow1(row:InputRow) : JsonOutput<unit> = 
     printfn "%s" row.Name
-    tellObject <|
-        jsonOutput { do! tellProperty "FileName" (tellFileName row.Name)
-                     do! tellProperty "Replaces" (tellReplaces row) }
+    tellObject [ "FileName",  tellFileName row.Name
+               ; "Replaces", tellReplaces row ]
 
 let main () : unit = 
     let rows = readRows ()
