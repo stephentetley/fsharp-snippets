@@ -137,22 +137,3 @@ let tellListAsArray (values:'a list) (proc1:'a -> JsonOutput<unit>) : JsonOutput
         apply1 (forMz values proc1) handle
         handle.WriteEndArray ()
 
-//
-//// This should be superfluous...
-//let tellSimpleProperty (name:string) (value:obj) : JsonOutput<unit> = 
-//    JsonOutput <| fun (handle:JsonTextWriter) ->
-//        handle.WritePropertyName name
-//        handle.WriteValue value
-//
-//
-//// This should be superfluous...
-//// Often we have simple (string*string) pairs to write
-//let tellSimpleDictionary (elems:(string*obj) list) : JsonOutput<unit> = 
-//    JsonOutput <| fun (handle:JsonTextWriter) -> 
-//        let write1 (name:string) (o:obj) : unit = 
-//            handle.WritePropertyName name
-//            handle.WriteValue o
-//        handle.WriteStartObject ()
-//        List.iter (fun (k,v) -> write1 k v) elems    
-//        handle.WriteEndObject ()
-

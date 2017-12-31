@@ -38,23 +38,17 @@ let tellFileName (siteName:string) : JsonOutput<unit> =
 
 
 let tellReplaces(row:InputRow) : JsonOutput<unit> = 
-    let cast1 (str:string) : obj = 
-         match str with
-         | null -> "" :> obj
-         | _ -> str.Trim() :> obj
-
-    tellSimpleDictionary 
-        <|  [ "#SITENAME", cast1 <| row.Name
-            ; "#SAINUMBER", cast1 <| row.``SAI Number``
-            ; "#SITEADDRESS", cast1 <| row.``Site Address``
-            ; "#OPERSTATUS", cast1 <| ""
-            ; "#SITEGRIDREF", cast1 <| row.``Site Grid Ref``
-            ; "#ASSETTYPE", cast1 <| row.Type            
-            ; "#OPERNAME", cast1 <| row.``Operational Responsibility`` 
-            ; "#WORKCATEGORY", cast1 <| row.``Work Category``
-            ; "#OUTFALLGRIDREF", cast1 <| row.``Outfall Grid Ref (from IW sheet)``
-            ; "#RECWATERCOURSE", cast1 <| row.``Receiving Watercourse``
-            ]
+    tellObject  [ "#SITENAME",          tellString row.Name
+                ; "#SAINUMBER",         tellString row.``SAI Number``
+                ; "#SITEADDRESS",       tellString row.``Site Address``
+                ; "#OPERSTATUS",        tellString ""
+                ; "#SITEGRIDREF",       tellString row.``Site Grid Ref``
+                ; "#ASSETTYPE",         tellString row.Type            
+                ; "#OPERNAME",          tellString row.``Operational Responsibility`` 
+                ; "#WORKCATEGORY",      tellString row.``Work Category``
+                ; "#OUTFALLGRIDREF",    tellString row.``Outfall Grid Ref (from IW sheet)``
+                ; "#RECWATERCOURSE",    tellString row.``Receiving Watercourse``
+                ]
 
 let tellRow1(row:InputRow) : JsonOutput<unit> = 
     printfn "%s" row.Name
@@ -63,5 +57,5 @@ let tellRow1(row:InputRow) : JsonOutput<unit> =
 
 let main () : unit = 
     let rows = readRows ()
-    let proc = tellArray <| mapMz tellRow1 rows
+    let proc = tellAsArray rows tellRow1
     ignore <| runJsonOutput proc 2 outputFile

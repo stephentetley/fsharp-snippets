@@ -6,9 +6,6 @@ open FSharpx.Collections
 open ClosedXML
 
 
-
-
-
 type ClosedXMLSheet = ClosedXML.Excel.IXLWorksheet
 
 type ClosedXMLWriter<'a> = 
@@ -123,3 +120,23 @@ let tellHeaders (values:string list) : ClosedXMLWriter<unit> =
         else failwith "tellHeaders - not first row"
 
 
+
+// Experiment to make client code less stringy more "typeful"....
+
+type CellWriter<'a> = int -> ClosedXMLWriter<'a>
+
+let tellRow2 (valueProcs:(CellWriter<unit>) list) : ClosedXMLWriter<unit> =
+    ClosedXMLWriter <| fun sheet rowIx ->
+        ignore <| apply1 (mapiMz (fun proc colIx -> proc (colIx+1)) valueProcs) sheet rowIx
+        (rowIx+1, ())
+
+
+let tellObj (value:obj) : CellWriter<unit> = 
+    fun colIx -> ClosedXMLWriter <| fun sheet rowIx -> sheet.Cell(rowIx,colIx+1).Value <- value; (rowIx, ())
+
+let tellString (value:string) : CellWriter<unit> = 
+    fun colIx -> ClosedXMLWriter <| fun sheet rowIx -> sheet.Cell(rowIx,colIx+1).Value <- value; (rowIx, ())
+
+let tellInt (value:int) : CellWriter<unit> = 
+    fun colIx -> ClosedXMLWriter <| fun sheet rowIx -> sheet.Cell(rowIx,colIx+1).Value <- value; (rowIx, ())
+      

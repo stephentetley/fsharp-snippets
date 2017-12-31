@@ -30,7 +30,7 @@ let truncRow (row:CsvRow) : string list =
 let trimCSV (inputFile:string) (outputFile:string) (csvHasHeaders:bool): unit =
     let csv = CsvFile.Load(uri=inputFile, hasHeaders=csvHasHeaders, quote='"')
     let proc = 
-        traverseMz (fun (row:CsvRow) -> tellRow (truncRow row)) csv.Rows
+        traverseMz (tellRow << truncRow) csv.Rows
     outputToNew proc outputFile ","           
 
 
