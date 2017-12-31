@@ -168,9 +168,9 @@ let genJSON (groups: (string * ImportRow list) list) : JsonOutput<unit> =
                             tellObject  [ "UID",        tellString <| row.``SAI Number``
                                         ; "Name",       tellString <| row.Name
                                         ; "OSGB36NGR",  tellString <| row.``Site Grid Ref`` ] )
-    tellListAsArray groups 
+    tellAsArray groups 
                     (fun (group:(string * ImportRow list)) -> 
-                        tellObject [ "Responsibility",  tellValue <| ((fst group) :> obj)
+                        tellObject [ "Responsibility",  tellString   <| fst group
                                    ; "Outfalls",        tellOutfalls <| snd group ] )
 
 

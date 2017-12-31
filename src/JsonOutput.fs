@@ -118,12 +118,18 @@ let tellObject (body:(string * JsonOutput<unit>) list) : JsonOutput<unit> =
         
 // A better interface would have more structure i.e. aknoledge that we have a list and
 // supply the element-processing function rather than the body as a whole...
-let tellArray (body:JsonOutput<'a>) : JsonOutput<'a> = 
+let tellArray (values:'a []) (proc1:'a -> JsonOutput<unit>) : JsonOutput<unit> = 
     JsonOutput <| fun (handle:JsonTextWriter) ->
         handle.WriteStartArray ()  
-        let ans = apply1 body handle
+        apply1 (traverseMz proc1 values) handle
         handle.WriteEndArray ()
-        ans
+
+
+let tellAsArray (values:seq<'a>) (proc1:'a -> JsonOutput<unit>) : JsonOutput<unit> = 
+    JsonOutput <| fun (handle:JsonTextWriter) ->
+        handle.WriteStartArray ()  
+        apply1 (traverseMz proc1 values) handle
+        handle.WriteEndArray ()
 
 let tellListAsArray (values:'a list) (proc1:'a -> JsonOutput<unit>) : JsonOutput<unit> = 
     JsonOutput <| fun (handle:JsonTextWriter) ->
@@ -131,22 +137,22 @@ let tellListAsArray (values:'a list) (proc1:'a -> JsonOutput<unit>) : JsonOutput
         apply1 (forMz values proc1) handle
         handle.WriteEndArray ()
 
-
-// This should be superfluous...
-let tellSimpleProperty (name:string) (value:obj) : JsonOutput<unit> = 
-    JsonOutput <| fun (handle:JsonTextWriter) ->
-        handle.WritePropertyName name
-        handle.WriteValue value
-
-
-// This should be superfluous...
-// Often we have simple (string*string) pairs to write
-let tellSimpleDictionary (elems:(string*obj) list) : JsonOutput<unit> = 
-    JsonOutput <| fun (handle:JsonTextWriter) -> 
-        let write1 (name:string) (o:obj) : unit = 
-            handle.WritePropertyName name
-            handle.WriteValue o
-        handle.WriteStartObject ()
-        List.iter (fun (k,v) -> write1 k v) elems    
-        handle.WriteEndObject ()
+//
+//// This should be superfluous...
+//let tellSimpleProperty (name:string) (value:obj) : JsonOutput<unit> = 
+//    JsonOutput <| fun (handle:JsonTextWriter) ->
+//        handle.WritePropertyName name
+//        handle.WriteValue value
+//
+//
+//// This should be superfluous...
+//// Often we have simple (string*string) pairs to write
+//let tellSimpleDictionary (elems:(string*obj) list) : JsonOutput<unit> = 
+//    JsonOutput <| fun (handle:JsonTextWriter) -> 
+//        let write1 (name:string) (o:obj) : unit = 
+//            handle.WritePropertyName name
+//            handle.WriteValue o
+//        handle.WriteStartObject ()
+//        List.iter (fun (k,v) -> write1 k v) elems    
+//        handle.WriteEndObject ()
 

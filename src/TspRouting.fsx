@@ -229,16 +229,10 @@ let buildImports () : ImportRow list  =
     importData.Data |> Seq.filter nullPred |> Seq.toList
 
 let genJSON (rows:ImportRow list) : JsonOutput<unit> = 
-    let cast1 (str:string) : obj = 
-         match str with
-         | null -> "" :> obj
-         | _ -> str.Trim() :> obj
-    tellArray 
-        <| forMz rows (fun (row:ImportRow) -> 
-            tellSimpleDictionary 
-                <|  [ "UID", cast1 <| row.``SAI Number``
-                    ; "Name", cast1 <| row.``Site Name``
-                    ; "OSGB36NGR", cast1 <| row.NGR ] )
+    tellAsArray rows (fun (row:ImportRow) -> 
+                        tellObject [ "UID",         tellString row.``SAI Number``
+                                   ; "Name",        tellString row.``Site Name``
+                                   ; "OSGB36NGR",   tellString row.NGR ] )
 
 let main2 () : unit = 
     let outputPath = @"G:\work\Projects\pgrouting\routing_data1.json"
