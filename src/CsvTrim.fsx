@@ -23,8 +23,8 @@ let outpath = @"G:\work\Projects\rtu\RTS\RTS-outstation-dump-TRIM2.csv"
 
 
 
-let truncRow (row:CsvRow) : string list = 
-    let cols = Array.map (fun (x : string) -> testQuoteField <| x.Trim()) row.Columns
+let truncRow (row:CsvRow) : CellWriter<unit> list = 
+    let cols = Array.map (fun (x : string) -> x.Trim() |> testQuoteField |> tellString) row.Columns
     Array.toList cols
 
 let trimCSV (inputFile:string) (outputFile:string) (csvHasHeaders:bool): unit =

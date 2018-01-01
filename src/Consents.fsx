@@ -33,6 +33,8 @@ let test01 () =
                     rowi.``Outfall NGRE`` 
                     rowi.``Outfall NGRN``
 
+
+// TODO - this needs another API in CsvWriter 
 let tellConsentsRow (row:ConsentsRow) : CsvWriter<unit> = 
     match row.``Common Name`` with
     | null -> csvWriter.Return ()

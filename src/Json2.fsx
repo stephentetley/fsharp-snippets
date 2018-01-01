@@ -71,10 +71,9 @@ let outpath2 = System.IO.Path.Combine(__SOURCE_DIRECTORY__,"..",@"data\output2.j
 
 let test05 () = 
     let proc = 
-        tellSimpleDictionary 
-            <| [ "#NAME", "MALBURY" :> obj
-                ; "#OID", "OBJ546" :> obj
-                ; "#COUNT", 12 :> obj ]
+            tellObject [ "#NAME",   tellString "MALBURY"
+                       ; "#OID",    tellString "OBJ546"
+                       ; "#COUNT",  tellInteger 12 ]
     runJsonOutput proc 4 outpath2
 
 // Values must be plain strings (or numbers)

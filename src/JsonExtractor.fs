@@ -108,17 +108,17 @@ let traverseMz (fn: 'a -> JsonExtractor<'b>) (source:seq<'a>) : JsonExtractor<un
     JsonExtractor <| fun r ->
         ResultMonad.traverseMz (fun a -> apply1 (fn a) r) source
 
-let mapiM (fn: 'a -> int -> JsonExtractor<'b>) (xs: 'a list) : JsonExtractor<'b list> = 
+let mapiM (fn:int -> 'a -> JsonExtractor<'b>) (xs: 'a list) : JsonExtractor<'b list> = 
     let rec work ac ix list = 
         match list with
-        | y :: ys -> bindM (fn y ix) (fun b -> work (b::ac) (ix+1) ys)
+        | y :: ys -> bindM (fn ix y) (fun b -> work (b::ac) (ix+1) ys)
         | [] -> unitM <| List.rev ac
     work [] 0 xs
 
-let mapiMz (fn: 'a -> int -> JsonExtractor<'b>) (xs: 'a list) : JsonExtractor<unit> = 
+let mapiMz (fn:int -> 'a -> JsonExtractor<'b>) (xs: 'a list) : JsonExtractor<unit> = 
     let rec work ix list = 
         match list with
-        | y :: ys -> bindM (fn y ix) (fun _ -> work (ix+1) ys)
+        | y :: ys -> bindM (fn ix y) (fun _ -> work (ix+1) ys)
         | [] -> unitM ()
     work 0 xs
 

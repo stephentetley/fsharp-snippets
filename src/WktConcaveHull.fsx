@@ -124,13 +124,12 @@ let main (pwd:string) =
         execReaderSingleton query <| fun reader -> reader.GetString(0)
 
     let pgProcAll : PGSQLConn<(int*string) list> = 
-        PGSQLConn.mapiM (fun (s,points) ix -> PGSQLConn.fmapM (fun ans -> (ix+1,ans)) <| pgProcOne points) groups 
+        PGSQLConn.mapiM (fun ix (s,points) -> PGSQLConn.fmapM (fun ans -> (ix+1,ans)) <| pgProcOne points) groups 
 
     let CsvProc (oidtexts:(int*string) list) : CsvWriter<unit> = 
-        csvWriter { 
-            do! tellRow ["oid"; "wkt"]
-            do! CsvWriter.forMz oidtexts (fun (a,b) -> tellRow [a.ToString(); quoteField b])
-        }
+        tellSheetWithHeaders ["oid"; "wkt"] 
+                            oidtexts
+                            (fun (a,b) -> [ tellInteger a; tellQuotedString b ])
 
     let (results1 :(int*string) list) = 
         match runPGSQLConn pgProcAll connstring with
@@ -165,12 +164,12 @@ let genJSON (groups: (string * ImportRow list) list) : JsonOutput<unit> =
     let tellOutfalls (outfalls : ImportRow list) : JsonOutput<unit> = 
         tellListAsArray outfalls 
                         (fun (row:ImportRow) ->
-                            tellObject  [ "UID",        tellString <| row.``SAI Number``
-                                        ; "Name",       tellString <| row.Name
-                                        ; "OSGB36NGR",  tellString <| row.``Site Grid Ref`` ] )
+                            tellObject  [ "UID",        JsonOutput.tellString <| row.``SAI Number``
+                                        ; "Name",       JsonOutput.tellString <| row.Name
+                                        ; "OSGB36NGR",  JsonOutput.tellString <| row.``Site Grid Ref`` ] )
     tellAsArray groups 
                     (fun (group:(string * ImportRow list)) -> 
-                        tellObject [ "Responsibility",  tellString   <| fst group
+                        tellObject [ "Responsibility",  JsonOutput.tellString   <| fst group
                                    ; "Outfalls",        tellOutfalls <| snd group ] )
 
 
