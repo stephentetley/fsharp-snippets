@@ -44,13 +44,13 @@ let buildListing () =
         |> Seq.sort
 
 let processUpdate (name:string) : CsvWriter<unit> = 
-    tellRow [ name; "To make"]
+    tellRow [ tellString name; tellString "To make"]
 
 let processMaster (row:MasterRow) : CsvWriter<unit> = 
     csvWriter.Return ()
 
 let processMatch (row:MasterRow) (name:string) : CsvWriter<unit> =
-    tellRow [ name; "Exists" ]
+    tellRow [ tellString name; tellString "Exists" ]
 
 let compareElements (row:MasterRow) (name:string) : int = 
     let name1 = noPunctuation <| name.Trim()

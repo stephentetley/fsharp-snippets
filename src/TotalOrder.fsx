@@ -52,24 +52,24 @@ let compare1 (a:MasterRow) (b:UpdateRow) : int =
     | (_,null) -> -1
     | _ -> compare a.``Common Name`` b.``Common Name``
 
-let tellHeaders : ClosedXMLWriter<unit> = tellRow headers
+let tellHeaders : ClosedXMLWriter<unit> = tellRow <| List.map tellString headers
 
 let processMasterM (x:MasterRow) : ClosedXMLWriter<unit> = 
     match x with
     | null -> closedXMLWriter.Return ()
     | _ ->
-        tellRow [ "Level - Ultrasonic"
-                ; emptyIfNull x.``Site name``
-                ; emptyIfNull x.``Asset type``
-                ; emptyIfNull x.AssetId 
-                ; emptyIfNull x.Reference
-                ; emptyIfNull x.``Common Name``
-                ; emptyIfNull x.``Installed From``
-                ; emptyIfNull x.Manufacturer
-                ; "Master (unchanged)"
-                ; ""
-                ; ""
-                ; ""
+        tellRow [ tellString    "Level - Ultrasonic"
+                ; tellString    <| emptyIfNull x.``Site name``
+                ; tellString    <| emptyIfNull x.``Asset type``
+                ; tellString    <| emptyIfNull x.AssetId 
+                ; tellString    <| emptyIfNull x.Reference
+                ; tellString    <| emptyIfNull x.``Common Name``
+                ; tellString    <| emptyIfNull x.``Installed From``
+                ; tellString    <| emptyIfNull x.Manufacturer
+                ; tellString    "Master (unchanged)"
+                ; tellString    ""
+                ; tellString    ""
+                ; tellString    ""
                 ]
 
 let namePart (ix:int) (common:string) : string = 
@@ -84,18 +84,18 @@ let processUpdateM (x:UpdateRow) : ClosedXMLWriter<unit> =
     match x with
     | null -> closedXMLWriter.Return ()
     | _ ->
-        tellRow [ "Level - Ultrasonic"
-                ; namePart 0 <| x.``Common Name``
-                ; namePart 1 <| x.``Common Name``
-                ; emptyIfNull x.AssetId
-                ; emptyIfNull x.Reference
-                ; emptyIfNull x.``Common Name``
-                ; emptyIfNull x.``Installed From``
-                ; emptyIfNull x.Manufacturer
-                ; "New on AI2"
-                ; ""
-                ; ""
-                ; emptyIfNull x.``Specific Model/Frame``
+        tellRow [ tellString        "Level - Ultrasonic"
+                ; tellString        <| namePart 0 (x.``Common Name``)
+                ; tellString        <| namePart 1 (x.``Common Name``)
+                ; tellString        <| emptyIfNull x.AssetId
+                ; tellString        <| emptyIfNull x.Reference
+                ; tellString        <| emptyIfNull x.``Common Name``
+                ; tellString        <| emptyIfNull x.``Installed From``
+                ; tellString        <| emptyIfNull x.Manufacturer
+                ; tellString        "New on AI2"
+                ; tellString        ""
+                ; tellString        ""
+                ; tellString        <| emptyIfNull x.``Specific Model/Frame``
                 ]
 
 let processMatchM (x:MasterRow) (y:UpdateRow) : ClosedXMLWriter<unit> =  
@@ -103,32 +103,32 @@ let processMatchM (x:MasterRow) (y:UpdateRow) : ClosedXMLWriter<unit> =
     | null -> printfn "null" ; closedXMLWriter.Return ()
     | _ ->
         if x.``Installed From`` <> y.``Installed From`` then
-            tellRow [ "Level - Ultrasonic"
-                    ; emptyIfNull x.``Site name``
-                    ; emptyIfNull x.``Asset type``
-                    ; emptyIfNull x.AssetId 
-                    ; emptyIfNull x.Reference
-                    ; emptyIfNull x.``Common Name``
-                    ; emptyIfNull x.``Installed From``
-                    ; emptyIfNull x.Manufacturer
-                    ; "Master (changed)"
-                    ; emptyIfNull y.``Installed From``
-                    ; emptyIfNull y.Manufacturer
-                    ; emptyIfNull y.``Specific Model/Frame``
+            tellRow [ tellString    "Level - Ultrasonic"
+                    ; tellString    <| emptyIfNull x.``Site name``
+                    ; tellString    <| emptyIfNull x.``Asset type``
+                    ; tellString    <| emptyIfNull x.AssetId 
+                    ; tellString    <| emptyIfNull x.Reference
+                    ; tellString    <| emptyIfNull x.``Common Name``
+                    ; tellString    <| emptyIfNull x.``Installed From``
+                    ; tellString    <| emptyIfNull x.Manufacturer
+                    ; tellString    "Master (changed)"
+                    ; tellString    <| emptyIfNull y.``Installed From``
+                    ; tellString    <| emptyIfNull y.Manufacturer
+                    ; tellString    <| emptyIfNull y.``Specific Model/Frame``
                     ]
         else
-            tellRow [ "Level - Ultrasonic"
-                    ; emptyIfNull x.``Site name``
-                    ; emptyIfNull x.``Asset type``
-                    ; emptyIfNull x.AssetId 
-                    ; emptyIfNull x.Reference
-                    ; emptyIfNull x.``Common Name``
-                    ; emptyIfNull x.``Installed From``
-                    ; emptyIfNull x.Manufacturer
-                    ; "Master (unchanged)"
-                    ; ""
-                    ; ""
-                    ; ""
+            tellRow [ tellString    "Level - Ultrasonic"
+                    ; tellString    <| emptyIfNull x.``Site name``
+                    ; tellString    <| emptyIfNull x.``Asset type``
+                    ; tellString    <| emptyIfNull x.AssetId 
+                    ; tellString    <| emptyIfNull x.Reference
+                    ; tellString    <| emptyIfNull x.``Common Name``
+                    ; tellString    <| emptyIfNull x.``Installed From``
+                    ; tellString    <| emptyIfNull x.Manufacturer
+                    ; tellString    "Master (unchanged)"
+                    ; tellString    ""
+                    ; tellString    ""
+                    ; tellString    <| ""
                     ]
 
 //let processMaster (x:MasterRow) : unit = printfn "MASTER: %s" x.``Common Name``

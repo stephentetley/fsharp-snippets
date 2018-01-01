@@ -34,7 +34,6 @@ let test01 () =
                     rowi.``Outfall NGRN``
 
 
-// TODO - this needs another API in CsvWriter 
 let tellConsentsRow (row:ConsentsRow) : CsvWriter<unit> = 
     match row.``Common Name`` with
     | null -> csvWriter.Return ()
@@ -44,9 +43,9 @@ let tellConsentsRow (row:ConsentsRow) : CsvWriter<unit> =
                 { Coord.Eastings = E;
                   Coord.Northings = N }
            let gridref = Coord.osgb36PointToGrid pt
-           tellRow [ row.``AIB Reference``
-                   ; row.``Common Name`` 
-                   ; (Coord.showOSGB36Grid gridref) ]
+           tellRow [ tellString row.``AIB Reference``
+                   ; tellString row.``Common Name`` 
+                   ; tellString (Coord.showOSGB36Grid gridref) ]
 
 
 
@@ -60,7 +59,7 @@ let main () : unit =
     let rows:seq<ConsentsRow> = input.Data |> Seq.filter test
     let procM : CsvWriter<unit> = 
         csvWriter { 
-            do! tellRow ["UID"; "Name" ; "Grid Ref"]
+            do! tellHeaders ["UID"; "Name" ; "Grid Ref"]
             do! traverseMz tellConsentsRow rows }
                     
     outputToNew procM outfile ","

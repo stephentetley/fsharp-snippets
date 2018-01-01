@@ -50,10 +50,10 @@ let correctGridRef (input:string) : string =
         
 let tellRow1 (row:InputRow) : ClosedXMLWriter<unit> = 
     // printfn "%s" (row.``Related AI Asset Name``)
-    tellRow [ defaultIfNull "" <| row.``SAI of related asset``
-            ; defaultIfNull "" <| row.``Related AI Asset Name``
-            ; correctGridRef   <| row.``Outlet NGR``
-            ; defaultIfNull "" <| row.``Receiving water/ environment``
+    tellRow [ tellString    << defaultIfNull "" <| row.``SAI of related asset``
+            ; tellString    << defaultIfNull "" <| row.``Related AI Asset Name``
+            ; tellString    << correctGridRef   <| row.``Outlet NGR``
+            ; tellString    << defaultIfNull "" <| row.``Receiving water/ environment``
             ]
 
 let outFile : string = 
