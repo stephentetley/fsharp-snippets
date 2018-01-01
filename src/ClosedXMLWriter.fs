@@ -5,19 +5,21 @@ open FSharpx.Collections
 
 open ClosedXML
 
+// ClosedXML - First Cell is (Row=1,Col=1)
+type Position = private { RowIx: int; ColIx: int}
 
 type ClosedXMLSheet = ClosedXML.Excel.IXLWorksheet
 
 type ClosedXMLWriter<'a> = 
-    ClosedXMLWriter of (ClosedXMLSheet -> int -> (int * 'a))
+    ClosedXMLWriter of (ClosedXMLSheet -> Position -> (Position * 'a))
 
 let runClosedXMLWriter (ma:ClosedXMLWriter<'a>) (sheet:ClosedXMLSheet) : 'a =
     match ma with
-    | ClosedXMLWriter(f) -> snd <| f sheet 1
+    | ClosedXMLWriter(f) -> snd <| f sheet {RowIx=1;ColIx=1}
 
 
-let inline apply1 (ma : ClosedXMLWriter<'a>) (sheet:ClosedXMLSheet) (i:int) : (int * 'a) = 
-    let (ClosedXMLWriter f) = ma in f sheet i
+let inline apply1 (ma : ClosedXMLWriter<'a>) (sheet:ClosedXMLSheet) (pos:Position) : (Position * 'a) = 
+    let (ClosedXMLWriter f) = ma in f sheet pos
 
 let private unitM (x:'a) : ClosedXMLWriter<'a> = 
     ClosedXMLWriter <| fun r s -> (s,x)
@@ -72,13 +74,24 @@ let private seqMapAccumL (fn:'st -> 'a -> ('st * 'b)) (state:'st) (source:seq<'a
     work state source
 
 let traverseM (fn: 'a -> ClosedXMLWriter<'b>) (source:seq<'a>) : ClosedXMLWriter<seq<'b>> = 
-    ClosedXMLWriter <| fun sheet rowIx ->
-        seqMapAccumL (fun st x -> apply1 (fn x) sheet st) rowIx source
+    ClosedXMLWriter <| fun sheet pos ->
+        seqMapAccumL (fun st x -> apply1 (fn x) sheet st) pos source
 
 let traverseMz (fn: 'a -> ClosedXMLWriter<'b>) (source:seq<'a>) : ClosedXMLWriter<unit> = 
-    ClosedXMLWriter <| fun sheet rowIx ->
-        let (s1,_) = seqMapAccumL (fun st x -> apply1 (fn x) sheet st) rowIx source in (s1,())
+    ClosedXMLWriter <| fun sheet pos ->
+        let (s1,_) = seqMapAccumL (fun st x -> apply1 (fn x) sheet st) pos source in (s1,())
 
+let traverseiM (fn: 'a -> int -> ClosedXMLWriter<'b>) (source:seq<'a>) : ClosedXMLWriter<seq<'b>> = 
+    let finish = fun ((pos,_), ans) -> (pos,ans)
+    ClosedXMLWriter <| fun sheet pos ->
+        finish <| seqMapAccumL (fun (cursor,ix) x -> 
+                                let (cursor1,ans) = apply1 (fn x ix) sheet cursor in ((cursor1,ix+1),ans)) (pos,0) source
+
+let traverseiMz (fn: 'a -> int -> ClosedXMLWriter<'b>) (source:seq<'a>) : ClosedXMLWriter<unit> = 
+    let finish = fun ((pos,_), _) -> (pos,())
+    ClosedXMLWriter <| fun sheet pos ->
+        finish <| seqMapAccumL (fun (cursor,ix) x -> 
+                                let (cursor1,ans) = apply1 (fn x ix) sheet cursor in ((cursor1,ix+1),ans)) (pos,0) source
 
 let mapiM (fn: 'a -> int -> ClosedXMLWriter<'b>) (xs: 'a list) : ClosedXMLWriter<'b list> = 
     let rec work ac ix list = 
@@ -107,36 +120,61 @@ let outputToNew (ma:ClosedXMLWriter<'a>) (fileName:string) (sheetName:string) : 
     outputbook.SaveAs(fileName)
     ans
 
+let private nextRow (pos:Position) : Position = {RowIx=pos.RowIx+1; ColIx=1}
+let private incrCol (pos:Position) : Position = let cx = pos.ColIx in { pos with ColIx=cx+1}
+
+let tellCell (value:obj) : ClosedXMLWriter<unit> = 
+    ClosedXMLWriter <| fun sheet pos ->  
+        sheet.Cell(pos.RowIx, pos.ColIx).Value <- value
+        (incrCol pos, ())
+
 let tellRow (values:string list) : ClosedXMLWriter<unit> =
-    ClosedXMLWriter <| fun sheet rowIx ->
-        List.iteri (fun ix e -> sheet.Cell(rowIx,ix+1).Value <- e) values
-        (rowIx+1, ())
+    ClosedXMLWriter <| fun sheet pos ->
+        ignore <| apply1 (mapMz tellCell values) sheet pos
+        (nextRow pos, ())
 
 
 let tellHeaders (values:string list) : ClosedXMLWriter<unit> =
-    ClosedXMLWriter <| fun sheet rowIx ->
-        if rowIx = 1 then
-            apply1 (tellRow values) sheet rowIx
-        else failwith "tellHeaders - not first row"
+    ClosedXMLWriter <| fun sheet pos ->
+        if pos.RowIx = 1 && pos.ColIx = 1 then
+            apply1 (tellRow values) sheet pos
+        else failwith "tellHeaders - not at first cell (something written already)"
 
 
 
-// Experiment to make client code less stringy more "typeful"....
+// Experiment to make client code less stringy and more "typeful"....
+// There seem to be two nice interfaces - an Applicative-like chain with (*>) or 
+// List<CellWriter<unit>>.  
 
-type CellWriter<'a> = int -> ClosedXMLWriter<'a>
+type CellWriter<'a> = private Wrapped of ClosedXMLWriter<'a>
+type RowWriter<'a> = CellWriter<'a> list
+
+let private getWrapped (cellWriter:CellWriter<'a>) : ClosedXMLWriter<'a> = 
+    match cellWriter with | Wrapped(fn) -> fn
+
 
 let tellRow2 (valueProcs:(CellWriter<unit>) list) : ClosedXMLWriter<unit> =
-    ClosedXMLWriter <| fun sheet rowIx ->
-        ignore <| apply1 (mapiMz (fun proc colIx -> proc (colIx+1)) valueProcs) sheet rowIx
-        (rowIx+1, ())
+    ClosedXMLWriter <| fun sheet pos ->
+        ignore <| apply1 (mapMz getWrapped valueProcs) sheet pos
+        (nextRow pos, ())
+
+let tellRows2 (items:seq<'a>) (writeRow:'a -> CellWriter<unit> list) : ClosedXMLWriter<unit> = 
+    traverseMz (tellRow2 << writeRow) items
+
+let tellRowsi2 (items:seq<'a>) (writeRow:'a -> int -> CellWriter<unit> list) : ClosedXMLWriter<unit> = 
+    traverseiMz (fun a ix -> tellRow2 <| writeRow a ix) items
 
 
 let tellObj (value:obj) : CellWriter<unit> = 
-    fun colIx -> ClosedXMLWriter <| fun sheet rowIx -> sheet.Cell(rowIx,colIx+1).Value <- value; (rowIx, ())
+    Wrapped <| tellCell obj
 
 let tellString (value:string) : CellWriter<unit> = 
-    fun colIx -> ClosedXMLWriter <| fun sheet rowIx -> sheet.Cell(rowIx,colIx+1).Value <- value; (rowIx, ())
+    match value with 
+    | null -> tellObj ("" :> obj)
+    | _ -> tellObj (value :> obj)
 
-let tellInt (value:int) : CellWriter<unit> = 
-    fun colIx -> ClosedXMLWriter <| fun sheet rowIx -> sheet.Cell(rowIx,colIx+1).Value <- value; (rowIx, ())
+// tellStringf would be nice but not sure how to achieve it...
+
+let tellInt (value:int) : CellWriter<unit> = tellObj (value :> obj)
+let tellFloat (value:float) : CellWriter<unit> = tellObj (value :> obj)
       

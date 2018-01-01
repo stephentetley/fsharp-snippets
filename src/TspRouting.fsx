@@ -172,15 +172,15 @@ let pgTSPQuery (startPt:DbRecord) (endPt:DbRecord) : PGSQLConn<DbRecord list> =
     execReaderList query procM          // for some reason execReaderList does not work and we have to inline it here...
 
 let outputXslx (records:DbRecord list) (fileName:string) : unit = 
-    let proc1 (orec:DbRecord) (ix:int) : ClosedXMLWriter<unit> = 
-        tellRow   [ (ix + 1).ToString()
-                  ; orec.SiteCode
-                  ; orec.LongName
-                  ; orec.Wgs84Lat.ToString()
-                  ; orec.Wgs84Lon.ToString() ]
+    let proc1 (orec:DbRecord) (ix:int) : RowWriter<unit> = 
+        [ ClosedXMLWriter.tellInt <|    ix + 1
+        ; ClosedXMLWriter.tellString    orec.SiteCode
+        ; ClosedXMLWriter.tellString    orec.LongName
+        ; ClosedXMLWriter.tellFloat     orec.Wgs84Lat
+        ; ClosedXMLWriter.tellFloat     orec.Wgs84Lon ]
     let procM = 
         closedXMLWriter { do! tellHeaders ["Order"; "Code"; "Name"; "Latitude"; "Longitude"]
-                          do! foriMz records proc1 } 
+                          do! tellRowsi2 records proc1 } 
     outputToNew procM fileName "Routes"
 
 let findStartAndEnd (findStart:DbRecord list -> DbRecord option) 
