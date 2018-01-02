@@ -23,7 +23,6 @@ open PGSQLConn
 #load "Geo.fs"
 open Geo
 
-#load "ResultMonad.fs"
 #load "JsonExtractor.fs"
 open JsonExtractor
 
@@ -52,40 +51,31 @@ let makeConnString (pwd:string) (dbname:string) : string =
 
 let jsonInput = @"G:\work\Projects\events2\concave_hull_data1.json"
 
-type Wgs84Multipoint = Coord.WGS84Point list
-type Osgb36Multipoint  = Coord.OSGB36Grid list
 
-
-type InputData = (string * Osgb36Multipoint) list
-
-
+type Group<'a> = 
+    { Name : string
+      Points : 'a list }
 
 
 // Structure is known!
 // We have a JsonValue object which we can "tree parse".
 
 
-let extractorM : JsonExtractor<(string * string list) list> = 
+let extractorM : JsonExtractor<Group<string> list> = 
     askArrayAsList 
-        <| JsonExtractor.tupleM2 
-                (field "Responsibility" askString)
-                (field "Outfalls" (askArrayAsList (field "OSGB36NGR" askString)))
+        <| JsonExtractor.liftM2 (fun name pts ->  { Name = name; Points = pts})
+                                (field "Responsibility" askString)
+                                (field "Outfalls" (askArrayAsList (field "OSGB36NGR" askString)))
 
 
-let readInputs (inputs:string list) : Coord.WGS84Point list = 
-    let rec work (ac:Coord.WGS84Point list) (ins:string list) = 
-        match ins with 
-        | [] -> List.rev ac
-        | (x::xs) -> 
-            match Option.map (Coord.osgb36GridToWGS84) (Coord.tryReadOSGB36Grid x) with
-            | None -> work ac xs
-            | Some(ans) -> work (ans::ac) xs
-    work [] inputs
+let decodePoints (inputs:string list) : Coord.WGS84Point list = 
+    List.choose Coord.tryReadOSGB36Grid inputs |> List.map Coord.osgb36GridToWGS84
 
 
-let inputs () : (string * Coord.WGS84Point list) list = 
-    ResultMonad.runResultWithError (extractFromFile extractorM jsonInput)
-        |> List.map (fun (resp,gridrefs) -> (resp, readInputs gridrefs))
+
+let getInputs () : Result<Group<Coord.WGS84Point> list> = 
+    ResultMonad.fmapM (List.map (fun group -> { Name=group.Name; Points = decodePoints group.Points}))
+                      (extractFromFile extractorM jsonInput)
 
 
 let genConvexHullQuery (points:Coord.WGS84Point list) : string = 
@@ -111,32 +101,33 @@ let genConcaveHullQuery (points:Coord.WGS84Point list) (targetPercent:float) : s
 // i.e only POLYGONs, only MULTIPOINTs.
 
 //let test02 () = inputs () |> List.take 14 |> genConvexHullQuery |> printfn "%s"
+let pgConcaveHull (points:Coord.WGS84Point list) : PGSQLConn<string> = 
+        let query = genConcaveHullQuery points 0.9
+        execReaderSingleton query <| fun reader -> reader.GetString(0)
+
+let pgConcaveHulls (groups:(Group<Coord.WGS84Point> list)) : PGSQLConn<(int*string) list> = 
+        PGSQLConn.mapiM (fun ix group1 -> PGSQLConn.fmapM (fun ans -> (ix+1,ans)) <| pgConcaveHull group1.Points) groups 
 
 
 let wktOutfile = @"G:\work\Projects\events2\wkt_concave_hulls1.csv"
 
+
+// Note - main should run in the result monad...
 let main (pwd:string) = 
     let connstring = makeConnString pwd "spt_geo" 
-    let groups = inputs () 
-    printfn "%A" groups
-    let pgProcOne (points:Coord.WGS84Point list) : PGSQLConn<string> = 
-        let query = genConcaveHullQuery points 0.9
-        execReaderSingleton query <| fun reader -> reader.GetString(0)
-
-    let pgProcAll : PGSQLConn<(int*string) list> = 
-        PGSQLConn.mapiM (fun ix (s,points) -> PGSQLConn.fmapM (fun ans -> (ix+1,ans)) <| pgProcOne points) groups 
-
-    let CsvProc (oidtexts:(int*string) list) : CsvWriter<unit> = 
+    let csvProc (oidtexts:(int*string) list) : CsvWriter<unit> = 
         tellSheetWithHeaders ["oid"; "wkt"] 
                             oidtexts
                             (fun (a,b) -> [ tellInteger a; tellQuotedString b ])
+    runResultWithError
+        <| resultMonad { 
+                let! groups = getInputs () 
+                let! results1 = runPGSQLConn (pgConcaveHulls groups) connstring
+                do! liftAction (outputToNew (csvProc results1) wktOutfile ",")
+            }
 
-    let (results1 :(int*string) list) = 
-        match runPGSQLConn pgProcAll connstring with
-        | Ok(a) -> a
-        | Err(msg) -> failwithf "FATAL: %s" msg
+   
 
-    outputToNew (CsvProc results1) wktOutfile ","
 
 
 

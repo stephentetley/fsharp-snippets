@@ -7,8 +7,7 @@ open System.IO
 open ResultMonad
 
 
-type JsonExtractor<'a> = 
-    | JsonExtractor of (JsonValue -> Result<'a>)
+type JsonExtractor<'a> = private JsonExtractor of (JsonValue -> Result<'a>)
 
 
 
