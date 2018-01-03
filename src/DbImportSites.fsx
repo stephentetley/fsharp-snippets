@@ -13,6 +13,7 @@ open FSharp.ExcelProvider
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
 #load @"ResultMonad.fs"
+open ResultMonad
 #load @"SqlUtils.fs"
 open SqlUtils
 #load @"SQLiteConn.fs"
@@ -33,10 +34,10 @@ let connString =
     sprintf "Data Source=%s;Version=3;" dbSrc
 
 
-let deleteData () = 
+let deleteData () : Result<int> = 
     let query1 = "DELETE FROM all_sites;"
     let deleteProc = execNonQuery query1
-    ignore <| runSQLiteConn deleteProc connString
+    runSQLiteConn deleteProc connString
 
 let test02 () : unit = 
     let query1 : string = "SELECT * FROM all_sites"
@@ -46,30 +47,35 @@ let test02 () : unit =
     let proc = execReader query1 readProc
     ignore <| runSQLiteConn proc connString
 
-let test03 () = 
-    let query1 : string = "INSERT INTO all_sites (sainum, sitename) VALUES ('SAI0000TEST', 'NAME/TEST');"
-    let insertProc = withTransaction <| execNonQuery query1
-    ignore <| runSQLiteConn insertProc connString
 
-let makeInsertQuery (row:ImportRow) : string =
-    sprintf "INSERT INTO all_sites (%s) VALUES ('%s','%s','%s','%s','%s','%s','%s','%s');"
-        "sainum, installation_name, location_name, postcode, full_address, grid_ref, ops_contact, asset_type"
-        (cleanseValue row.InstReference)
-        (cleanseValue row.InstCommonName)
-        (cleanseValue row.SiteCommonName)
-        (cleanseValue row.``Post Code``)
-        (cleanseValue row.``Full Address``)
-        (cleanseValue row.LocationReference)
-        (cleanseValue row.``Operational Responsibility``)
-        (cleanseValue row.AssetType)
+// This is the new style...
+let genINSERT1 (row:ImportRow) : string = 
+    sqlINSERT "all_sites" 
+        <|  [ stringValue       "sainum"                row.InstReference
+            ; stringValue       "installation_name"     row.InstCommonName
+            ; stringValue       "location_name"         row.SiteCommonName
+            ; stringValue       "postcode"              row.``Post Code``
+            ; stringValue       "full_address"          row.``Full Address``
+            ; stringValue       "grid_ref"              row.LocationReference
+            ; stringValue       "ops_contact"           row.``Operational Responsibility``
+            ; stringValue       "asset_type"            row.AssetType
+            ]
 
 
 let main () : unit = 
     let importData = new ImportTable()
     let nullPred (row:ImportRow) = match row.InstReference with null -> false | _ -> true
     let rows = importData.Data |> Seq.filter nullPred |> Seq.toList
-    let rowProc (row:ImportRow) : SQLiteConn<int> = execNonQuery <| makeInsertQuery row
-    let insertProc = withTransaction <| forMz rows rowProc
-    ignore <| runSQLiteConn insertProc connString
+    let rowProc (row:ImportRow) : SQLiteConn<int> = execNonQuery <| genINSERT1 row
+
+    // Ideally withTransaction would sum, but is this the correct thing to do? 
+    let insertProc = withTransaction <| forM rows rowProc
+
+    runResult (failwith) (printfn "Success: %A rows imported" << List.sum) <| resultMonad { 
+        let! _ = deleteData ()
+        let! ans = runSQLiteConn insertProc connString
+        return ans
+    }
+    
 
 

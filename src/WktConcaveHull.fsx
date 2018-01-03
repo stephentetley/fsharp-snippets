@@ -40,13 +40,9 @@ open CsvWriter
 
 
 let makeConnString (pwd:string) (dbname:string) : string = 
-    let fmt : Printf.StringFormat<(string -> string -> string)> = "Host=localhost;Username=postgres;Password=%s;Database=%s";
+    let fmt : Printf.StringFormat<(string -> string -> string)> = 
+        "Host=localhost;Username=postgres;Password=%s;Database=%s";
     sprintf fmt pwd dbname
-
-
-// TODO - all this code is just a placeholder
-// Postgis can build bounding polygons so we should interface 
-// with that (ST_ConvexHull)
 
 
 let jsonInput = @"G:\work\Projects\events2\concave_hull_data1.json"

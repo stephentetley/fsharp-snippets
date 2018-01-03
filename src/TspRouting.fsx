@@ -99,7 +99,7 @@ let tryMakeDbRecord (ix:int) (input:JsonRecord) : DbRecord option =
 
 
 let makeDBRecords (inputs:JsonRecord list) : DbRecord list = 
-    // Use direct recursion because not every step might be productive (so not mapAccumL [List.mapFold])
+    // Use direct recursion because not every step might be productive (so not mapAccumL [aka List.mapFold])
     // Start count at 1
     let rec proc (ix:int) (ac:DbRecord list) (ins:JsonRecord list) : DbRecord list = 
         match ins with
