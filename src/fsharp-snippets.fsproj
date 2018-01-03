@@ -96,6 +96,7 @@
     <None Include="Obsolete\XlsTrim.fsx" />
     <None Include="Obsolete\XlsTrim2.fsx" />
     <Compile Include="ResultMonad.fs" />
+    <Compile Include="ScriptMonad.fs" />
     <Compile Include="Geo.fs" />
     <Compile Include="ExcelUtils.fs" />
     <Compile Include="JsonExtractor.fs" />

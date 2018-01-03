@@ -61,6 +61,15 @@ let mapMz (fn:'a -> SQLiteConn<'b>) (xs:'a list) : SQLiteConn<unit> =
 
 let forMz (xs:'a list) (fn:'a -> SQLiteConn<'b>) : SQLiteConn<unit> = mapMz fn xs
 
+// Problemmatic... See ResultMonad.traverseM
+let traverseM (fn: 'a -> SQLiteConn<'b>) (source:seq<'a>) : SQLiteConn<seq<'b>> = 
+    SQLiteConn <| fun conn ->
+        ResultMonad.traverseM (fun x -> let mf = fn x in apply1 mf conn) source
+
+let traverseMz (fn: 'a -> SQLiteConn<'b>) (source:seq<'a>) : SQLiteConn<unit> = 
+    SQLiteConn <| fun conn ->
+        ResultMonad.traverseMz (fun x -> let mf = fn x in apply1 mf conn) source
+
 
 // SQLiteConn specific operations
 let runSQLiteConn (ma:SQLiteConn<'a>) (connString:string) : Result<'a> = 
@@ -156,3 +165,22 @@ let withTransaction (ma:SQLiteConn<'a>) : SQLiteConn<'a> =
             | Err(msg) -> trans.Rollback () ; ans
         with 
         | ex -> trans.Rollback() ; Err( ex.ToString() )
+
+let withTransactionList (values:'a list) (proc1:'a -> SQLiteConn<'b>) : SQLiteConn<'b list> = 
+    withTransaction (forM values proc1)
+
+
+let withTransactionListSum (values:'a list) (proc1:'a -> SQLiteConn<int>) : SQLiteConn<int> = 
+    fmapM (List.sum) <| withTransactionList values proc1
+
+
+let withTransactionSeq (values:seq<'a>) (proc1:'a -> SQLiteConn<'b>) : SQLiteConn<seq<'b>> = 
+    withTransaction (traverseM proc1 values)
+    
+let withTransactionSeqSum (values:seq<'a>) (proc1:'a -> SQLiteConn<int>) : SQLiteConn<int> = 
+    fmapM (Seq.sum) <| withTransactionSeq values proc1
+
+// Run a ``DELETE FROM`` query
+let deleteAllRows (tableName:string) : SQLiteConn<int> = 
+    let query = sprintf "DELETE FROM %s;" tableName
+    execNonQuery query

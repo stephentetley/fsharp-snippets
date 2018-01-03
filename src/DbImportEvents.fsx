@@ -13,10 +13,14 @@ open FSharp.ExcelProvider
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
 #load @"ResultMonad.fs"
+open ResultMonad
 #load @"SqlUtils.fs"
 open SqlUtils
 #load @"SQLiteConn.fs"
 open SQLiteConn
+
+#load @"ScriptMonad.fs"
+open ScriptMonad
 
 type ImportTable = 
     ExcelFile< @"G:\work\Projects\events2\events-stws.xlsx",
@@ -40,7 +44,7 @@ let connString =
     sprintf "Data Source=%s;Version=3;" dbloc
 
 
-let deleteData () = 
+let deleteData () : Result<int> = 
     let query1 = "DELETE FROM permits;"
     let deleteProc = execNonQuery query1
     runSQLiteConn deleteProc connString
@@ -55,38 +59,38 @@ let test02 () : unit =
 
 
 
-let makeInsertPermit (row:ImportRow) : string =
-    sprintf "INSERT INTO permits (%s) VALUES ('%s','%s','%s','%s');"
-        "permit_ref, permit_number, site_name, sai_number"
-        (cleanseValue row.``Permit Reference``)
-        (cleanseValue row.``Top level permit number``)
-        (cleanseValue row.``Overflow Name``)
-        (cleanseValue row.``SAI Number``)
+let genInsertPermitStmt (row:ImportRow) : string =
+    sqlINSERT "permits" 
+        <|  [ stringValue       "permit_ref"        row.``Permit Reference``
+            ; stringValue       "permit_number"     row.``Top level permit number``
+            ; stringValue       "site_name"         row.``Overflow Name``
+            ; stringValue       "sai_number"        row.``SAI Number``]
+
 
 let makeInsertSite (row:ImportRow) : string =
-    sprintf "INSERT INTO sites (%s) VALUES ('%s','%s');"
-        "sai_number, site_name"
-        (cleanseValue row.``SAI Number``)
-        (cleanseValue row.``Overflow Name``)
+    sqlINSERT "sites" 
+        <|  [ stringValue       "sai_number"        row.``SAI Number``
+            ; stringValue       "site_name"         row.``Overflow Name`` ]
+
 
 let makeInsertIWPermit (row:IWRow) : string =
-    sprintf "INSERT INTO iw_permits (%s) VALUES ('%s','%s','%s','%s','%s','%s');"
-        "sai_number, asset_name, outlet_grid_ref, monitor_grid_ref, discharge_decription, permit_urn"
-        (cleanseValue row.``SAI of related asset``)
-        (cleanseValue row.``Related AI Asset Name``)
-        (cleanseValue row.``Outlet NGR``)
-        (cleanseValue row.``Effluent Monitoring point NGR``)
-        (cleanseValue row.``Description of Discharge``)
-        (cleanseValue row.``URN (permit number and schedule)``)
+    sqlINSERT "iw_permits" 
+        <|  [ stringValue       "sai_number"            row.``SAI of related asset``
+            ; stringValue       "asset_name"            row.``Related AI Asset Name``
+            ; stringValue       "outlet_grid_ref"       row.``Outlet NGR``
+            ; stringValue       "monitor_grid_ref"      row.``Effluent Monitoring point NGR``
+            ; stringValue       "discharge_decription"  row.``Description of Discharge`` 
+            ; stringValue       "permit_urn"            row.``URN (permit number and schedule)``  ]
 
-let insertPermits () : unit = 
+
+let insertPermits () : Result<int list> = 
     let importData = new ImportTable()
     let nullPred (row:ImportRow) = match row.``Overflow Name`` with null -> false | _ -> true
     let allrows = importData.Data |> Seq.filter nullPred |> Seq.toList
-    let permitInsProc (row:ImportRow) : SQLiteConn<int> = execNonQuery <| makeInsertPermit row
-    let insertProc = withTransaction <| forMz allrows permitInsProc
-    ignore <| runSQLiteConn insertProc connString
-
+    let permitInsProc (row:ImportRow) : SQLiteConn<int> = execNonQuery <| genInsertPermitStmt row
+    let insertProc = withTransactionList allrows permitInsProc
+    runSQLiteConn insertProc connString
+    
 
 let insertSites () : unit = 
     let importData = new ImportTable()
@@ -95,7 +99,7 @@ let insertSites () : unit =
     let siterows = 
         importData.Data |> Seq.filter nullPred |> Seq.distinctBy distProc |> Seq.toList
     let siteInsProc (row:ImportRow) : SQLiteConn<int> = execNonQuery <| makeInsertSite row
-    let insertProc = withTransaction <| forMz siterows siteInsProc
+    let insertProc = withTransactionSeq siterows siteInsProc
     ignore <| runSQLiteConn insertProc connString
 
 
@@ -104,5 +108,9 @@ let insertIWPermits () : unit =
     let nullPred (row:IWRow) = match row.``Related AI Asset Name`` with null -> false | _ -> true
     let allrows = iwData.Data |> Seq.filter nullPred |> Seq.toList
     let iwInsProc (row:IWRow) : SQLiteConn<int> = execNonQuery <| makeInsertIWPermit row
-    let insertProc = withTransaction <| forMz allrows iwInsProc
+    let insertProc = withTransactionSeq allrows iwInsProc
     ignore <| runSQLiteConn insertProc connString
+
+
+  
+

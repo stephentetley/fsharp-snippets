@@ -70,6 +70,14 @@ let mapiMz (fn:int -> 'a -> PGSQLConn<'b>) (xs:'a list) : PGSQLConn<unit> =
 let forMz (xs:'a list) (fn:'a -> PGSQLConn<'b>) : PGSQLConn<unit> = mapMz fn xs
 
 
+let traverseM (fn: 'a -> PGSQLConn<'b>) (source:seq<'a>) : PGSQLConn<seq<'b>> = 
+    PGSQLConn <| fun conn ->
+        ResultMonad.traverseM (fun x -> let mf = fn x in apply1 mf conn) source
+
+let traverseMz (fn: 'a -> PGSQLConn<'b>) (source:seq<'a>) : PGSQLConn<unit> = 
+    PGSQLConn <| fun conn ->
+        ResultMonad.traverseMz (fun x -> let mf = fn x in apply1 mf conn) source
+
 // PGSQLConn-specific operations
 let runPGSQLConn (ma:PGSQLConn<'a>) (connString:string) : Result<'a> = 
     let dbconn = new NpgsqlConnection(connString)
@@ -167,4 +175,23 @@ let withTransaction (ma:PGSQLConn<'a>) : PGSQLConn<'a> =
         | ex -> trans.Rollback() ; Err( ex.ToString() )
         
 
- 
+
+let withTransactionList (values:'a list) (proc1:'a -> PGSQLConn<'b>) : PGSQLConn<'b list> = 
+    withTransaction (forM values proc1)
+
+
+let withTransactionListSum (values:'a list) (proc1:'a -> PGSQLConn<int>) : PGSQLConn<int> = 
+    fmapM (List.sum) <| withTransactionList values proc1
+
+
+
+let withTransactionSeq (values:seq<'a>) (proc1:'a -> PGSQLConn<'b>) : PGSQLConn<seq<'b>> = 
+    withTransaction (traverseM proc1 values)
+    
+let withTransactionSeqSum (values:seq<'a>) (proc1:'a -> PGSQLConn<int>) : PGSQLConn<int> = 
+    fmapM (Seq.sum) <| withTransactionSeq values proc1
+
+// Run a ``TRUNCATE TABLE`` query
+let deleteAllRows (tableName:string) : PGSQLConn<int> = 
+    let query = sprintf "TRUNCATE TABLE %s;" tableName
+    execNonQuery query

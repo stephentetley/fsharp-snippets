@@ -62,7 +62,7 @@ let liftM3 (fn:'a -> 'b -> 'c -> 'r) (ma:Result<'a>) (mb:Result<'b>) (mc:Result<
             | Err(msg) -> Err msg
             | Ok(c) -> Ok (fn a b c)
 
-let liftM4 (fn:'a -> 'b -> 'c -> 'd -> 'r) (ma:Result<'a>) (mb:Result<'b>) (mc:Result<'c>) (md:Result<'d>) : Result<'r>= 
+let liftM4 (fn:'a -> 'b -> 'c -> 'd -> 'r) (ma:Result<'a>) (mb:Result<'b>) (mc:Result<'c>) (md:Result<'d>) : Result<'r> = 
     match ma with
     | Err(msg) -> Err msg
     | Ok(a) -> 
@@ -76,7 +76,7 @@ let liftM4 (fn:'a -> 'b -> 'c -> 'd -> 'r) (ma:Result<'a>) (mb:Result<'b>) (mc:R
                 | Err(msg) -> Err msg
                 | Ok(d) -> Ok (fn a b c d)
 
-let liftM5 (fn:'a -> 'b -> 'c -> 'd -> 'e -> 'r) (ma:Result<'a>) (mb:Result<'b>) (mc:Result<'c>) (md:Result<'d>) (me:Result<'e>) : Result<'r>= 
+let liftM5 (fn:'a -> 'b -> 'c -> 'd -> 'e -> 'r) (ma:Result<'a>) (mb:Result<'b>) (mc:Result<'c>) (md:Result<'d>) (me:Result<'e>) : Result<'r> = 
     match ma with
     | Err(msg) -> Err msg
     | Ok(a) -> 
@@ -125,6 +125,8 @@ let mapMz (fn:'a -> Result<'b>) (xs:'a list) : Result<unit> =
 
 let forMz (xs:'a list) (fn:'a -> Result<'b>) : Result<unit> = mapMz fn xs
 
+// TODO - it looks like this is wrong...
+// Or at least causes a stack overflow.
 let traverseM (fn: 'a -> Result<'b>) (source:seq<'a>) : Result<seq<'b>> = 
     let rec work (src:seq<'a>) = 
         if Seq.isEmpty src then Ok <| seq { yield! [] }
@@ -151,6 +153,31 @@ let traverseMz (fn: 'a -> Result<'b>) (source:seq<'a>) : Result<unit> =
                 | Ok(rest) -> Ok ()
     work source
 
+let traverseiM (fn:int -> 'a -> Result<'b>) (source:seq<'a>) : Result<seq<'b>> = 
+    let rec work (ix:int) (src:seq<'a>) = 
+        if Seq.isEmpty src then Ok <| seq { yield! [] }
+        else 
+            let a = Seq.head src
+            match fn ix a with
+            | Err(msg) -> Err msg
+            | Ok(a) -> 
+                match work (ix+1) (Seq.tail src) with 
+                | Err(msg) -> Err msg
+                | Ok(rest) -> Ok <| seq { yield a; yield! rest }
+    work 0 source
+
+let traverseiMz (fn:int -> 'a -> Result<'b>) (source:seq<'a>) : Result<unit> = 
+    let rec work (ix:int) (src:seq<'a>) = 
+        if Seq.isEmpty src then Ok ()
+        else 
+            let a = Seq.head src
+            match fn ix a with
+            | Err(msg) -> Err msg
+            | Ok(a) -> 
+                match work (ix+1) (Seq.tail src) with 
+                | Err(msg) -> Err msg
+                | Ok(rest) -> Ok ()
+    work 0 source
 
 // Applicatives (<*>)
 let apM (mf:Result<'a ->'b>) (ma:Result<'a>) : Result<'b> = 

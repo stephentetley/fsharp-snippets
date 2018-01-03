@@ -123,8 +123,7 @@ let genINSERT1 (rec1:DbRecord) : string =
 let pgInsertRecords (records:DbRecord list) : PGSQLConn<int> = 
     PGSQLConn.fmapM (List.sum) <| withTransaction (PGSQLConn.forM records (execNonQuery  << genINSERT1))
 
-let pgInitializeTable : PGSQLConn<int> = 
-    execNonQuery "TRUNCATE TABLE temp_routing;"
+let pgInitializeTable : PGSQLConn<int> = deleteAllRows "temp_routing;"
 
 
 let tryFindFindNode(cmp : DbRecord -> DbRecord -> bool) (nodes: DbRecord list) : DbRecord option = 

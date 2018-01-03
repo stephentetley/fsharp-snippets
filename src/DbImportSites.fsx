@@ -20,6 +20,11 @@ open SqlUtils
 open SQLiteConn
 
 
+#load @"ScriptMonad.fs"
+open ScriptMonad
+
+
+
 type ImportTable = 
     ExcelFile< @"G:\work\Projects\rtu\import_data\ImportData.xlsx",
                 SheetName = "SitesAndInstallations",
@@ -27,25 +32,27 @@ type ImportTable =
 
 type ImportRow = ImportTable.Row
 
+type ConnString = string
+
+type Script<'a> = ScriptMonad<ConnString,'a>
+
 //  **** DB Import
 
-let connString = 
+// TODO - whither connString? Should it be passed into where it is called, Should it be in a Reader Monad?
+let makeConnString () : ConnString = 
     let dbSrc = System.IO.Path.Combine(__SOURCE_DIRECTORY__,"..","data\sai_refs.sqlite")
     sprintf "Data Source=%s;Version=3;" dbSrc
 
 
-let deleteData () : Result<int> = 
-    let query1 = "DELETE FROM all_sites;"
-    let deleteProc = execNonQuery query1
-    runSQLiteConn deleteProc connString
+let withConnString (fn:ConnString -> Script<'a>) : Script<'a> = 
+    scriptMonad.Bind (ask (), fn)
 
-let test02 () : unit = 
-    let query1 : string = "SELECT * FROM all_sites"
-    let readProc (reader : SQLiteDataReader) = 
-        while reader.Read() do
-            printf "%s '%s'\n" (reader.GetString(0)) (reader.GetString(1)) 
-    let proc = execReader query1 readProc
-    ignore <| runSQLiteConn proc connString
+let liftWithConnString (fn:ConnString -> Result<'a>) : Script<'a> = 
+    withConnString <| (liftResult << fn)
+
+
+let deleteData () : Script<int> = 
+    liftWithConnString <| runSQLiteConn (deleteAllRows "all_sites")
 
 
 // This is the new style...
@@ -61,19 +68,18 @@ let genINSERT1 (row:ImportRow) : string =
             ; stringValue       "asset_type"            row.AssetType
             ]
 
+let insertData (rows:seq<ImportRow>) : Script<int> = 
+    let rowProc (row:ImportRow) : SQLiteConn<int> = execNonQuery <| genINSERT1 row
+    liftWithConnString <| runSQLiteConn (withTransactionListSum (Seq.toList rows) rowProc)
 
 let main () : unit = 
-    let importData = new ImportTable()
+    let conn = makeConnString ()
     let nullPred (row:ImportRow) = match row.InstReference with null -> false | _ -> true
-    let rows = importData.Data |> Seq.filter nullPred |> Seq.toList
-    let rowProc (row:ImportRow) : SQLiteConn<int> = execNonQuery <| genINSERT1 row
-
-    // Ideally withTransaction would sum, but is this the correct thing to do? 
-    let insertProc = withTransaction <| forM rows rowProc
-
-    runResult (failwith) (printfn "Success: %A rows imported" << List.sum) <| resultMonad { 
+    let rows = (new ImportTable()).Data |> Seq.filter nullPred
+    
+    runScript (failwith) (printfn "Success: %A rows imported") (consoleLogger) conn <| scriptMonad { 
         let! _ = deleteData ()
-        let! ans = runSQLiteConn insertProc connString
+        let! ans = insertData rows
         return ans
     }
     
