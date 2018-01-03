@@ -39,35 +39,24 @@ let fmapM (fn:'a -> 'b) (ma:PGSQLConn<'a>) : PGSQLConn<'b> =
        | Err(msg) -> Err(msg)
 
 let mapM (fn:'a -> PGSQLConn<'b>) (xs:'a list) : PGSQLConn<'b list> = 
-    let rec work ac ys = 
-        match ys with
-        | [] -> unitM <| List.rev ac
-        | z :: zs -> bindM (fn z) (fun a -> work (a::ac) zs)
-    work [] xs
+    PGSQLConn <| fun conn ->
+        ResultMonad.mapM (fun a -> apply1 (fn a) conn) xs
 
 let forM (xs:'a list) (fn:'a -> PGSQLConn<'b>) : PGSQLConn<'b list> = mapM fn xs
 
 let mapMz (fn:'a -> PGSQLConn<'b>) (xs:'a list) : PGSQLConn<unit> = 
-    let rec work ys = 
-        match ys with
-        | [] -> unitM ()
-        | z :: zs -> bindM (fn z) (fun _ -> work zs)
-    work xs
+    PGSQLConn <| fun conn ->
+        ResultMonad.mapMz (fun a -> apply1 (fn a) conn) xs
+
+let forMz (xs:'a list) (fn:'a -> PGSQLConn<'b>) : PGSQLConn<unit> = mapMz fn xs
 
 let mapiM (fn:int -> 'a -> PGSQLConn<'b>) (xs:'a list) : PGSQLConn<'b list> = 
-    let rec work ac ix ys = 
-        match ys with
-        | [] -> unitM <| List.rev ac
-        | z :: zs -> bindM (fn ix z) (fun a -> work (a::ac) (ix+1) zs)
-    work [] 0 xs
+    PGSQLConn <| fun conn ->
+        ResultMonad.mapiM (fun ix a -> apply1 (fn ix a) conn) xs
 
 let mapiMz (fn:int -> 'a -> PGSQLConn<'b>) (xs:'a list) : PGSQLConn<unit> = 
-    let rec work ix ys = 
-        match ys with
-        | [] -> unitM ()
-        | z :: zs -> bindM (fn ix z) (fun _ -> work (ix+1) zs)
-    work 0 xs
-let forMz (xs:'a list) (fn:'a -> PGSQLConn<'b>) : PGSQLConn<unit> = mapMz fn xs
+    PGSQLConn <| fun conn ->
+        ResultMonad.mapiMz (fun ix a -> apply1 (fn ix a) conn) xs
 
 
 let traverseM (fn: 'a -> PGSQLConn<'b>) (source:seq<'a>) : PGSQLConn<seq<'b>> = 

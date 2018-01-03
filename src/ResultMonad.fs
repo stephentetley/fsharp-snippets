@@ -125,59 +125,38 @@ let mapMz (fn:'a -> Result<'b>) (xs:'a list) : Result<unit> =
 
 let forMz (xs:'a list) (fn:'a -> Result<'b>) : Result<unit> = mapMz fn xs
 
-// TODO - it looks like this is wrong...
-// Or at least causes a stack overflow.
-let traverseM (fn: 'a -> Result<'b>) (source:seq<'a>) : Result<seq<'b>> = 
-    let rec work (src:seq<'a>) = 
-        if Seq.isEmpty src then Ok <| seq { yield! [] }
-        else 
-            let a = Seq.head src
-            match fn a with
-            | Err(msg) -> Err msg
-            | Ok(a) -> 
-                match work (Seq.tail src) with 
-                | Err(msg) -> Err msg
-                | Ok(rest) -> Ok <| seq { yield a; yield! rest }
-    work source
+let mapiM (fn:int -> 'a -> Result<'b>) (xs:'a list) : Result<'b list> = 
+    let rec work ix ac ys = 
+        match ys with
+        | [] -> unitM <| List.rev ac
+        | z :: zs -> bindM (fn ix z) (fun a -> work (ix+1) (a::ac) zs)
+    work 0 [] xs
+
+
+let mapiMz (fn:int -> 'a -> Result<'b>) (xs:'a list) : Result<unit> = 
+    let rec work ix ys = 
+        match ys with
+        | [] -> unitM ()
+        | z :: zs -> bindM (fn ix z) (fun _ -> work (ix+1) zs)
+    work 0 xs
+
+// Note - Seq going through list seems better than anything I can manage directly
+// either with recursion (bursts the stack) or an enumerator (very slow)
+// The moral is this is a abd API (currently)
+
+
+let traverseM (fn: 'a -> Result<'b>) (source:seq<'a>) : Result<seq<'b>> =
+    fmapM (List.toSeq) (mapM fn <| Seq.toList source) 
+
 
 let traverseMz (fn: 'a -> Result<'b>) (source:seq<'a>) : Result<unit> = 
-    let rec work (src:seq<'a>) = 
-        if Seq.isEmpty src then Ok ()
-        else 
-            let a = Seq.head src
-            match fn a with
-            | Err(msg) -> Err msg
-            | Ok(a) -> 
-                match work (Seq.tail src) with 
-                | Err(msg) -> Err msg
-                | Ok(rest) -> Ok ()
-    work source
+    mapMz fn <| Seq.toList source
 
 let traverseiM (fn:int -> 'a -> Result<'b>) (source:seq<'a>) : Result<seq<'b>> = 
-    let rec work (ix:int) (src:seq<'a>) = 
-        if Seq.isEmpty src then Ok <| seq { yield! [] }
-        else 
-            let a = Seq.head src
-            match fn ix a with
-            | Err(msg) -> Err msg
-            | Ok(a) -> 
-                match work (ix+1) (Seq.tail src) with 
-                | Err(msg) -> Err msg
-                | Ok(rest) -> Ok <| seq { yield a; yield! rest }
-    work 0 source
+    fmapM (List.toSeq) (mapiM fn <| Seq.toList source) 
 
 let traverseiMz (fn:int -> 'a -> Result<'b>) (source:seq<'a>) : Result<unit> = 
-    let rec work (ix:int) (src:seq<'a>) = 
-        if Seq.isEmpty src then Ok ()
-        else 
-            let a = Seq.head src
-            match fn ix a with
-            | Err(msg) -> Err msg
-            | Ok(a) -> 
-                match work (ix+1) (Seq.tail src) with 
-                | Err(msg) -> Err msg
-                | Ok(rest) -> Ok ()
-    work 0 source
+    mapiMz fn <| Seq.toList source
 
 // Applicatives (<*>)
 let apM (mf:Result<'a ->'b>) (ma:Result<'a>) : Result<'b> = 

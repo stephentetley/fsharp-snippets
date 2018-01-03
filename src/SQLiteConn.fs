@@ -39,27 +39,30 @@ let (sqliteConn:SQLiteConnBuilder) = new SQLiteConnBuilder()
 // Common operations
 let fmapM (fn:'a -> 'b) (ma:SQLiteConn<'a>) : SQLiteConn<'b> = 
     SQLiteConn <| fun conn ->
-       match apply1 ma conn with
-       | Ok(ans) -> Ok <| fn ans
-       | Err(msg) -> Err(msg)
+       ResultMonad.fmapM fn <| apply1 ma conn
+       
 
 let mapM (fn:'a -> SQLiteConn<'b>) (xs:'a list) : SQLiteConn<'b list> = 
-    let rec work ac ys = 
-        match ys with
-        | [] -> unitM <| List.rev ac
-        | z :: zs -> bindM (fn z) (fun a -> work (a::ac) zs)
-    work [] xs
+    SQLiteConn <| fun conn ->
+        ResultMonad.mapM (fun a -> apply1 (fn a) conn) xs
 
 let forM (xs:'a list) (fn:'a -> SQLiteConn<'b>) : SQLiteConn<'b list> = mapM fn xs
 
 let mapMz (fn:'a -> SQLiteConn<'b>) (xs:'a list) : SQLiteConn<unit> = 
-    let rec work ys = 
-        match ys with
-        | [] -> unitM ()
-        | z :: zs -> bindM (fn z) (fun _ -> work zs)
-    work xs
+    SQLiteConn <| fun conn ->
+        ResultMonad.mapMz (fun a -> apply1 (fn a) conn) xs
 
 let forMz (xs:'a list) (fn:'a -> SQLiteConn<'b>) : SQLiteConn<unit> = mapMz fn xs
+
+
+let mapiM (fn:int -> 'a -> SQLiteConn<'b>) (xs:'a list) : SQLiteConn<'b list> = 
+    SQLiteConn <| fun conn ->
+        ResultMonad.mapiM (fun ix a -> apply1 (fn ix a) conn) xs
+
+let mapiMz (fn:int -> 'a -> SQLiteConn<'b>) (xs:'a list) : SQLiteConn<unit> = 
+    SQLiteConn <| fun conn ->
+        ResultMonad.mapiMz (fun ix a -> apply1 (fn ix a) conn) xs
+
 
 // Problemmatic... See ResultMonad.traverseM
 let traverseM (fn: 'a -> SQLiteConn<'b>) (source:seq<'a>) : SQLiteConn<seq<'b>> = 

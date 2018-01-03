@@ -70,7 +70,7 @@ let genINSERT1 (row:ImportRow) : string =
 
 let insertData (rows:seq<ImportRow>) : Script<int> = 
     let rowProc (row:ImportRow) : SQLiteConn<int> = execNonQuery <| genINSERT1 row
-    liftWithConnString <| runSQLiteConn (withTransactionListSum (Seq.toList rows) rowProc)
+    liftWithConnString <| runSQLiteConn (withTransactionSeqSum rows rowProc)
 
 let main () : unit = 
     let conn = makeConnString ()
