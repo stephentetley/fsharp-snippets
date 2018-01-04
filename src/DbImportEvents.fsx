@@ -23,14 +23,8 @@ open SQLiteConn
 open ScriptMonad
 
 
-type GetRowsDict<'table, 'row> = 
-    { GetRows : 'table -> seq<'row>
-      NotNullProc : 'row -> bool }
-
-let excelTableGetRows (dict:GetRowsDict<'table,'row>) (table:'table) : 'row list = 
-    let allrows = dict.GetRows table
-    allrows |> Seq.filter dict.NotNullProc |> Seq.toList
-
+#load @"ExcelProviderHelper.fs"
+open ExcelProviderHelper
 
 
 type ImportTable = 
@@ -40,11 +34,9 @@ type ImportTable =
 
 type ImportRow = ImportTable.Row
 
-
 let importTableDict : GetRowsDict<ImportTable, ImportRow> = 
     { GetRows     = fun imports -> imports.Data 
       NotNullProc = fun row -> match row.``Overflow Name`` with null -> false | _ -> true }
-
 
 let getImportRows () : ImportRow list = excelTableGetRows importTableDict (new ImportTable())
 
@@ -56,12 +48,9 @@ type IWTable =
 
 type IWRow = IWTable.Row
 
-
-
 let iwTableDict : GetRowsDict<IWTable, IWRow> = 
     { GetRows     = fun imports -> imports.Data 
       NotNullProc = fun row -> match row.``Related AI Asset Name`` with null -> false | _ -> true }
-
 
 let getIWRows () : IWRow list = excelTableGetRows iwTableDict (new IWTable())
 
@@ -92,15 +81,6 @@ let deleteAllData () : Script<int> =
                   let! c = deleteAllRows "permits" 
                   return a + b + c }
     liftWithConnParams <| runSQLiteConn proc
-
-
-//let test02 () : unit = 
-//    let query1 : string = "SELECT * FROM permits"
-//    let readProc (reader : SQLiteDataReader) = 
-//        while reader.Read() do
-//            printf "%s '%s'\n" (reader.GetString(0)) (reader.GetString(1)) 
-//    let proc = execReader query1 readProc
-//    ignore <| runSQLiteConn proc connString
 
 
 
@@ -151,5 +131,13 @@ let insertIWPermits () : Script<int> =
     liftWithConnParams <| runSQLiteConn insertProc
 
 
+let main () : unit = 
+    let conn = sqliteConnParamsVersion3  @"G:\work\Projects\events2\edmDB.sqlite3"
   
-
+    runScript (failwith) (printfn "Success: %A rows imported") (consoleLogger) conn <| scriptMonad { 
+        let! _ = deleteAllData ()
+        let! a = insertSites ()
+        let! b = insertPermits () 
+        let! c = insertIWPermits ()
+        return (a+b+c)
+    }
