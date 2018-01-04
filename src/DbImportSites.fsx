@@ -32,27 +32,25 @@ type ImportTable =
 
 type ImportRow = ImportTable.Row
 
-type ConnString = string
 
-type Script<'a> = ScriptMonad<ConnString,'a>
+type Script<'a> = ScriptMonad<SQLiteConnParams,'a>
 
 //  **** DB Import
 
-// TODO - whither connString? Should it be passed into where it is called, Should it be in a Reader Monad?
-let makeConnString () : ConnString = 
+let makeConnParams () : SQLiteConnParams = 
     let dbSrc = System.IO.Path.Combine(__SOURCE_DIRECTORY__,"..","data\sai_refs.sqlite")
-    sprintf "Data Source=%s;Version=3;" dbSrc
+    sqliteConnParamsVersion3 dbSrc
 
 
-let withConnString (fn:ConnString -> Script<'a>) : Script<'a> = 
+let withConnParams (fn:SQLiteConnParams -> Script<'a>) : Script<'a> = 
     scriptMonad.Bind (ask (), fn)
 
-let liftWithConnString (fn:ConnString -> Result<'a>) : Script<'a> = 
-    withConnString <| (liftResult << fn)
+let liftWithConnParams (fn:SQLiteConnParams -> Result<'a>) : Script<'a> = 
+    withConnParams <| (liftResult << fn)
 
 
 let deleteData () : Script<int> = 
-    liftWithConnString <| runSQLiteConn (deleteAllRows "all_sites")
+    liftWithConnParams <| runSQLiteConn (deleteAllRows "all_sites")
 
 
 // This is the new style...
@@ -70,15 +68,15 @@ let genINSERT1 (row:ImportRow) : string =
 
 let insertData (rows:seq<ImportRow>) : Script<int> = 
     let rowProc (row:ImportRow) : SQLiteConn<int> = execNonQuery <| genINSERT1 row
-    liftWithConnString <| runSQLiteConn (withTransactionSeqSum rows rowProc)
+    liftWithConnParams <| runSQLiteConn (withTransactionSeqSum rows rowProc)
 
 let main () : unit = 
-    let conn = makeConnString ()
-    let nullPred (row:ImportRow) = match row.InstReference with null -> false | _ -> true
+    let conn = makeConnParams ()
+    let nullPred (row:ImportRow) : bool = match row.InstReference with null -> false | _ -> true
     let rows = (new ImportTable()).Data |> Seq.filter nullPred
     
     runScript (failwith) (printfn "Success: %A rows imported") (consoleLogger) conn <| scriptMonad { 
-        let! _ = deleteData ()
+        let! _   = deleteData ()
         let! ans = insertData rows
         return ans
     }

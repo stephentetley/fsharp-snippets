@@ -11,13 +11,12 @@ open Npgsql
 open PGSQLConn
 
 
-let makeConnString (pwd:string) (dbname:string) : string = 
-    let fmt : Printf.StringFormat<(string -> string -> string)> = "Host=localhost;Username=postgres;Password=%s;Database=%s";
-    sprintf fmt pwd dbname
+let makeConnParams (pwd:string) (dbname:string) : PGSQLConnParams = 
+    pgsqlConnParamsTesting dbname pwd
 
 
 let test01 (pwd:string) = 
-    let connString = makeConnString pwd "spt_test" 
+    let connString = paramsConnString <| makeConnParams pwd "spt_test" 
     let conn = new NpgsqlConnection(connString)
     conn.Open ()
     let cmd = new NpgsqlCommand("SELECT name, age FROM people", conn)
@@ -27,33 +26,33 @@ let test01 (pwd:string) =
     conn.Close ()
 
 let test02 (pwd:string) : unit = 
-    let connstring = makeConnString pwd "spt_test" 
+    let connparams = makeConnParams pwd "spt_test" 
     let proc = 
         execReader "SELECT name, age FROM people" <| fun reader -> 
             while reader.Read() do 
                printfn "%s is %i years old" (reader.GetString(0)) (reader.GetInt64(1)) 
-    ignore <| runPGSQLConn proc connstring 
+    ignore <| runPGSQLConn proc connparams 
 
 
 let test03 (pwd:string) : unit = 
-    let connstring = makeConnString pwd "spt_geo" 
+    let connparams = makeConnParams pwd "spt_geo" 
     let proc = 
         execReader "SELECT point_code, point_name FROM temp_routing" <| fun reader -> 
             while reader.Read() do 
                printfn "%s, %s" (reader.GetString(0)) (reader.GetString(1)) 
-    ignore <| runPGSQLConn proc connstring 
+    ignore <| runPGSQLConn proc connparams 
 
 let test04 (pwd:string) = 
-    let connstring = makeConnString pwd "spt_geo" 
+    let connparams = makeConnParams pwd "spt_geo" 
     let query = @"SELECT ST_AsGeoJSON(ST_GeomFromText('MULTIPOINT(50 5, 150 30, 50 10, 10 10)')) ;"
     let proc = 
         execReaderSingleton query <| fun reader -> printfn "%s" (reader.GetString(0))
-    ignore <| runPGSQLConn proc connstring 
+    ignore <| runPGSQLConn proc connparams 
 
 
 let test05 (pwd:string) : unit = 
-    let connstring = makeConnString pwd "spt_geo" 
+    let connparams = makeConnParams pwd "spt_geo" 
     let proc = 
         execReaderList "SELECT point_code, point_name FROM temp_routing;" <| fun reader -> 
             printfn "%s, %s" (reader.GetString(0)) (reader.GetString(1)) 
-    ignore <| runPGSQLConn proc connstring 
+    ignore <| runPGSQLConn proc connparams 

@@ -5,6 +5,23 @@ open Npgsql
 open ResultMonad
 open SqlUtils
 
+
+type PGSQLConnParams = 
+    { Host : string 
+      Username : string 
+      Password : string 
+      Database : string }
+
+
+let paramsConnString (config:PGSQLConnParams) : string = 
+    sprintf "Host=%s;Username=%s;Password=%s;Database=%s" config.Host config.Username config.Password config.Database
+
+// Host="localhost"; Username="postgres"
+let pgsqlConnParamsTesting (dbName:string) (password:string) : PGSQLConnParams = 
+    { Host = "localhost"; Username = "postgres"; Database = dbName; Password = password }
+
+
+
 // SQLiteConn Monad
 type PGSQLConn<'a> = PGSQLConn of (NpgsqlConnection -> Result<'a>)
 
@@ -68,8 +85,9 @@ let traverseMz (fn: 'a -> PGSQLConn<'b>) (source:seq<'a>) : PGSQLConn<unit> =
         ResultMonad.traverseMz (fun x -> let mf = fn x in apply1 mf conn) source
 
 // PGSQLConn-specific operations
-let runPGSQLConn (ma:PGSQLConn<'a>) (connString:string) : Result<'a> = 
-    let dbconn = new NpgsqlConnection(connString)
+let runPGSQLConn (ma:PGSQLConn<'a>) (connParams:PGSQLConnParams) : Result<'a> = 
+    let conn = paramsConnString connParams
+    let dbconn = new NpgsqlConnection(conn)
     dbconn.Open()
     let a = match ma with | PGSQLConn(f) -> f dbconn
     dbconn.Close()

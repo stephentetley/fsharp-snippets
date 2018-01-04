@@ -9,6 +9,20 @@ open ResultMonad
 open SqlUtils
 
 
+type SQLiteConnParams = 
+    { PathToDB : string 
+      SQLiteVersion : string }
+
+
+let paramsConnString (config:SQLiteConnParams) : string = 
+    sprintf "Data Source=%s;Version=%s;" config.PathToDB config.SQLiteVersion
+
+let sqliteConnParamsVersion3 (pathToDB:string) : SQLiteConnParams = 
+    { PathToDB = pathToDB; SQLiteVersion = "3" }
+
+
+
+
 // SQLiteConn Monad - a Reader-Error monad
 type SQLiteConn<'a> = SQLiteConn of (SQLite.SQLiteConnection -> Result<'a>)
 
@@ -75,8 +89,9 @@ let traverseMz (fn: 'a -> SQLiteConn<'b>) (source:seq<'a>) : SQLiteConn<unit> =
 
 
 // SQLiteConn specific operations
-let runSQLiteConn (ma:SQLiteConn<'a>) (connString:string) : Result<'a> = 
-    let dbconn = new SQLiteConnection(connString)
+let runSQLiteConn (ma:SQLiteConn<'a>) (connParams:SQLiteConnParams) : Result<'a> = 
+    let conn = paramsConnString connParams
+    let dbconn = new SQLiteConnection(conn)
     dbconn.Open()
     let a = match ma with | SQLiteConn(f) -> f dbconn
     dbconn.Close()

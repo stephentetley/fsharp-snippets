@@ -36,26 +36,28 @@ type IWTable =
 
 type IWRow = IWTable.Row
 
+type ConnString = string
+
+type Script<'a> = ScriptMonad<ConnString,'a>
 
 //  **** DB Import
 
-let connString = 
+let makeConnParams () : SQLiteConnParams = 
     let dbloc = @"G:\work\Projects\events2\edmDB.sqlite3"
-    sprintf "Data Source=%s;Version=3;" dbloc
-
+    sqliteConnParamsVersion3 dbloc
 
 let deleteData () : Result<int> = 
     let query1 = "DELETE FROM permits;"
     let deleteProc = execNonQuery query1
-    runSQLiteConn deleteProc connString
+    runSQLiteConn deleteProc (makeConnParams () )
 
-let test02 () : unit = 
-    let query1 : string = "SELECT * FROM permits"
-    let readProc (reader : SQLiteDataReader) = 
-        while reader.Read() do
-            printf "%s '%s'\n" (reader.GetString(0)) (reader.GetString(1)) 
-    let proc = execReader query1 readProc
-    ignore <| runSQLiteConn proc connString
+//let test02 () : unit = 
+//    let query1 : string = "SELECT * FROM permits"
+//    let readProc (reader : SQLiteDataReader) = 
+//        while reader.Read() do
+//            printf "%s '%s'\n" (reader.GetString(0)) (reader.GetString(1)) 
+//    let proc = execReader query1 readProc
+//    ignore <| runSQLiteConn proc connString
 
 
 
@@ -89,7 +91,7 @@ let insertPermits () : Result<int list> =
     let allrows = importData.Data |> Seq.filter nullPred |> Seq.toList
     let permitInsProc (row:ImportRow) : SQLiteConn<int> = execNonQuery <| genInsertPermitStmt row
     let insertProc = withTransactionList allrows permitInsProc
-    runSQLiteConn insertProc connString
+    runSQLiteConn insertProc (makeConnParams ())
     
 
 let insertSites () : unit = 
@@ -100,7 +102,7 @@ let insertSites () : unit =
         importData.Data |> Seq.filter nullPred |> Seq.distinctBy distProc |> Seq.toList
     let siteInsProc (row:ImportRow) : SQLiteConn<int> = execNonQuery <| makeInsertSite row
     let insertProc = withTransactionSeq siterows siteInsProc
-    ignore <| runSQLiteConn insertProc connString
+    ignore <| runSQLiteConn insertProc (makeConnParams ())
 
 
 let insertIWPermits () : unit = 
@@ -109,7 +111,7 @@ let insertIWPermits () : unit =
     let allrows = iwData.Data |> Seq.filter nullPred |> Seq.toList
     let iwInsProc (row:IWRow) : SQLiteConn<int> = execNonQuery <| makeInsertIWPermit row
     let insertProc = withTransactionSeq allrows iwInsProc
-    ignore <| runSQLiteConn insertProc connString
+    ignore <| runSQLiteConn insertProc (makeConnParams ())
 
 
   
