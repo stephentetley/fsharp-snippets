@@ -27,9 +27,9 @@ open SQLiteConn
 open ClosedXMLWriter
 
 
-let connString = 
+let connParams = 
     let dbSrc = System.IO.Path.Combine(__SOURCE_DIRECTORY__,"..","data\sai_refs.sqlite")
-    sprintf "Data Source=%s;Version=3;" dbSrc
+    sqliteConnParamsVersion3 dbSrc
 
 let realName (s:string) : string = s.Replace('_','/').Trim()
 let underscoreName (s:string) : string = s.Replace('/','_').Trim()
@@ -39,7 +39,7 @@ let findSAI (name:string) : string =
         sprintf "SELECT sainum FROM all_sites WHERE sitename='%s';" (realName name)        
     let readProc (reader : SQLiteDataReader) = 
         if reader.Read() then reader.GetString(0) else ""
-    match runSQLiteConn (execReader query1 readProc) connString with
+    match runSQLiteConn (execReader query1 readProc) connParams with
     | Err(msg) -> failwith <| sprintf "Cannot finf SAI %s" name
     | Ok(a) -> a
 

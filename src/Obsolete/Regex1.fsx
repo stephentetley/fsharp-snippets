@@ -1,6 +1,6 @@
 ﻿// Note there is name clash on Regex with `System.Text.RegularExpressions`
 // reference the type provider dll
-#I @"..\packages\FSharp.Text.RegexProvider.1.0.0\lib\net40"
+#I @"..\..\packages\FSharp.Text.RegexProvider.1.0.0\lib\net40"
 #r "FSharp.Text.RegexProvider.dll"
 open FSharp.Text.RegexProvider
 open System.Text

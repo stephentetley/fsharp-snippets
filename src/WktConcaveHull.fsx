@@ -110,7 +110,7 @@ let wktOutfile = @"G:\work\Projects\events2\wkt_concave_hulls1.csv"
 
 // Note - main should run in the result monad...
 let main (pwd:string) = 
-    let connstring = makeConnString pwd "spt_geo" 
+    let conn = pgsqlConnParamsTesting pwd "spt_geo" 
     let csvProc (oidtexts:(int*string) list) : CsvWriter<unit> = 
         tellSheetWithHeaders ["oid"; "wkt"] 
                             oidtexts
@@ -118,7 +118,7 @@ let main (pwd:string) =
     runResultWithError
         <| resultMonad { 
                 let! groups = getInputs () 
-                let! results1 = runPGSQLConn (pgConcaveHulls groups) connstring
+                let! results1 = runPGSQLConn (pgConcaveHulls groups) conn
                 do! liftAction (outputToNew (csvProc results1) wktOutfile ",")
             }
 

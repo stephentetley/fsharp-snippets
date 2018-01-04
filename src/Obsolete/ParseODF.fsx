@@ -1,7 +1,7 @@
 ﻿// This parses a configuration file used by a proprietry telemetry system
 // [It does not parse OpenOffice odf]
 
-#I @"..\packages\FParsec.1.0.2\lib\net40-client"
+#I @"..\..\packages\FParsec.1.0.2\lib\net40-client"
 #r "FParsec"
 #r "FParsecCS"
 open FParsec

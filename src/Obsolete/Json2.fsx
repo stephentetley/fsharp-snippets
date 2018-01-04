@@ -1,16 +1,16 @@
-﻿#I @"..\packages\Newtonsoft.Json.10.0.2\lib\net45"
+﻿#I @"..\..\packages\Newtonsoft.Json.10.0.2\lib\net45"
 #r "Newtonsoft.Json"
 open Newtonsoft.Json
 
 open FSharp.Core
 
-#I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
+#I @"..\..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
 open FSharpx.Collections
 
 // With Json.Net - we have low level methods if we want them
 
-#load "JsonOutput.fs"
+#load "..\JsonOutput.fs"
 open JsonOutput
 
 

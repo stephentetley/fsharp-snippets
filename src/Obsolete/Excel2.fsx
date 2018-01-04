@@ -1,7 +1,7 @@
 ﻿// Use ExcelProvider...
 // This is nice but we cannot configure Schema like we can with the CsvProvider
 
-#I @"..\packages\ExcelProvider.0.8.2\lib"
+#I @"..\..\packages\ExcelProvider.0.8.2\lib"
 #r "ExcelProvider.dll"
 open FSharp.ExcelProvider
 

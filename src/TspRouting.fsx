@@ -192,7 +192,7 @@ let findStartAndEnd (findStart:DbRecord list -> DbRecord option)
 let main (pwd:string) : unit = 
     let outputPath= @"G:\work\Projects\pgrouting\routing_output.xlsx"
     let records = makeDBRecords <| readInputJson @"G:\work\Projects\pgrouting\routing_data1.json"
-    let conn = makeConnString pwd "spt_geo"
+    let conn = pgsqlConnParamsTesting pwd "spt_geo"
     let procSetup = 
         pgsqlConn { let! _   = pgInitializeTable
                     let! ans = pgInsertRecords records 

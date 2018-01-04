@@ -1,4 +1,4 @@
-﻿#I @"..\packages\System.Data.SQLite.Core.1.0.105.0\lib\net451"
+﻿#I @"..\..\packages\System.Data.SQLite.Core.1.0.105.0\lib\net451"
 #r "System.Data.SQLite"
 
 open System.Data.SQLite
