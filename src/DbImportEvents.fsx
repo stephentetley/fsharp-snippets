@@ -22,6 +22,17 @@ open SQLiteConn
 #load @"ScriptMonad.fs"
 open ScriptMonad
 
+
+type GetRowsDict<'table, 'row> = 
+    { GetRows : 'table -> seq<'row>
+      NotNullProc : 'row -> bool }
+
+let excelTableGetRows (dict:GetRowsDict<'table,'row>) (table:'table) : 'row list = 
+    let allrows = dict.GetRows table
+    allrows |> Seq.filter dict.NotNullProc |> Seq.toList
+
+
+
 type ImportTable = 
     ExcelFile< @"G:\work\Projects\events2\events-stws.xlsx",
                 SheetName = "Sheet1",
@@ -29,6 +40,15 @@ type ImportTable =
 
 type ImportRow = ImportTable.Row
 
+
+let importTableDict : GetRowsDict<ImportTable, ImportRow> = 
+    { GetRows     = fun imports -> imports.Data 
+      NotNullProc = fun row -> match row.``Overflow Name`` with null -> false | _ -> true }
+
+
+let getImportRows () : ImportRow list = excelTableGetRows importTableDict (new ImportTable())
+
+                
 type IWTable = 
     ExcelFile< @"G:\work\Projects\events2\Storm-Dis-DEC2017.xlsx",
                 SheetName = "Data",
@@ -36,9 +56,23 @@ type IWTable =
 
 type IWRow = IWTable.Row
 
-type ConnString = string
 
-type Script<'a> = ScriptMonad<ConnString,'a>
+
+let iwTableDict : GetRowsDict<IWTable, IWRow> = 
+    { GetRows     = fun imports -> imports.Data 
+      NotNullProc = fun row -> match row.``Related AI Asset Name`` with null -> false | _ -> true }
+
+
+let getIWRows () : IWRow list = excelTableGetRows iwTableDict (new IWTable())
+
+
+type Script<'a> = ScriptMonad<SQLiteConnParams,'a>
+
+let withConnParams (fn:SQLiteConnParams -> Script<'a>) : Script<'a> = 
+    scriptMonad.Bind (ask (), fn)
+
+let liftWithConnParams (fn:SQLiteConnParams -> Result<'a>) : Script<'a> = 
+    withConnParams <| (liftResult << fn)
 
 //  **** DB Import
 
@@ -51,6 +85,15 @@ let deleteData () : Result<int> =
     let deleteProc = execNonQuery query1
     runSQLiteConn deleteProc (makeConnParams () )
 
+let deleteAllData () : Script<int> = 
+    let proc = sqliteConn 
+                { let! a = deleteAllRows "iw_permits" 
+                  let! b = deleteAllRows "sites" 
+                  let! c = deleteAllRows "permits" 
+                  return a + b + c }
+    liftWithConnParams <| runSQLiteConn proc
+
+
 //let test02 () : unit = 
 //    let query1 : string = "SELECT * FROM permits"
 //    let readProc (reader : SQLiteDataReader) = 
@@ -61,7 +104,7 @@ let deleteData () : Result<int> =
 
 
 
-let genInsertPermitStmt (row:ImportRow) : string =
+let makeInsertPermitStmt (row:ImportRow) : string =
     sqlINSERT "permits" 
         <|  [ stringValue       "permit_ref"        row.``Permit Reference``
             ; stringValue       "permit_number"     row.``Top level permit number``
@@ -85,33 +128,27 @@ let makeInsertIWPermit (row:IWRow) : string =
             ; stringValue       "permit_urn"            row.``URN (permit number and schedule)``  ]
 
 
-let insertPermits () : Result<int list> = 
-    let importData = new ImportTable()
-    let nullPred (row:ImportRow) = match row.``Overflow Name`` with null -> false | _ -> true
-    let allrows = importData.Data |> Seq.filter nullPred |> Seq.toList
-    let permitInsProc (row:ImportRow) : SQLiteConn<int> = execNonQuery <| genInsertPermitStmt row
-    let insertProc = withTransactionList allrows permitInsProc
-    runSQLiteConn insertProc (makeConnParams ())
+let insertPermits () : Script<int> = 
+    let importRows = getImportRows () 
+    let permitInsProc (row:ImportRow) : SQLiteConn<int> = execNonQuery <| makeInsertPermitStmt row
+    let insertProc = withTransactionListSum importRows permitInsProc
+    liftWithConnParams <| runSQLiteConn insertProc
     
 
-let insertSites () : unit = 
-    let importData = new ImportTable()
-    let nullPred (row:ImportRow) = match row.``Overflow Name`` with null -> false | _ -> true
+// A site may have multiple rows ...
+let insertSites () : Script<int> = 
     let distProc (row:ImportRow) : string = row.``SAI Number``
-    let siterows = 
-        importData.Data |> Seq.filter nullPred |> Seq.distinctBy distProc |> Seq.toList
+    let siteRows = getImportRows () |> List.distinctBy distProc
     let siteInsProc (row:ImportRow) : SQLiteConn<int> = execNonQuery <| makeInsertSite row
-    let insertProc = withTransactionSeq siterows siteInsProc
-    ignore <| runSQLiteConn insertProc (makeConnParams ())
+    let insertProc = withTransactionListSum siteRows siteInsProc
+    liftWithConnParams <| runSQLiteConn insertProc
 
 
-let insertIWPermits () : unit = 
-    let iwData = new IWTable()
-    let nullPred (row:IWRow) = match row.``Related AI Asset Name`` with null -> false | _ -> true
-    let allrows = iwData.Data |> Seq.filter nullPred |> Seq.toList
+let insertIWPermits () : Script<int> =  
+    let allrows = getIWRows ()
     let iwInsProc (row:IWRow) : SQLiteConn<int> = execNonQuery <| makeInsertIWPermit row
-    let insertProc = withTransactionSeq allrows iwInsProc
-    ignore <| runSQLiteConn insertProc (makeConnParams ())
+    let insertProc = withTransactionListSum allrows iwInsProc
+    liftWithConnParams <| runSQLiteConn insertProc
 
 
   
