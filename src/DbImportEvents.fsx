@@ -22,7 +22,6 @@ open SQLiteConn
 #load @"ScriptMonad.fs"
 open ScriptMonad
 
-
 #load @"ExcelProviderHelper.fs"
 open ExcelProviderHelper
 
@@ -65,15 +64,6 @@ let liftWithConnParams (fn:SQLiteConnParams -> Result<'a>) : Script<'a> =
 
 //  **** DB Import
 
-let makeConnParams () : SQLiteConnParams = 
-    let dbloc = @"G:\work\Projects\events2\edmDB.sqlite3"
-    sqliteConnParamsVersion3 dbloc
-
-let deleteData () : Result<int> = 
-    let query1 = "DELETE FROM permits;"
-    let deleteProc = execNonQuery query1
-    runSQLiteConn deleteProc (makeConnParams () )
-
 let deleteAllData () : Script<int> = 
     let proc = sqliteConn 
                 { let! a = deleteAllRows "iw_permits" 
@@ -111,33 +101,29 @@ let makeInsertIWPermit (row:IWRow) : string =
 let insertPermits () : Script<int> = 
     let importRows = getImportRows () 
     let permitInsProc (row:ImportRow) : SQLiteConn<int> = execNonQuery <| makeInsertPermitStmt row
-    let insertProc = withTransactionListSum importRows permitInsProc
-    liftWithConnParams <| runSQLiteConn insertProc
+    liftWithConnParams <| runSQLiteConn (withTransactionListSum importRows permitInsProc)
     
 
-// A site may have multiple rows ...
+// A site may have multiple rows - use List.distinctBy ...
 let insertSites () : Script<int> = 
-    let distProc (row:ImportRow) : string = row.``SAI Number``
-    let siteRows = getImportRows () |> List.distinctBy distProc
+    let siteRows = getImportRows () |> List.distinctBy (fun row -> row.``SAI Number``)
     let siteInsProc (row:ImportRow) : SQLiteConn<int> = execNonQuery <| makeInsertSite row
-    let insertProc = withTransactionListSum siteRows siteInsProc
-    liftWithConnParams <| runSQLiteConn insertProc
+    liftWithConnParams <| runSQLiteConn (withTransactionListSum siteRows siteInsProc)
 
 
 let insertIWPermits () : Script<int> =  
     let allrows = getIWRows ()
     let iwInsProc (row:IWRow) : SQLiteConn<int> = execNonQuery <| makeInsertIWPermit row
-    let insertProc = withTransactionListSum allrows iwInsProc
-    liftWithConnParams <| runSQLiteConn insertProc
+    liftWithConnParams <| runSQLiteConn (withTransactionListSum allrows iwInsProc)
 
 
 let main () : unit = 
     let conn = sqliteConnParamsVersion3  @"G:\work\Projects\events2\edmDB.sqlite3"
   
     runScript (failwith) (printfn "Success: %A rows imported") (consoleLogger) conn <| scriptMonad { 
-        let! _ = deleteAllData ()
-        let! a = insertSites ()
-        let! b = insertPermits () 
-        let! c = insertIWPermits ()
+        let! _ = logScript (sprintf "%i rows deleted")          <| deleteAllData ()
+        let! a = logScript (sprintf "%i sites inserted")        <| insertSites ()
+        let! b = logScript (sprintf "%i permits inserted")      <| insertPermits () 
+        let! c = logScript (sprintf "%i iw_permits inserted")   <| insertIWPermits ()
         return (a+b+c)
     }

@@ -6,7 +6,7 @@ open ResultMonad
 
 type LogAction = StringWriter -> unit
 
-let consoleLogger : LogAction = fun sw -> printfn "%s" (sw.ToString())
+let consoleLogger : LogAction = fun sw -> printfn "--- Log: ----------\n%s" (sw.ToString())
 
 type ScriptMonad<'r,'a> = private ScriptMonad of (StringWriter -> 'r -> Result<'a>)
 
@@ -137,10 +137,17 @@ let swapError (msg:string) (ma:ScriptMonad<'r,'a>) : ScriptMonad<'r,'a> =
         ResultMonad.swapError msg (apply1 ma sw env)
 
 
-let logLine (text:string) : ScriptMonad<'r,unit> = 
+let logWriteLine (text:string) : ScriptMonad<'r,unit> = 
     ScriptMonad <| fun sw env -> 
         let () = sw.WriteLine text
         resultMonad.Return ()
+
+let logScript (makeLine:'a -> string) (proc:ScriptMonad<'r,'a>) : ScriptMonad<'r,'a> = 
+    scriptMonad { 
+        let! a = proc
+        do! logWriteLine (makeLine a)
+        return a
+        }
 
 let ask () : ScriptMonad<'r,'r> = 
     ScriptMonad <| fun _ env -> resultMonad.Return env

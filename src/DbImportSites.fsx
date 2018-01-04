@@ -19,10 +19,11 @@ open SqlUtils
 #load @"SQLiteConn.fs"
 open SQLiteConn
 
-
 #load @"ScriptMonad.fs"
 open ScriptMonad
 
+#load @"ExcelProviderHelper.fs"
+open ExcelProviderHelper
 
 
 type ImportTable = 
@@ -31,6 +32,12 @@ type ImportTable =
                 ForceString = true >
 
 type ImportRow = ImportTable.Row
+
+let importTableDict : GetRowsDict<ImportTable, ImportRow> = 
+    { GetRows     = fun imports -> imports.Data 
+      NotNullProc = fun row -> match row.InstReference with null -> false | _ -> true }
+
+let getImportRows () : seq<ImportRow> = excelTableGetRowsSeq importTableDict (new ImportTable())
 
 
 type Script<'a> = ScriptMonad<SQLiteConnParams,'a>
@@ -72,12 +79,11 @@ let insertData (rows:seq<ImportRow>) : Script<int> =
 
 let main () : unit = 
     let conn = makeConnParams ()
-    let nullPred (row:ImportRow) : bool = match row.InstReference with null -> false | _ -> true
-    let rows = (new ImportTable()).Data |> Seq.filter nullPred
+    let rows = getImportRows ()
     
     runScript (failwith) (printfn "Success: %A rows imported") (consoleLogger) conn <| scriptMonad { 
-        let! _   = deleteData ()
-        let! ans = insertData rows
+        let! _   = logScript (sprintf "%i rows deleted")        <| deleteData ()
+        let! ans = logScript (sprintf "%i row inserted")        <| insertData rows
         return ans
     }
     
