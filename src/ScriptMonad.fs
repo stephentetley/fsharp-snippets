@@ -136,6 +136,9 @@ let swapError (msg:string) (ma:ScriptMonad<'r,'a>) : ScriptMonad<'r,'a> =
     ScriptMonad <| fun sw env -> 
         ResultMonad.swapError msg (apply1 ma sw env)
 
+let augmentError (fn:string -> string) (ma:ScriptMonad<'r,'a>) : ScriptMonad<'r,'a> = 
+    ScriptMonad <| fun sw env -> 
+        ResultMonad.augmentError fn (apply1 ma sw env)
 
 let logWriteLine (text:string) : ScriptMonad<'r,unit> = 
     ScriptMonad <| fun sw env -> 
