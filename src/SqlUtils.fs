@@ -1,6 +1,7 @@
 ﻿module SqlUtils
 
-
+open System
+open System.Globalization
 
 // Helpers for values
 
@@ -10,7 +11,19 @@ let escapeValueText (s:string) : string =
 
 let cleanseValue (s:string) : string = (escapeValueText s).Trim() 
 
+// SQLite format for date is yyyy-MM-dd hh:mm:ss, we cannot rely on the default formatter.
 
+let sqliteDecodeTime (s:string) : DateTime = 
+    DateTime.ParseExact(s, "dd/MM/yyyy hh:mm:ss", Globalization.CultureInfo.InvariantCulture)
+
+let trySQLiteDecodeTime (s:string) : DateTime option = 
+    try
+        Some <|  DateTime.ParseExact(s, "dd/MM/yyyy hh:mm:ss", Globalization.CultureInfo.InvariantCulture)
+    with
+    | ex -> None
+   
+
+let sqliteEncodeTime (t:DateTime) : string = t.ToString("yyyy-MM-dd hh:mm:ss")
 
 
 type ColumnNames = string list

@@ -5,13 +5,14 @@ open FSharp.ExcelProvider
 
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 
-
 #load "Geo.fs"
 open Geo
 
 #load "CsvWriter.fs"
 open CsvWriter
 
+#load @"ExcelProviderHelper.fs"
+open ExcelProviderHelper
 
 // ToDO should use CsvWriter
 
@@ -22,26 +23,19 @@ type ConsentsTable =
 
 type ConsentsRow = ConsentsTable.Row
 
-let test01 () = 
-    let file = new ConsentsTable()
-    for (rowi:ConsentsRow) in file.Data do
-        match rowi.``Common Name`` with
-        | null -> printfn "<nullrow>"
-        | _ ->
-            printfn "%s, %f, %f" 
-                    rowi.``Common Name`` 
-                    rowi.``Outfall NGRE`` 
-                    rowi.``Outfall NGRN``
+let consentsTableDict : GetRowsDict<ConsentsTable, ConsentsRow> = 
+    { GetRows     = fun imports -> imports.Data 
+      NotNullProc = fun row -> match row.``Common Name`` with null -> false | _ -> true }
 
+let getConsentsRows () : ConsentsRow list = excelTableGetRows consentsTableDict (new ConsentsTable())
 
 let tellConsentsRow (row:ConsentsRow) : CsvWriter<unit> = 
     match row.``Common Name`` with
     | null -> csvWriter.Return ()
     | _ -> let pt : Coord.OSGB36Point = 
-                let E = row.``Outfall NGRE`` * 1.0<meter>
-                let N = row.``Outfall NGRN`` * 1.0<meter>
-                { Coord.Eastings = E;
-                  Coord.Northings = N }
+                let easts = row.``Outfall NGRE`` * 1.0<meter>
+                let norths = row.``Outfall NGRN`` * 1.0<meter>
+                { Coord.Eastings = easts; Coord.Northings = norths }
            let gridref = Coord.osgb36PointToGrid pt
            tellRow [ tellString row.``AIB Reference``
                    ; tellString row.``Common Name`` 
@@ -50,17 +44,12 @@ let tellConsentsRow (row:ConsentsRow) : CsvWriter<unit> =
 
 
 let main () : unit = 
-    let input = new ConsentsTable()
     let outfile = @"G:\work\Projects\events2\Consents-Gridref.csv"
-    let test (row:ConsentsRow) : bool = 
-        match row.``Common Name`` with
-        | null -> false
-        | _ -> true
-    let rows:seq<ConsentsRow> = input.Data |> Seq.filter test
+    let rows:ConsentsRow list= getConsentsRows ()
     let procM : CsvWriter<unit> = 
         csvWriter { 
             do! tellHeaders ["UID"; "Name" ; "Grid Ref"]
-            do! traverseMz tellConsentsRow rows }
+            do! mapMz tellConsentsRow rows }
                     
     outputToNew procM outfile ","
     
