@@ -116,7 +116,17 @@ let tryRegionAfterTarget (regions:Regions) (target:Region) : Region option =
         | (x1::x2::xs) -> 
             if startsBefore x1 target && startsAfter target x2 then Some x2 else proc (x2::xs)
     proc (Seq.toList regions)
-    
+
+let findNextAfter (regions:Regions) (pos:int) : Region option = 
+    let xs = match regions with | Regions xs -> xs
+    let rec proc rs = 
+        match rs with
+        | [] -> None
+        | [x] -> if x.regionStart > pos then Some x else None
+        | (x::xs) -> 
+            if x.regionStart > pos then Some x else proc xs
+    proc (match regions with | Regions xs -> xs)
+
 
 let tableRegions(doc:Word.Document) : Regions = 
     let tables : seq<Word.Table> = doc.Tables |> Seq.cast<Word.Table>

@@ -97,3 +97,14 @@ let test08 () =
 let test09 () = 
     let proc = docMonad.Bind(getTableRegion(1), getTextInRegion)
     printfn "%A" <| runOnFileE proc testDoc
+
+// Obviosly this is too low level...
+let test10 () = 
+    let proc = docMonad { 
+        let! r1 = nextTableRegion
+        let! a1 = getTextInRegion r1
+        let! r2 = nextTableRegion
+        let! a2 = getTextInRegion r2
+        return (a1,a2)
+    }
+    printfn "%A" <| runOnFileE proc testDoc

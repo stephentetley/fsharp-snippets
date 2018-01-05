@@ -124,3 +124,11 @@ let getTextInRegion (region:Region) : DocMonad<string> =
             Ok (pos, range.Text)
         with
         | ex -> Err <| sprintf "getTextInRegion: %s" (ex.ToString())
+
+let nextTableRegion : DocMonad<Region> = 
+    DocMonad <| fun doc pos -> 
+        let regions = tableRegions doc
+        match findNextAfter regions pos with
+        | None -> Err <| "no next table"
+        | Some(x) -> Ok (x.regionStart, x)
+        
