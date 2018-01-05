@@ -101,8 +101,14 @@ let test09 () =
 // This is nice and high level...
 let test10 () = 
     let proc = docMonad { 
-        let! a1 = table 1 <| text
-        let! a2 = table 2 <| text
-        return (a1,a2)
+        let! a0 = table 1 <| cell (0,0) text
+        let! c0 = table 3 <| cell (0,0) text
+        let! c1 = table 3 <| cell (1,0) text
+        let! c2 = table 3 <| cell (2,0) text
+        let! c3 = table 3 <| cell (3,0) text
+        let! c4 = table 3 <| cell (4,0) text
+        let! c5 = table 3 <| cell (5,0) text
+        let! c6 = table 3 << cell (6,0) <| text
+        return [a0;c0;c1;c2;c3;c4;c5]
     }
     printfn "%A" <| runOnFileE proc testDoc

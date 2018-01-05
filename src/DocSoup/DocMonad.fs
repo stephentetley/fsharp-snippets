@@ -160,6 +160,7 @@ let countSectionsGlobal : DocMonad<int> =
     liftGlobalOperation <| fun doc -> doc.Sections.Count
 
 
+
 let table (index:int) (ma:DocMonad<'a>) : DocMonad<'a> = 
     DocMonad <| fun doc focus -> 
         try 
@@ -170,12 +171,15 @@ let table (index:int) (ma:DocMonad<'a>) : DocMonad<'a> =
         with
         | ex -> Err <| ex.ToString() 
 
+// Strangely this appears to count from zero
+let cell (row:int, col:int) (ma:DocMonad<'a>) : DocMonad<'a> = 
+    DocMonad <| fun doc focus -> 
+        try 
+            let range0:Word.Range = doc.Range(rbox <| focus.RegionStart, rbox <| focus.RegionEnd)
+            let table1:Word.Table = range0.Tables.[1]
+            let range1:Word.Range = table1.Cell(row,col).Range
+            apply1 ma doc (extractRegion range1)
+        with
+        | ex -> Err <| ex.ToString() 
 
-//
-//let nextTableRegion : DocMonad<Region> = 
-//    DocMonad <| fun doc pos -> 
-//        let regions = tableRegions doc
-//        match findNextAfter regions pos with
-//        | None -> Err <| "no next table"
-//        | Some(x) -> Ok (x.regionStart, x)
         
