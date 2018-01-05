@@ -7,10 +7,10 @@ open System.IO
 
 #load @"WordUtils.fs"
 open DocSoup.WordUtils
-#load @"RangeOperations.fs"
-open DocSoup.RangeOperations
-#load @"Extractors.fs"
-open DocSoup.Extractors
+#load @"OldRangeOperations.fs"
+open DocSoup.OldRangeOperations
+#load @"OldExtractors.fs"
+open DocSoup.OldExtractors
 
 // Note to self - this example is not "properly structured" tables are free text
 //

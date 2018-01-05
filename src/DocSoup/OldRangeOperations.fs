@@ -1,5 +1,5 @@
 ﻿[<AutoOpen>]
-module DocSoup.RangeOperations
+module DocSoup.OldRangeOperations
 
 
 // Add references via the COM tab for Office and Word

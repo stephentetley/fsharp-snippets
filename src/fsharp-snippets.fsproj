@@ -61,12 +61,11 @@
   <ItemGroup>
     <Compile Include="DocSoup\WordUtils.fs" />
     <Compile Include="DocSoup\DocMonad.fs" />
-    <Compile Include="DocSoup\RangeOperations.fs" />
-    <Compile Include="DocSoup\Extractors.fs" />
-    <Compile Include="DocSoup\PathExpressions.fs" />
+    <Compile Include="DocSoup\OldRangeOperations.fs" />
+    <Compile Include="DocSoup\OldExtractors.fs" />
     <None Include="DocSoup\TestWord1.fsx" />
-    <None Include="DocSoup\TestWE1.fsx" />
-    <None Include="DocSoup\TestWERange.fsx" />
+    <None Include="DocSoup\OldTest1.fsx" />
+    <None Include="DocSoup\OldTestRange.fsx" />
     <Compile Include="Obsolete\Fact.fs" />
     <Compile Include="Obsolete\JsonOrderedInput.fs" />
     <Compile Include="Obsolete\XlsWriter.fs" />

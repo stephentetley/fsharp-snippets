@@ -1,12 +1,12 @@
 ﻿[<AutoOpen>]
-module DocSoup.Extractors
+module DocSoup.OldExtractors
 
     // Add references via the COM tab for Office and Word
     // All the PIA stuff online is outdated for Office 365 / .Net 4.5 / VS2015 
     open Microsoft.Office.Interop
 
     open DocSoup.WordUtils
-    open DocSoup.RangeOperations
+    open DocSoup.OldRangeOperations
 
     type Result<'a> = 
         | Okay of 'a
