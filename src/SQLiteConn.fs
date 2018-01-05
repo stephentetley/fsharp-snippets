@@ -100,12 +100,15 @@ let runSQLiteConn (ma:SQLiteConn<'a>) (connParams:SQLiteConnParams) : Result<'a>
 let throwError (msg:string) : SQLiteConn<'a> = 
     SQLiteConn <| fun _ -> Err(msg)
 
-let annotateError (msg:string) (ma:SQLiteConn<'a>) : SQLiteConn<'a> = 
+let swapError (msg:string) (ma:SQLiteConn<'a>) : SQLiteConn<'a> = 
     SQLiteConn <| fun conn -> 
-        match apply1 ma conn with
-        | Err(_) -> Err msg
-        | Ok(a) -> Ok a
-        
+        ResultMonad.swapError msg (apply1 ma conn)
+
+let augmentError (fn:string -> string) (ma:SQLiteConn<'a>) : SQLiteConn<'a> = 
+    SQLiteConn <| fun conn ->
+        ResultMonad.augmentError fn (apply1 ma conn)
+
+
 let liftConn (proc:SQLite.SQLiteConnection -> 'a) : SQLiteConn<'a> = 
     SQLiteConn <| fun conn -> 
         try 

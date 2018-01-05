@@ -72,29 +72,19 @@ let tupleM5 (ma:JsonExtractor<'a>) (mb:JsonExtractor<'b>) (mc:JsonExtractor<'c>)
 
 let apM (mf:JsonExtractor<'a -> 'b>) (ma:JsonExtractor<'a>) : JsonExtractor<'b> = 
     JsonExtractor <| fun r ->
-        match apply1 mf r with
-        | Err(msg) -> Err msg
-        | Ok(f) ->
-            match apply1 ma r with
-            | Err(msg) -> Err msg
-            | Ok(a) -> Ok (f a) 
+        ResultMonad.apM (apply1 mf r) (apply1 ma r)
+
 
 let mapM (fn: 'a -> JsonExtractor<'b>) (xs: 'a list) : JsonExtractor<'b list> = 
-    let rec work ac list = 
-        match list with
-        | y :: ys -> bindM (fn y) (fun b -> work (b::ac) ys)
-        | [] -> unitM <| List.rev ac
-    work [] xs
+    JsonExtractor <| fun r ->
+        ResultMonad.mapM (fun a -> apply1 (fn a) r) xs
 
 let forM (xs:'a list) (fn:'a -> JsonExtractor<'b>) : JsonExtractor<'b list> = mapM fn xs
 
 
 let mapMz (fn: 'a -> JsonExtractor<'b>) (xs: 'a list) : JsonExtractor<unit> = 
-    let rec work list = 
-        match list with
-        | y :: ys -> bindM (fn y) (fun _ -> work ys)
-        | [] -> unitM ()
-    work xs
+    JsonExtractor <| fun r ->
+        ResultMonad.mapMz (fun a -> apply1 (fn a) r) xs
 
 let forMz (xs:'a list) (fn:'a -> JsonExtractor<'b>) : JsonExtractor<unit> = mapMz fn xs
 
@@ -108,27 +98,34 @@ let traverseMz (fn: 'a -> JsonExtractor<'b>) (source:seq<'a>) : JsonExtractor<un
         ResultMonad.traverseMz (fun a -> apply1 (fn a) r) source
 
 let mapiM (fn:int -> 'a -> JsonExtractor<'b>) (xs: 'a list) : JsonExtractor<'b list> = 
-    let rec work ac ix list = 
-        match list with
-        | y :: ys -> bindM (fn ix y) (fun b -> work (b::ac) (ix+1) ys)
-        | [] -> unitM <| List.rev ac
-    work [] 0 xs
+    JsonExtractor <| fun r ->
+        ResultMonad.mapiM (fun ix a -> apply1 (fn ix a) r) xs
 
 let mapiMz (fn:int -> 'a -> JsonExtractor<'b>) (xs: 'a list) : JsonExtractor<unit> = 
-    let rec work ix list = 
-        match list with
-        | y :: ys -> bindM (fn ix y) (fun _ -> work (ix+1) ys)
-        | [] -> unitM ()
-    work 0 xs
+    JsonExtractor <| fun r ->
+        ResultMonad.mapiMz (fun ix a -> apply1 (fn ix a) r) xs
+
 
 // JsonExtractor-specific operations
-
-
 let extractFromFile (ma:JsonExtractor<'a>) (fileName:string) : Result<'a> =
     fileName 
         |> System.IO.File.ReadAllText
         |> JsonValue.Parse 
         |> apply1 ma
+
+
+let throwError (msg:string) : JsonExtractor<'a> = 
+    JsonExtractor <| fun _ -> Err(msg)
+
+let swapError (msg:string) (ma:JsonExtractor<'a>) : JsonExtractor<'a> = 
+    JsonExtractor <| fun r -> 
+        ResultMonad.swapError msg (apply1 ma r)
+
+
+let augmentError (fn:string -> string) (ma:JsonExtractor<'a>) : JsonExtractor<'a> = 
+    JsonExtractor <| fun r -> 
+        ResultMonad.augmentError fn (apply1 ma r)
+
 
 let askM : JsonExtractor<JsonValue> = JsonExtractor <| Ok
 

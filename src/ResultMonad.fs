@@ -185,7 +185,7 @@ let seqR (ma:Result<'a>) (mb:Result<'b>) : Result<'b> =
         | Err(msg) -> Err msg
         | Ok(b) -> Ok b
 
-// Result sepcific operations
+// Result specific operations
 let runResult (failure: string -> 'b) (success: 'a -> 'b) (ma:Result<'a>) : 'b = 
     match ma with
     | Err(msg) -> failure msg
@@ -207,6 +207,12 @@ let throwError (msg:string) : Result<'a> = Err msg
 let swapError (msg:string) (ma:Result<'a>) : Result<'a> = 
     match ma with
     | Err(_) -> Err msg
+    | Ok(a) -> Ok a
+
+
+let augmentError (fn:string -> string) (ma:Result<'a>) : Result<'a> = 
+    match ma with
+    | Err(msg) -> Err <| fn msg
     | Ok(a) -> Ok a
 
 

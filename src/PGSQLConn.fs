@@ -96,12 +96,13 @@ let runPGSQLConn (ma:PGSQLConn<'a>) (connParams:PGSQLConnParams) : Result<'a> =
 let throwError (msg:string) : PGSQLConn<'a> = 
     PGSQLConn <| fun _ -> Err(msg)
 
-let annotateError (msg:string) (ma:PGSQLConn<'a>) : PGSQLConn<'a> = 
+let swapError (msg:string) (ma:PGSQLConn<'a>) : PGSQLConn<'a> = 
     PGSQLConn <| fun conn -> 
-        match apply1 ma conn with
-        | Err(_) -> Err msg
-        | Ok(a) -> Ok a
+        ResultMonad.swapError msg (apply1 ma conn)
 
+let augmentError (fn:string -> string) (ma:PGSQLConn<'a>) : PGSQLConn<'a> = 
+    PGSQLConn <| fun conn -> 
+        ResultMonad.augmentError fn (apply1 ma conn)
 
 let liftConn (proc:NpgsqlConnection -> 'a) : PGSQLConn<'a> = 
     PGSQLConn <| fun conn -> 
