@@ -23,7 +23,7 @@ let test01 () =
         printfn "Sections: %i" doc.Sections.Count
         printfn "Paragraphs: %i" doc.Paragraphs.Count
         printfn "Tables: %i" doc.Tables.Count
-    runOnFileE (liftOperation proc) testDoc
+    runOnFileE (liftGlobalOperation proc) testDoc
 
 
 let test02 () = 
@@ -38,14 +38,14 @@ let test02 () =
         let all : Word.Range = doc.Content
         all.Select()
         printfn "Characters: %i" all.Characters.Count
-    runOnFileE (liftOperation proc) testDoc
+    runOnFileE (liftGlobalOperation proc) testDoc
 
 let test03 () = 
     let proc (doc:Word.Document) : unit = 
         let t1 = doc.Tables.[1]
         printfn "Rows %i, Columns %i" t1.Rows.Count t1.Columns.Count
         printfn "%s" (t1.ConvertToText(rbox Word.WdSeparatorType.wdSeparatorHyphen).Text)
-    runOnFileE (liftOperation proc) testDoc
+    runOnFileE (liftGlobalOperation proc) testDoc
 
 let test04 () = 
     let proc (doc:Word.Document) : unit = 
@@ -56,7 +56,7 @@ let test04 () =
         if found then
             printfn "'%s'" rng1.Text
         else printfn "no found"
-    runOnFileE (liftOperation proc) testDoc
+    runOnFileE (liftGlobalOperation proc) testDoc
 
 
 // To do should allow wildcards...
@@ -70,7 +70,7 @@ let test05 () =
         let s3 = Option.map (fun (r:Word.Range) -> r.Text.Trim()) (rangeBetween t1.Range "Process Application" "Site Area")
         printfn "'%s'\n----------" (if s3.IsSome then Option.get s3 else "<none>")
 
-    runOnFileE (liftOperation proc) testDoc
+    runOnFileE (liftGlobalOperation proc) testDoc
 
 let test06 () = 
     let proc (doc:Word.Document) : unit = 
@@ -80,7 +80,7 @@ let test06 () =
         Seq.iter (printfn "%A") <| tableRegions doc
 //        printfn "** Match 'Site'"
 //        Seq.iter(printfn "%A") <| findallText (doc.Range()) "Site"
-    runOnFileE (liftOperation proc) testDoc
+    runOnFileE (liftGlobalOperation proc) testDoc
 
 let test07 () = 
     let proc (doc:Word.Document) : unit = 
@@ -88,23 +88,23 @@ let test07 () =
         printfn ">>>\n%s\n<<<" (table1.Range.Text)
         let region1 = extractRegion <| table1.Range
         printfn ">>>\n%s\n<<<" (trimRange (doc.Range()) region1).Text
-    runOnFileE (liftOperation proc) testDoc
+    runOnFileE (liftGlobalOperation proc) testDoc
 
 let test08 () = 
     let proc = tupleM2 countTables countSections
     printfn "%A" <| runOnFileE proc testDoc
 
+// All text of the document
 let test09 () = 
-    let proc = docMonad.Bind(getTableRegion(1), getTextInRegion)
-    printfn "%A" <| runOnFileE proc testDoc
+    printfn "%A" <| runOnFileE text testDoc
 
 // Obviosly this is too low level...
-let test10 () = 
-    let proc = docMonad { 
-        let! r1 = nextTableRegion
-        let! a1 = getTextInRegion r1
-        let! r2 = nextTableRegion
-        let! a2 = getTextInRegion r2
-        return (a1,a2)
-    }
-    printfn "%A" <| runOnFileE proc testDoc
+//let test10 () = 
+//    let proc = docMonad { 
+//        let! r1 = nextTableRegion
+//        let! a1 = getTextInRegion r1
+//        let! r2 = nextTableRegion
+//        let! a2 = getTextInRegion r2
+//        return (a1,a2)
+//    }
+//    printfn "%A" <| runOnFileE proc testDoc

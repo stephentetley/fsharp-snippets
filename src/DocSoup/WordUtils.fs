@@ -24,9 +24,12 @@ let sRestOfLine (s:string) : string =
 
 // Range is a very heavy object to be manipulating start and end points
 // Use an alternative...
-[<StructuredFormatDisplay("Region: {regionStart} to {regionEnd}")>]
-type Region = { regionStart : int; regionEnd : int}
+[<StructuredFormatDisplay("Region: {RegionStart} to {RegionEnd}")>]
+type Region = { RegionStart : int; RegionEnd : int}
     
+let maxRegion (doc:Word.Document) : Region = 
+    let rng = doc.Range()
+    {RegionStart = rng.Start; RegionEnd=rng.End }
 
 // Expected to be sorted
 type Regions = 
@@ -40,31 +43,31 @@ type Regions =
 
 
 let makeRegions (input:Region list) : Regions = 
-    Regions <| List.sortBy (fun o -> o.regionStart) input
+    Regions <| List.sortBy (fun o -> o.RegionStart) input
 
 
-let extractRegion (range:Word.Range) : Region = { regionStart = range.Start; regionEnd = range.End }
+let extractRegion (range:Word.Range) : Region = { RegionStart = range.Start; RegionEnd = range.End }
 
 let trimRange (range:Word.Range) (region:Region) : Word.Range = 
     let mutable r2 = range.Duplicate
-    r2.Start <- region.regionStart
-    r2.End <- region.regionEnd
+    r2.Start <- region.RegionStart
+    r2.End <- region.RegionEnd
     r2
 
 
 let isSubregionOf (major:Region) (minor:Region) : bool = 
-    minor.regionStart >= major.regionStart && minor.regionEnd <= major.regionEnd
+    minor.RegionStart >= major.RegionStart && minor.RegionEnd <= major.RegionEnd
 
 
 let majorLeft (major:Region) (minor:Region) : Region = 
-    if major.regionStart <= minor.regionStart then
-        { regionStart = major.regionStart; regionEnd = min major.regionEnd minor.regionStart }
+    if major.RegionStart <= minor.RegionStart then
+        { RegionStart = major.RegionStart; RegionEnd = min major.RegionEnd minor.RegionStart }
     else
         failwith "majorLeft - no region to the left"
 
 let majorRight(major:Region) (minor:Region) : Region = 
-    if major.regionEnd >= minor.regionEnd then
-        { regionStart = max major.regionStart minor.regionEnd; regionEnd = major.regionEnd }
+    if major.RegionEnd >= minor.RegionEnd then
+        { RegionStart = max major.RegionStart minor.RegionEnd; RegionEnd = major.RegionEnd }
     else
         failwith "majorRight - no region to the right"
 
@@ -92,10 +95,10 @@ let rangeBetween (range:Word.Range) (leftText:string) (rightText:string) : optio
 
 
 let startsBefore (region1:Region) (region2:Region) : bool = 
-    region1.regionStart <= region2.regionStart
+    region1.RegionStart <= region2.RegionStart
 
 let startsAfter (region1:Region) (region2:Region) : bool = 
-    region1.regionStart > region2.regionStart
+    region1.RegionStart > region2.RegionStart
 
 let tryRegionBeforeTarget (regions:Regions) (target:Region) : Region option = 
     // Want to look at two positions in the list...
@@ -122,9 +125,9 @@ let findNextAfter (regions:Regions) (pos:int) : Region option =
     let rec proc rs = 
         match rs with
         | [] -> None
-        | [x] -> if x.regionStart > pos then Some x else None
+        | [x] -> if x.RegionStart > pos then Some x else None
         | (x::xs) -> 
-            if x.regionStart > pos then Some x else proc xs
+            if x.RegionStart > pos then Some x else proc xs
     proc (match regions with | Regions xs -> xs)
 
 

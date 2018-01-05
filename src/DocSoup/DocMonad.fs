@@ -13,23 +13,22 @@ let mapAns (fn:'a -> 'b) (ans:Ans<'a>) : Ans<'b> =
     | Err msg -> Err msg
     | Ok a -> Ok (fn a)
 
-type Cursor = int
 
-// DocMonad is State+Reader+Error
-type DocMonad<'a> = DocMonad of (Word.Document -> Cursor ->  Ans<Cursor * 'a>)
+// DocMonad is Reader(immutable)+Reader+Error
+type DocMonad<'a> = DocMonad of (Word.Document -> Region ->  Ans<'a>)
 
 
-let inline apply1 (ma : DocMonad<'a>) (doc:Word.Document) (pos:Cursor) : Ans<Cursor * 'a>= 
-    let (DocMonad f) = ma in f doc pos
+let inline apply1 (ma : DocMonad<'a>) (doc:Word.Document) (focus:Region) : Ans<'a>= 
+    let (DocMonad f) = ma in f doc focus
 
-let private unitM (x:'a) : DocMonad<'a> = DocMonad <| fun _ pos -> Ok (pos,x)
+let private unitM (x:'a) : DocMonad<'a> = DocMonad <| fun _ _ -> Ok x
 
 
 let bindM (ma:DocMonad<'a>) (f : 'a -> DocMonad<'b>) : DocMonad<'b> =
-    DocMonad <| fun doc pos -> 
-        match apply1 ma doc pos with
+    DocMonad <| fun doc focus -> 
+        match apply1 ma doc focus with
         | Err msg -> Err msg
-        | Ok (pos1,a) -> apply1 (f a) doc pos1
+        | Ok a -> apply1 (f a) doc focus
 
 
 
@@ -42,22 +41,22 @@ let (docMonad:DocMonadBuilder) = new DocMonadBuilder()
 
 // Common monadic operations
 let fmapM (fn:'a -> 'b) (ma:DocMonad<'a>) : DocMonad<'b> = 
-    DocMonad <| fun doc pos -> 
-        match apply1 ma doc pos with
-        | Err(msg) -> Err msg
-        | Ok(pos1,a) -> Ok (pos1, fn a)
+    DocMonad <| fun doc focus -> 
+        match apply1 ma doc focus with
+        | Err msg -> Err msg
+        | Ok a -> Ok <| fn a
 
 
 let liftM (fn:'a -> 'r) (ma:DocMonad<'a>) : DocMonad<'r> = fmapM fn ma
 
 let liftM2 (fn:'a -> 'b -> 'r) (ma:DocMonad<'a>) (mb:DocMonad<'b>) : DocMonad<'r> = 
-    DocMonad <| fun doc pos -> 
-        match apply1 ma doc pos with
-        | Err(msg) -> Err msg
-        | Ok(pos1,a) -> 
-            match apply1 mb doc pos1 with 
-            | Err(msg) -> Err msg
-            | Ok(pos2,b) -> Ok (pos2, fn a b)
+    DocMonad <| fun doc focus -> 
+        match apply1 ma doc focus with
+        | Err msg -> Err msg
+        | Ok a -> 
+            match apply1 mb doc focus with 
+            | Err msg -> Err msg
+            | Ok b -> Ok <| fn a b
 
 let tupleM2 (ma:DocMonad<'a>) (mb:DocMonad<'b>) : DocMonad<'a * 'b> = 
     liftM2 (fun a b -> (a,b)) ma mb
@@ -68,7 +67,7 @@ let runOnFile (ma:DocMonad<'a>) (fileName:string) : Ans<'a> =
     if System.IO.File.Exists (fileName) then
         let app = new Word.ApplicationClass (Visible = true) 
         let doc = app.Documents.Open(FileName = ref (fileName :> obj))
-        let ans = mapAns snd <| apply1 ma doc 0
+        let ans = apply1 ma doc (maxRegion doc)
         doc.Close(SaveChanges = ref (box false))
         app.Quit()
         ans
@@ -81,54 +80,62 @@ let runOnFileE (ma:DocMonad<'a>) (fileName:string) : 'a =
 
 
 let throwError (msg:string) : DocMonad<'a> = 
-    DocMonad <| fun doc pos -> Err msg
+    DocMonad <| fun _ _  -> Err msg
 
 let swapError (msg:string) (ma:DocMonad<'a>) : DocMonad<'a> = 
-    DocMonad <| fun doc pos ->
-        match apply1 ma doc pos with
+    DocMonad <| fun doc focus ->
+        match apply1 ma doc focus with
         | Err msg-> Err msg
         | Ok result -> Ok result
 
 
 let augmentError (fn:string -> string) (ma:DocMonad<'a>) : DocMonad<'a> = 
-    DocMonad <| fun doc pos ->
-        match apply1 ma doc pos with
+    DocMonad <| fun doc focus ->
+        match apply1 ma doc focus with
         | Err msg  -> Err <| fn msg
         | Ok result -> Ok result
 
 
-let liftOperation (fn : Word.Document -> 'a) : DocMonad<'a> = 
-    DocMonad <| fun doc pos ->
+// Get the text in the currently focused region.
+let text : DocMonad<string> = 
+    DocMonad <| fun doc focus -> 
         try
-            Ok <| (pos, fn doc)
+            let range = doc.Range(rbox <| focus.RegionStart, rbox <| focus.RegionEnd)
+            Ok <| range.Text
+        with
+        | ex -> Err <| sprintf "text: %s" (ex.ToString())
+
+
+// Probably should not be part of the API...
+let liftGlobalOperation (fn : Word.Document -> 'a) : DocMonad<'a> = 
+    DocMonad <| fun doc _ ->
+        try
+            Ok <| fn doc
         with
         | ex -> Err <| ex.ToString()
 
+// Ideally should be range delimited...
 let countTables : DocMonad<int> = 
-    liftOperation <| fun doc -> doc.Tables.Count
+    liftGlobalOperation <| fun doc -> doc.Tables.Count
 
+
+// Ideally should be range delimited...
 let countSections : DocMonad<int> = 
-    liftOperation <| fun doc -> doc.Sections.Count
+    liftGlobalOperation <| fun doc -> doc.Sections.Count
 
 
 // Index starts at 1
-let getTableRegion (index:int) : DocMonad<Region> = 
-    DocMonad <| fun doc pos -> 
-        let table = doc.Tables.[index]
-        Ok (pos, extractRegion table.Range)
+//let getTableRegion (index:int) : DocMonad<Region> = 
+//    DocMonad <| fun doc pos -> 
+//        let table = doc.Tables.[index]
+//        Ok (pos, extractRegion table.Range)
 
-let getTextInRegion (region:Region) : DocMonad<string> = 
-    DocMonad <| fun doc pos -> 
-        try
-            let range = doc.Range(rbox <| region.regionStart, rbox <| region.regionEnd)
-            Ok (pos, range.Text)
-        with
-        | ex -> Err <| sprintf "getTextInRegion: %s" (ex.ToString())
 
-let nextTableRegion : DocMonad<Region> = 
-    DocMonad <| fun doc pos -> 
-        let regions = tableRegions doc
-        match findNextAfter regions pos with
-        | None -> Err <| "no next table"
-        | Some(x) -> Ok (x.regionStart, x)
+//
+//let nextTableRegion : DocMonad<Region> = 
+//    DocMonad <| fun doc pos -> 
+//        let regions = tableRegions doc
+//        match findNextAfter regions pos with
+//        | None -> Err <| "no next table"
+//        | Some(x) -> Ok (x.regionStart, x)
         
