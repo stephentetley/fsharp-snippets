@@ -67,13 +67,6 @@
     <None Include="DocSoup\TestWord1.fsx" />
     <None Include="DocSoup\TestWE1.fsx" />
     <None Include="DocSoup\TestWERange.fsx" />
-    <Compile Include="FilePaths\Syntax.fs" />
-    <Compile Include="FilePaths\FlatSyntax.fs" />
-    <Compile Include="FilePaths\RoseTree.fs" />
-    <Compile Include="FilePaths\Utils.fs" />
-    <None Include="FilePaths\TestFP1.fsx" />
-    <None Include="FilePaths\TestFP2.fsx" />
-    <None Include="FilePaths\TestFPRose.fsx" />
     <Compile Include="Obsolete\Fact.fs" />
     <Compile Include="Obsolete\JsonOrderedInput.fs" />
     <Compile Include="Obsolete\XlsWriter.fs" />
