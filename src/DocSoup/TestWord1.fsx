@@ -98,13 +98,11 @@ let test08 () =
 let test09 () = 
     printfn "%A" <| runOnFileE text testDoc
 
-// Obviosly this is too low level...
-//let test10 () = 
-//    let proc = docMonad { 
-//        let! r1 = nextTableRegion
-//        let! a1 = getTextInRegion r1
-//        let! r2 = nextTableRegion
-//        let! a2 = getTextInRegion r2
-//        return (a1,a2)
-//    }
-//    printfn "%A" <| runOnFileE proc testDoc
+// This is nice and high level...
+let test10 () = 
+    let proc = docMonad { 
+        let! a1 = table 1 <| text
+        let! a2 = table 2 <| text
+        return (a1,a2)
+    }
+    printfn "%A" <| runOnFileE proc testDoc

@@ -106,6 +106,21 @@ let text : DocMonad<string> =
         | ex -> Err <| sprintf "text: %s" (ex.ToString())
 
 
+// Get the currently focused region.
+let askFocus : DocMonad<Region> = 
+    DocMonad <| fun doc focus ->  
+        Ok <| focus
+
+let asksFocus (fn:Region -> 'a) : DocMonad<'a> = 
+    DocMonad <| fun doc focus ->  
+        Ok <| fn focus
+
+let local (project:Region -> Region) (ma:DocMonad<'a>) : DocMonad<'a> = 
+    DocMonad <| fun doc focus ->  
+        apply1 ma doc (project focus) 
+
+
+
 // Probably should not be part of the API...
 let liftGlobalOperation (fn : Word.Document -> 'a) : DocMonad<'a> = 
     DocMonad <| fun doc _ ->
@@ -114,21 +129,46 @@ let liftGlobalOperation (fn : Word.Document -> 'a) : DocMonad<'a> =
         with
         | ex -> Err <| ex.ToString()
 
-// Ideally should be range delimited...
+
+let liftOperation (fn : Word.Range -> 'a) : DocMonad<'a> = 
+    DocMonad <| fun doc focus ->
+        try
+            let range = doc.Range(rbox <| focus.RegionStart, rbox <| focus.RegionEnd)
+            Ok <| fn range
+        with
+        | ex -> Err <| ex.ToString()
+
+
+
+// Range delimited.
 let countTables : DocMonad<int> = 
+    liftOperation <| fun doc -> doc.Tables.Count
+
+
+// Range delimited.
+let countSections : DocMonad<int> = 
+    liftOperation <| fun rng -> rng.Sections.Count
+
+
+// Maybe should not be part of the API...
+let countTablesGlobal : DocMonad<int> = 
     liftGlobalOperation <| fun doc -> doc.Tables.Count
 
 
-// Ideally should be range delimited...
-let countSections : DocMonad<int> = 
+// Maybe should not be part of the API...
+let countSectionsGlobal : DocMonad<int> = 
     liftGlobalOperation <| fun doc -> doc.Sections.Count
 
 
-// Index starts at 1
-//let getTableRegion (index:int) : DocMonad<Region> = 
-//    DocMonad <| fun doc pos -> 
-//        let table = doc.Tables.[index]
-//        Ok (pos, extractRegion table.Range)
+let table (index:int) (ma:DocMonad<'a>) : DocMonad<'a> = 
+    DocMonad <| fun doc focus -> 
+        try 
+            let range0:Word.Range = doc.Range(rbox <| focus.RegionStart, rbox <| focus.RegionEnd)
+            let table1:Word.Table = range0.Tables.[index]
+            let range1:Word.Range = table1.Range
+            apply1 ma doc (extractRegion range1)
+        with
+        | ex -> Err <| ex.ToString() 
 
 
 //

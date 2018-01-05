@@ -26,10 +26,17 @@ let sRestOfLine (s:string) : string =
 // Use an alternative...
 [<StructuredFormatDisplay("Region: {RegionStart} to {RegionEnd}")>]
 type Region = { RegionStart : int; RegionEnd : int}
+
+
+let extractRegion (range:Word.Range) : Region = { RegionStart = range.Start; RegionEnd = range.End }
     
-let maxRegion (doc:Word.Document) : Region = 
-    let rng = doc.Range()
-    {RegionStart = rng.Start; RegionEnd=rng.End }
+let maxRegion (doc:Word.Document) : Region = extractRegion <| doc.Range()
+
+
+
+///////////////////////////////////////////////////////////////////////
+/// Code below may be (largely) obsolete
+
 
 // Expected to be sorted
 type Regions = 
@@ -46,7 +53,6 @@ let makeRegions (input:Region list) : Regions =
     Regions <| List.sortBy (fun o -> o.RegionStart) input
 
 
-let extractRegion (range:Word.Range) : Region = { RegionStart = range.Start; RegionEnd = range.End }
 
 let trimRange (range:Word.Range) (region:Region) : Word.Range = 
     let mutable r2 = range.Duplicate
