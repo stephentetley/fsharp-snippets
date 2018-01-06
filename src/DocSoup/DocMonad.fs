@@ -8,10 +8,23 @@ type Ans<'a> =
     | Err of string
     | Ok of 'a
 
-let mapAns (fn:'a -> 'b) (ans:Ans<'a>) : Ans<'b> = 
+let private ansFmap (fn:'a -> 'b) (ans:Ans<'a>) : Ans<'b> = 
     match ans with
     | Err msg -> Err msg
     | Ok a -> Ok (fn a)
+
+let private ansMapM (fn:'a -> Ans<'b>) (xs:'a list) : Ans<'b list> = 
+    let rec work ac ys = 
+        match ys with
+        | [] -> Ok <| List.rev ac
+        | z :: zs -> 
+            match fn z with
+            | Err msg -> Err msg
+            | Ok a -> work (a::ac) zs
+    work [] xs
+
+let ansTraverseM (fn: 'a -> Ans<'b>) (source:seq<'a>) : Ans<seq<'b>> =
+    ansFmap (List.toSeq) (ansMapM fn <| Seq.toList source) 
 
 
 // DocMonad is Reader(immutable)+Reader+Error
@@ -251,16 +264,9 @@ let countTables : DocMonad<int> =
 let countSections : DocMonad<int> = 
     liftOperation <| fun rng -> rng.Sections.Count
 
-
-// Maybe should not be part of the API...
-let countTablesGlobal : DocMonad<int> = 
-    liftGlobalOperation <| fun doc -> doc.Tables.Count
-
-
-// Maybe should not be part of the API...
-let countSectionsGlobal : DocMonad<int> = 
-    liftGlobalOperation <| fun doc -> doc.Sections.Count
-
+// Range delimited.
+let countCells : DocMonad<int> = 
+    liftOperation <| fun rng -> rng.Cells.Count
 
 
 let table (index:int) (ma:DocMonad<'a>) : DocMonad<'a> = 
@@ -273,6 +279,18 @@ let table (index:int) (ma:DocMonad<'a>) : DocMonad<'a> =
         with
         | ex -> Err <| ex.ToString() 
 
+
+// Needs a better name...
+let mapTablesWith (ma:DocMonad<'a>) : DocMonad<'a list> = 
+    DocMonad <| fun doc focus -> 
+        try 
+            let range0:Word.Range = doc.Range(rbox <| focus.RegionStart, rbox <| focus.RegionEnd)
+            let tables:Word.Table list = (range0.Tables |> Seq.cast<Word.Table> |> Seq.toList)
+            ansMapM (fun table -> let region = extractRegion (table :> Word.Table).Range in apply1 ma doc region) tables
+        with
+        | ex -> Err <| ex.ToString() 
+
+
 // Strangely this appears to count from zero
 let cell (row:int, col:int) (ma:DocMonad<'a>) : DocMonad<'a> = 
     DocMonad <| fun doc focus -> 
@@ -284,4 +302,14 @@ let cell (row:int, col:int) (ma:DocMonad<'a>) : DocMonad<'a> =
         with
         | ex -> Err <| ex.ToString() 
 
+
+let mapCellsWith (ma:DocMonad<'a>) : DocMonad<'a list> = 
+    DocMonad <| fun doc focus -> 
+        try 
+            let range0:Word.Range = doc.Range(rbox <| focus.RegionStart, rbox <| focus.RegionEnd)
+            let cells:Word.Cell list = (range0.Cells |> Seq.cast<Word.Cell> |> Seq.toList)
+            ansMapM (fun cell -> let region = extractRegion (cell :> Word.Cell).Range in apply1 ma doc region) cells
+        with
+
+        | ex -> Err <| ex.ToString() 
         

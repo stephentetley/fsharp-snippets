@@ -112,3 +112,20 @@ let test10 () =
         return [a0;c0;c1;c2;c3;c4;c5]
     }
     printfn "%A" <| runOnFileE proc testDoc
+
+let shorten (s:string) = if s.Length > 10 then s.[0..9]+"..." else s
+
+let test11 () = 
+    let proc = docMonad { 
+        let! i = countTables
+        let! xs = mapTablesWith (fmapM shorten text)
+        return (i,xs)
+    }
+    printfn "%A" <| runOnFileE proc testDoc
+
+let test12 () = 
+    let proc = docMonad { 
+        let! (i,xs) = table 3 <| tupleM2 (countCells) (mapCellsWith (fmapM shorten text))
+        return (i,xs)
+    }
+    printfn "%A" <| runOnFileE proc testDoc
