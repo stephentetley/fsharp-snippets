@@ -36,9 +36,7 @@ let jsonExtractor:JsonExtractorBuilder = new JsonExtractorBuilder()
 // Common operations
 let fmapM (fn:'a -> 'b) (ma:JsonExtractor<'a>) : JsonExtractor<'b> = 
     JsonExtractor <| fun r ->
-        match apply1 ma r with
-        | Err(msg) -> Err msg
-        | Ok(a) -> Ok <| fn a
+        ResultMonad.fmapM fn (apply1 ma r)
 
 let liftM2 (fn:'a -> 'b -> 'r) (ma:JsonExtractor<'a>) (mb:JsonExtractor<'b>) : JsonExtractor<'r> = 
     JsonExtractor <| fun r ->

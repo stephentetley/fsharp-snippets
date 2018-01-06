@@ -13,8 +13,8 @@ type Result<'a> =
 
 let resultToChoice (result:Result<'a>) : Choice<string,'a> =
     match result with
-    | Err(msg) -> Choice1Of2(msg)
-    | Ok(a) -> Choice2Of2(a)
+    | Err msg -> Choice1Of2(msg)
+    | Ok a -> Choice2Of2(a)
 
 
 let inline private unitM (x:'a) : Result<'a> = Ok x
@@ -22,8 +22,8 @@ let inline private unitM (x:'a) : Result<'a> = Ok x
 
 let inline private bindM (ma:Result<'a>) (f : 'a -> Result<'b>) : Result<'b> =
     match ma with
-    | Ok(a) -> f a
-    | Err(msg) -> Err(msg)
+    | Ok a -> f a
+    | Err msg -> Err(msg)
 
 let fail : Result<'a> = Err "Result fail"
 
@@ -38,60 +38,60 @@ let (resultMonad:ResultBuilder) = new ResultBuilder()
 // Common monadic operations
 let fmapM (fn:'a -> 'b) (ma:Result<'a>) : Result<'b> = 
     match ma with
-    | Err(msg) -> Err msg
-    | Ok(a) -> Ok <| fn a
+    | Err msg -> Err msg
+    | Ok a -> Ok <| fn a
 
 let liftM (fn:'a -> 'r) (ma:Result<'a>) : Result<'r> = fmapM fn ma
 
 let liftM2 (fn:'a -> 'b -> 'r) (ma:Result<'a>) (mb:Result<'b>) : Result<'r> = 
     match ma with
-    | Err(msg) -> Err msg
-    | Ok(a) -> 
+    | Err msg -> Err msg
+    | Ok a -> 
         match mb with 
-        | Err(msg) -> Err msg
-        | Ok(b) -> Ok (fn a b)
+        | Err msg -> Err msg
+        | Ok b -> Ok (fn a b)
 
 let liftM3 (fn:'a -> 'b -> 'c -> 'r) (ma:Result<'a>) (mb:Result<'b>) (mc:Result<'c>) : Result<'r> = 
     match ma with
-    | Err(msg) -> Err msg
-    | Ok(a) -> 
+    | Err msg -> Err msg
+    | Ok a -> 
         match mb with 
-        | Err(msg) -> Err msg
-        | Ok(b) -> 
+        | Err msg -> Err msg
+        | Ok b -> 
             match mc with 
-            | Err(msg) -> Err msg
-            | Ok(c) -> Ok (fn a b c)
+            | Err msg -> Err msg
+            | Ok c -> Ok (fn a b c)
 
 let liftM4 (fn:'a -> 'b -> 'c -> 'd -> 'r) (ma:Result<'a>) (mb:Result<'b>) (mc:Result<'c>) (md:Result<'d>) : Result<'r> = 
     match ma with
-    | Err(msg) -> Err msg
-    | Ok(a) -> 
+    | Err msg -> Err msg
+    | Ok a -> 
         match mb with 
-        | Err(msg) -> Err msg
-        | Ok(b) -> 
+        | Err msg -> Err msg
+        | Ok b -> 
             match mc with 
-            | Err(msg) -> Err msg
-            | Ok(c) -> 
+            | Err msg -> Err msg
+            | Ok c -> 
                 match md with
-                | Err(msg) -> Err msg
-                | Ok(d) -> Ok (fn a b c d)
+                | Err msg -> Err msg
+                | Ok d -> Ok (fn a b c d)
 
 let liftM5 (fn:'a -> 'b -> 'c -> 'd -> 'e -> 'r) (ma:Result<'a>) (mb:Result<'b>) (mc:Result<'c>) (md:Result<'d>) (me:Result<'e>) : Result<'r> = 
     match ma with
-    | Err(msg) -> Err msg
-    | Ok(a) -> 
+    | Err msg -> Err msg
+    | Ok a -> 
         match mb with 
-        | Err(msg) -> Err msg
-        | Ok(b) -> 
+        | Err msg -> Err msg
+        | Ok b -> 
             match mc with 
-            | Err(msg) -> Err msg
-            | Ok(c) -> 
+            | Err msg -> Err msg
+            | Ok c -> 
                 match md with
-                | Err(msg) -> Err msg
-                | Ok(d) -> 
+                | Err msg -> Err msg
+                | Ok d -> 
                     match me with
-                    | Err(msg) -> Err msg
-                    | Ok(e) -> Ok (fn a b c d e)
+                    | Err msg -> Err msg
+                    | Ok e -> Ok (fn a b c d e)
 
 let tupleM2 (ma:Result<'a>) (mb:Result<'b>) : Result<'a * 'b> = 
     liftM2 (fun a b -> (a,b)) ma mb
@@ -158,62 +158,62 @@ let traverseiM (fn:int -> 'a -> Result<'b>) (source:seq<'a>) : Result<seq<'b>> =
 let traverseiMz (fn:int -> 'a -> Result<'b>) (source:seq<'a>) : Result<unit> = 
     mapiMz fn <| Seq.toList source
 
-// Applicatives (<*>)
+// Applicative's (<*>)
 let apM (mf:Result<'a ->'b>) (ma:Result<'a>) : Result<'b> = 
     match mf with
-    | Err(msg) -> Err msg
-    | Ok(fn) -> 
+    | Err msg -> Err msg
+    | Ok fn -> 
         match ma with
-        | Err(msg) -> Err msg
-        | Ok(a) -> Ok <| fn a
+        | Err msg -> Err msg
+        | Ok a -> Ok <| fn a
 
 // Perform two actions in sequence. Ignore the results of the second action if both succeed.
 let seqL (ma:Result<'a>) (mb:Result<'b>) : Result<'a> = 
     match ma with
-    | Err(msg) -> Err msg
-    | Ok(a) -> 
+    | Err msg -> Err msg
+    | Ok a -> 
         match mb with
-        | Err(msg) -> Err msg
-        | Ok(_) -> Ok a
+        | Err msg -> Err msg
+        | Ok _ -> Ok a
 
 // Perform two actions in sequence. Ignore the results of the first action if both succeed.
 let seqR (ma:Result<'a>) (mb:Result<'b>) : Result<'b> = 
     match ma with
-    | Err(msg) -> Err msg
-    | Ok(_) -> 
+    | Err msg -> Err msg
+    | Ok _ -> 
         match mb with
-        | Err(msg) -> Err msg
-        | Ok(b) -> Ok b
+        | Err msg -> Err msg
+        | Ok b -> Ok b
 
 // Result specific operations
 let runResult (failure: string -> 'b) (success: 'a -> 'b) (ma:Result<'a>) : 'b = 
     match ma with
-    | Err(msg) -> failure msg
-    | Ok(a) -> success a
+    | Err msg -> failure msg
+    | Ok a -> success a
 
 let resultToOption (ma:Result<'a>) : Option<'a> = 
     match ma with
-    | Err(_) -> None
-    | Ok(a) -> Some a
+    | Err _ -> None
+    | Ok a -> Some a
 
 let runResultWithError (ma:Result<'a>) : 'a = 
     match ma with
-    | Err(msg) -> failwith msg
-    | Ok(a) -> a
+    | Err msg -> failwith msg
+    | Ok a -> a
 
 
 let throwError (msg:string) : Result<'a> = Err msg
 
 let swapError (msg:string) (ma:Result<'a>) : Result<'a> = 
     match ma with
-    | Err(_) -> Err msg
-    | Ok(a) -> Ok a
+    | Err _ -> Err msg
+    | Ok a -> Ok a
 
 
 let augmentError (fn:string -> string) (ma:Result<'a>) : Result<'a> = 
     match ma with
-    | Err(msg) -> Err <| fn msg
-    | Ok(a) -> Ok a
+    | Err msg -> Err <| fn msg
+    | Ok a -> Ok a
 
 
 let liftAction (action:'a) : Result<'a> = 
@@ -226,20 +226,20 @@ let liftAction (action:'a) : Result<'a> =
 // Left biased choice, if ``ma`` succeeds return its result, otherwise try ``mb``.
 let alt (ma:Result<'a>) (mb:Result<'a>) : Result<'a> = 
     match ma with
-    | Err(_) -> mb
-    | Ok(a) -> Ok a
+    | Err _ -> mb
+    | Ok a -> Ok a
 
 // Catch failing computations, return None. 
 // Successful operations are returned as Some(_).
 let optional (ma:Result<'a>) : Result<'a option> = 
     match ma with
-    | Err(_) -> Ok None
-    | Ok(a) -> Ok <| Some a
+    | Err _ -> Ok None
+    | Ok a -> Ok <| Some a
 
 // Perform an operation for its effect, ignore whether it succeeds or fails.
 // (Comptations always return ``Ok ()``)
 let optionalz (ma:Result<'a>) : Result<unit> = 
     match ma with
-    | Err(_) -> Ok ()
-    | Ok(_) -> Ok ()
+    | Err _ -> Ok ()
+    | Ok _ -> Ok ()
 

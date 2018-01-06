@@ -47,9 +47,9 @@ let fmapM (fn:'a -> 'b) (ma:DocMonad<'a>) : DocMonad<'b> =
         | Ok a -> Ok <| fn a
 
 
-let liftM (fn:'a -> 'r) (ma:DocMonad<'a>) : DocMonad<'r> = fmapM fn ma
+let liftM (fn:'a -> 'x) (ma:DocMonad<'a>) : DocMonad<'x> = fmapM fn ma
 
-let liftM2 (fn:'a -> 'b -> 'r) (ma:DocMonad<'a>) (mb:DocMonad<'b>) : DocMonad<'r> = 
+let liftM2 (fn:'a -> 'b -> 'x) (ma:DocMonad<'a>) (mb:DocMonad<'b>) : DocMonad<'x> = 
     DocMonad <| fun doc focus -> 
         match apply1 ma doc focus with
         | Err msg -> Err msg
@@ -58,9 +58,100 @@ let liftM2 (fn:'a -> 'b -> 'r) (ma:DocMonad<'a>) (mb:DocMonad<'b>) : DocMonad<'r
             | Err msg -> Err msg
             | Ok b -> Ok <| fn a b
 
+let liftM3 (fn:'a -> 'b -> 'c -> 'x) (ma:DocMonad<'a>) (mb:DocMonad<'b>) (mc:DocMonad<'c>) : DocMonad<'x> = 
+    DocMonad <| fun doc focus -> 
+        match apply1 ma doc focus with
+        | Err msg -> Err msg
+        | Ok a -> 
+            match apply1 mb doc focus with 
+            | Err msg -> Err msg
+            | Ok b -> 
+                match apply1 mc doc focus with 
+                | Err msg -> Err msg
+                | Ok c -> Ok <| fn a b c
+
+let liftM4 (fn:'a -> 'b -> 'c -> 'd -> 'x) (ma:DocMonad<'a>) (mb:DocMonad<'b>) (mc:DocMonad<'c>) (md:DocMonad<'d>) : DocMonad<'x> = 
+    DocMonad <| fun doc focus -> 
+        match apply1 ma doc focus with
+        | Err msg -> Err msg
+        | Ok a -> 
+            match apply1 mb doc focus with 
+            | Err msg -> Err msg
+            | Ok b -> 
+                match apply1 mc doc focus with 
+                | Err msg -> Err msg
+                | Ok c -> 
+                    match apply1 md doc focus with 
+                    | Err msg -> Err msg
+                    | Ok d -> Ok <| fn a b c d
+
+
+let liftM5 (fn:'a -> 'b -> 'c -> 'd -> 'e -> 'x) (ma:DocMonad<'a>) (mb:DocMonad<'b>) (mc:DocMonad<'c>) (md:DocMonad<'d>) (me:DocMonad<'e>) : DocMonad<'x> = 
+    DocMonad <| fun doc focus -> 
+        match apply1 ma doc focus with
+        | Err msg -> Err msg
+        | Ok a -> 
+            match apply1 mb doc focus with 
+            | Err msg -> Err msg
+            | Ok b -> 
+                match apply1 mc doc focus with 
+                | Err msg -> Err msg
+                | Ok c -> 
+                    match apply1 md doc focus with 
+                    | Err msg -> Err msg
+                    | Ok d -> 
+                        match apply1 me doc focus with 
+                        | Err msg -> Err msg
+                        | Ok e -> Ok <| fn a b c d e
+
 let tupleM2 (ma:DocMonad<'a>) (mb:DocMonad<'b>) : DocMonad<'a * 'b> = 
     liftM2 (fun a b -> (a,b)) ma mb
 
+let tupleM3 (ma:DocMonad<'a>) (mb:DocMonad<'b>) (mc:DocMonad<'c>) : DocMonad<'a * 'b * 'c> = 
+    liftM3 (fun a b c -> (a,b,c)) ma mb mc
+
+let tupleM4 (ma:DocMonad<'a>) (mb:DocMonad<'b>) (mc:DocMonad<'c>) (md:DocMonad<'d>) : DocMonad<'a * 'b * 'c * 'd> = 
+    liftM4 (fun a b c d -> (a,b,c,d)) ma mb mc md
+
+let tupleM5 (ma:DocMonad<'a>) (mb:DocMonad<'b>) (mc:DocMonad<'c>) (md:DocMonad<'d>) (me:DocMonad<'e>) : DocMonad<'a * 'b * 'c * 'd * 'e> = 
+    liftM5 (fun a b c d e -> (a,b,c,d,e)) ma mb mc md me
+
+// Left biased choice, if ``ma`` succeeds return its result, otherwise try ``mb``.
+let alt (ma:DocMonad<'a>) (mb:DocMonad<'a>) : DocMonad<'a> = 
+    DocMonad <| fun doc focus ->
+        match apply1 ma doc focus with
+        | Err _ -> apply1 mb doc focus
+        | Ok a -> Ok a
+
+// Applicative's (<*>)
+let apM (mf:DocMonad<'a ->'b>) (ma:DocMonad<'a>) : DocMonad<'b> = 
+    DocMonad <| fun doc focus ->
+        match apply1 mf doc focus with
+        | Err msg -> Err msg
+        | Ok fn -> 
+            match apply1 ma doc focus with
+            | Err msg -> Err msg
+            | Ok a -> Ok <| fn a
+
+// Perform two actions in sequence. Ignore the results of the second action if both succeed.
+let seqL (ma:DocMonad<'a>) (mb:DocMonad<'b>) : DocMonad<'a> = 
+    DocMonad <| fun doc focus ->
+        match apply1 ma doc focus with
+        | Err msg -> Err msg
+        | Ok a -> 
+            match apply1 mb doc focus with
+            | Err msg -> Err msg
+            | Ok _ -> Ok a
+
+// Perform two actions in sequence. Ignore the results of the first action if both succeed.
+let seqR (ma:DocMonad<'a>) (mb:DocMonad<'b>) : DocMonad<'b> = 
+    DocMonad <| fun doc focus ->
+        match apply1 ma doc focus with
+        | Err msg -> Err msg
+        | Ok _ -> 
+            match apply1 mb doc focus with
+            | Err msg -> Err msg
+            | Ok b -> Ok b
 
 // DocMonad specific operations
 let runOnFile (ma:DocMonad<'a>) (fileName:string) : Ans<'a> =
@@ -85,14 +176,14 @@ let throwError (msg:string) : DocMonad<'a> =
 let swapError (msg:string) (ma:DocMonad<'a>) : DocMonad<'a> = 
     DocMonad <| fun doc focus ->
         match apply1 ma doc focus with
-        | Err msg-> Err msg
+        | Err msg -> Err msg
         | Ok result -> Ok result
 
 
 let augmentError (fn:string -> string) (ma:DocMonad<'a>) : DocMonad<'a> = 
     DocMonad <| fun doc focus ->
         match apply1 ma doc focus with
-        | Err msg  -> Err <| fn msg
+        | Err msg -> Err <| fn msg
         | Ok result -> Ok result
 
 
@@ -139,6 +230,17 @@ let liftOperation (fn : Word.Range -> 'a) : DocMonad<'a> =
         | ex -> Err <| ex.ToString()
 
 
+let optional (ma:DocMonad<'a>) : DocMonad<'a option> = 
+    DocMonad <| fun doc focus ->
+        match apply1 ma doc focus with
+        | Err _ -> Ok None
+        | Ok a -> Ok <| Some a
+
+let optionalz (ma:DocMonad<'a>) : DocMonad<unit> = 
+    DocMonad <| fun doc focus ->
+        match apply1 ma doc focus with
+        | Err _ -> Ok ()
+        | Ok _ -> Ok ()
 
 // Range delimited.
 let countTables : DocMonad<int> = 

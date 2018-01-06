@@ -24,8 +24,7 @@ type CsvWriter<'a> =
     CsvWriter of (StreamWriter -> Separator -> 'a)
 
 let runCsvWriter (ma:CsvWriter<'a>) (handle:StreamWriter) (sep:Separator) : 'a =
-    match ma with
-    | CsvWriter(f) -> f handle sep
+    match ma with | CsvWriter f -> f handle sep
 
 
 
