@@ -36,9 +36,7 @@ let (docMonad:DocMonadBuilder) = new DocMonadBuilder()
 // Common monadic operations
 let fmapM (fn:'a -> 'b) (ma:DocMonad<'a>) : DocMonad<'b> = 
     DocMonad <| fun doc focus -> 
-        match apply1 ma doc focus with
-        | Err msg -> Err msg
-        | Ok a -> Ok <| fn a
+        Base.fmapM fn (apply1 ma doc focus)
 
 
 let liftM (fn:'a -> 'x) (ma:DocMonad<'a>) : DocMonad<'x> = fmapM fn ma
@@ -249,6 +247,13 @@ let countSections : DocMonad<int> =
 let countCells : DocMonad<int> = 
     liftOperation <| fun rng -> rng.Cells.Count
 
+// Range delimited.
+let countParagraphs : DocMonad<int> = 
+    liftOperation <| fun rng -> rng.Paragraphs.Count
+
+// Range delimited.
+let countCharacters : DocMonad<int> = 
+    liftOperation <| fun rng -> rng.Characters.Count
 
 let table (index:int) (ma:DocMonad<'a>) : DocMonad<'a> = 
     DocMonad <| fun doc focus -> 

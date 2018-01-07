@@ -62,6 +62,7 @@
     <Compile Include="DocSoup\Base.fs" />
     <Compile Include="DocSoup\DocMonad.fs" />
     <Compile Include="DocSoup\OldRangeOperations.fs" />
+    <Compile Include="DocSoup\OldRegions.fs" />
     <Compile Include="DocSoup\OldExtractors.fs" />
     <None Include="DocSoup\TestWord1.fsx" />
     <None Include="DocSoup\OldTest1.fsx" />
