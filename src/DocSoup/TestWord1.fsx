@@ -2,8 +2,8 @@
 #r "Microsoft.Office.Interop.Word"
 open Microsoft.Office.Interop
 
-#load @"WordUtils.fs"
-open DocSoup.WordUtils
+#load @"Base.fs"
+open DocSoup.Base
 #load @"DocMonad.fs"
 open DocSoup.DocMonad
 

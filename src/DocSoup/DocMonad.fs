@@ -3,35 +3,16 @@ module DocSoup.DocMonad
 
 open Microsoft.Office.Interop
 
-// We might extract DocMonad to a separate project so don't rely on ResultMonad
-type Ans<'a> = 
-    | Err of string
-    | Ok of 'a
+open DocSoup.Base
 
-let private ansFmap (fn:'a -> 'b) (ans:Ans<'a>) : Ans<'b> = 
-    match ans with
-    | Err msg -> Err msg
-    | Ok a -> Ok (fn a)
 
-let private ansMapM (fn:'a -> Ans<'b>) (xs:'a list) : Ans<'b list> = 
-    let rec work ac ys = 
-        match ys with
-        | [] -> Ok <| List.rev ac
-        | z :: zs -> 
-            match fn z with
-            | Err msg -> Err msg
-            | Ok a -> work (a::ac) zs
-    work [] xs
-
-let ansTraverseM (fn: 'a -> Ans<'b>) (source:seq<'a>) : Ans<seq<'b>> =
-    ansFmap (List.toSeq) (ansMapM fn <| Seq.toList source) 
 
 
 // DocMonad is Reader(immutable)+Reader+Error
-type DocMonad<'a> = DocMonad of (Word.Document -> Region ->  Ans<'a>)
+type DocMonad<'a> = DocMonad of (Word.Document -> Region -> Answer<'a>)
 
 
-let inline apply1 (ma : DocMonad<'a>) (doc:Word.Document) (focus:Region) : Ans<'a>= 
+let inline apply1 (ma : DocMonad<'a>) (doc:Word.Document) (focus:Region) : Answer<'a>= 
     let (DocMonad f) = ma in f doc focus
 
 let private unitM (x:'a) : DocMonad<'a> = DocMonad <| fun _ _ -> Ok x
@@ -167,7 +148,7 @@ let seqR (ma:DocMonad<'a>) (mb:DocMonad<'b>) : DocMonad<'b> =
             | Ok b -> Ok b
 
 // DocMonad specific operations
-let runOnFile (ma:DocMonad<'a>) (fileName:string) : Ans<'a> =
+let runOnFile (ma:DocMonad<'a>) (fileName:string) : Answer<'a> =
     if System.IO.File.Exists (fileName) then
         let app = new Word.ApplicationClass (Visible = true) 
         let doc = app.Documents.Open(FileName = ref (fileName :> obj))
