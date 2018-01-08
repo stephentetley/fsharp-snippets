@@ -15,10 +15,14 @@ open FSharp.Data.JsonExtensions
 
 
 // Use Json for the find/replace pairs
+// TODO - move to a "skeleton" script configuration so changes
+// are localized (see NR's papers on the C-- compiler).
+// This is actually more important for the input Json 
+// generator - GenFindReplaceInput.fsx
 
-let outputRoot = @"G:\work\Projects\events2\output\"
-let templateLoc = @"G:\work\Projects\events2\EDM2 Survey TEMPLATE.docx"
-let allSubsitutions = @"G:\work\Projects\events2\survey-findreplace.json"
+let outputRoot = @"G:\work\Projects\samps\jan2018_zip06\"
+let templateLoc = @"G:\work\Projects\samps\TEMPLATE Samps Cover Sheet.docx"
+let allSubsitutions = @"G:\work\Projects\samps\cover-findreplace.json"
 
 
 type ReplacesList = (string*string) list

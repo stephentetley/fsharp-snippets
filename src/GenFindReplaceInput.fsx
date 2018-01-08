@@ -9,14 +9,25 @@ open Newtonsoft.Json
 #load "JsonOutput.fs"
 open JsonOutput
 
-let outputFile = @"G:\work\Projects\events2\survey-findreplace.json"
+#load @"ExcelProviderHelper.fs"
+open ExcelProviderHelper
+
+let outputFile = @"G:\work\Projects\samps\cover-findreplace.json"
 
 type InputTable = 
-    ExcelFile< @"G:\work\Projects\events2\EDM2 Site-List.xlsx",
-               SheetName = @"SITE_LIST",
+    ExcelFile< @"G:\work\Projects\samps\sitelist-for-gen-jan2018.xlsx",
+               SheetName = @"Sheet1",
                ForceString = true >
 
 type InputRow = InputTable.Row
+
+let importTableDict : GetRowsDict<InputTable, InputRow> = 
+    { GetRows     = fun imports -> imports.Data 
+      NotNullProc = fun row -> match row.Site with null -> false | _ -> true }
+
+let getImportRows () : seq<InputRow> = excelTableGetRowsSeq importTableDict (new InputTable())
+
+
 
 let safeName (input:string) : string = 
     let bads1 = ['\\'; '/'; ':']
@@ -31,31 +42,23 @@ let readRows () : InputRow list =
 
 let tellFileName (siteName:string) : JsonOutput<unit> =
     let clean = siteName.Trim() |> safeName
-    let docname = sprintf "%s EDM2 Survey.docx" clean
+    let docname = sprintf "%s UWW Samplers cover.docx" clean
     printfn "Clean is '%s'" clean
     let filename = System.IO.Path.Combine(clean,docname) 
     tellValue <| filename
 
 
 let tellReplaces(row:InputRow) : JsonOutput<unit> = 
-    tellObject  [ "#SITENAME",          tellString row.Name
-                ; "#SAINUMBER",         tellString row.``SAI Number``
-                ; "#SITEADDRESS",       tellString row.``Site Address``
-                ; "#OPERSTATUS",        tellString ""
-                ; "#SITEGRIDREF",       tellString row.``Site Grid Ref``
-                ; "#ASSETTYPE",         tellString row.Type            
-                ; "#OPERNAME",          tellString row.``Operational Responsibility`` 
-                ; "#WORKCATEGORY",      tellString row.``Work Category``
-                ; "#OUTFALLGRIDREF",    tellString row.``Outfall Grid Ref (from IW sheet)``
-                ; "#RECWATERCOURSE",    tellString row.``Receiving Watercourse``
+    tellObject  [ "#SITENAME",      tellString row.Site
+                ; "#SAINUM",        tellString row.Uid
                 ]
 
 let tellRow1(row:InputRow) : JsonOutput<unit> = 
-    printfn "%s" row.Name
-    tellObject [ "FileName",  tellFileName row.Name
+    printfn "%s" row.Site
+    tellObject [ "FileName",  tellFileName row.Site
                ; "Replaces", tellReplaces row ]
 
 let main () : unit = 
-    let rows = readRows ()
+    let rows = getImportRows () |> Seq.toList
     let proc = tellAsArray rows tellRow1
     ignore <| runJsonOutput proc 2 outputFile

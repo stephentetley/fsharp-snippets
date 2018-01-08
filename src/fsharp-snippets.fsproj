@@ -110,7 +110,7 @@
     <None Include="TotalOrder2.fsx" />
     <None Include="WktConcaveHull.fsx" />
     <None Include="WGS84ExcelCoord.fsx" />
-    <None Include="GenSiteFormsJson.fsx" />
+    <None Include="GenFindReplaceInput.fsx" />
     <None Include="WordFindReplace.fsx" />
     <None Include="TestPostgres.fsx" />
     <None Include="Consents.fsx" />
