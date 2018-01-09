@@ -35,7 +35,7 @@ open SqlUtils
 open PGSQLConn
 
 
-#I @"..\packages\Newtonsoft.Json.10.0.2\lib\net45"
+#I @"..\packages\Newtonsoft.Json.10.0.3\lib\net45"
 #r "Newtonsoft.Json"
 open Newtonsoft.Json
 #load "JsonOutput.fs"

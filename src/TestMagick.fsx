@@ -4,8 +4,8 @@
 open System
 
 
-#I @"..\packages\Magick.NET-Q8-x64.7.3.0\lib\net40"
-#r @"Magick.NET-Q8-x64.dll"
+#I @"..\packages\Magick.NET-Q8-AnyCPU.7.3.0\lib\net40"
+#r @"Magick.NET-Q8-AnyCPU.dll"
 open ImageMagick
 
 let imgPath = @"G:\work\photos1\TestFolder\DSCF0001.jpg"
