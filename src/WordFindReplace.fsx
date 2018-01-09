@@ -20,6 +20,9 @@ open FSharp.Data.JsonExtensions
 // This is actually more important for the input Json 
 // generator - GenFindReplaceInput.fsx
 
+
+// TODO - outputRoot is a bad idea at this stage.
+// The file path for output in the Json input should be fully resolved.
 let outputRoot = @"G:\work\Projects\samps\jan2018_zip06\"
 let templateLoc = @"G:\work\Projects\samps\TEMPLATE Samps Cover Sheet.docx"
 let allSubsitutions = @"G:\work\Projects\samps\cover-findreplace.json"

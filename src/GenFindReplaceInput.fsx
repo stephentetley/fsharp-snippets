@@ -15,15 +15,15 @@ open ExcelProviderHelper
 let outputFile = @"G:\work\Projects\samps\cover-findreplace.json"
 
 type InputTable = 
-    ExcelFile< @"G:\work\Projects\samps\sitelist-for-gen-jan2018.xlsx",
-               SheetName = @"Sheet1",
+    ExcelFile< @"G:\work\Projects\samps\UWW_Samps-sitelist.xlsx",
+               SheetName = @"Site_List",
                ForceString = true >
 
 type InputRow = InputTable.Row
 
 let importTableDict : GetRowsDict<InputTable, InputRow> = 
     { GetRows     = fun imports -> imports.Data 
-      NotNullProc = fun row -> match row.Site with null -> false | _ -> true }
+      NotNullProc = fun row -> match row.``Site Name`` with null -> false | _ -> true }
 
 let getImportRows () : seq<InputRow> = excelTableGetRowsSeq importTableDict (new InputTable())
 
@@ -49,13 +49,13 @@ let tellFileName (siteName:string) : JsonOutput<unit> =
 
 
 let tellReplaces(row:InputRow) : JsonOutput<unit> = 
-    tellObject  [ "#SITENAME",      tellString row.Site
-                ; "#SAINUM",        tellString row.Uid
+    tellObject  [ "#SITENAME",      tellString row.``Site Name``
+                ; "#SAINUM",        tellString row.``SAI Ref``
                 ]
 
 let tellRow1(row:InputRow) : JsonOutput<unit> = 
-    printfn "%s" row.Site
-    tellObject [ "FileName",  tellFileName row.Site
+    printfn "%s" row.``Site Name``
+    tellObject [ "FileName",  tellFileName row.``Site Name``
                ; "Replaces", tellReplaces row ]
 
 let main () : unit = 

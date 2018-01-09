@@ -93,10 +93,13 @@ let makeInsertIWPermit (row:IWRow) : string =
         <|  [ stringValue       "sai_number"            row.``SAI of related asset``
             ; stringValue       "asset_name"            row.``Related AI Asset Name``
             ; stringValue       "outlet_grid_ref"       row.``Outlet NGR``
-            ; stringValue       "monitor_grid_ref"      row.``Effluent Monitoring point NGR``
+            ; stringValue       "monitoring_grid_ref"   row.``Effluent Monitoring point NGR``
             ; stringValue       "discharge_decription"  row.``Description of Discharge`` 
-            ; stringValue       "permit_urn"            row.``URN (permit number and schedule)``  ]
-
+            ; stringValue       "permit_urn"            row.``URN (permit number and schedule)`` 
+            ; stringValue       "other_ea_name"         row.``Other/ EA name if different`` 
+            ; stringValue       "receiving_watercourse" row.``Receiving water/ environment``
+            ; stringValue       "screen_type"           row.``Screen type ('1D' for bar, '2D' for mesh or 'None')``
+            ]
 
 let insertPermits () : Script<int> = 
     let importRows = getImportRows () 

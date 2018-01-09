@@ -104,6 +104,6 @@ let main () : unit =
     let rows : WorkListRow list = workData.Data |> Seq.filter nullPred |> Seq.toList
     let writerProc = closedXMLWriter {
         do! tellHeaders headers
-        do! mapMz (tellRow << makeOutputCells) rows }
+        do! mapMz (fun a -> tellRow (makeOutputCells a)) rows }
 
     ignore <| outputToNew writerProc xlsOutputPath "Sheet1"
