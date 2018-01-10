@@ -180,6 +180,9 @@ let augmentError (fn:string -> string) (ma:DocMonad<'a>) : DocMonad<'a> =
 
 
 // Get the text in the currently focused region.
+// TODO - this shoukld come in two versions - rawText and cleanText
+// The output returned from Range.Text in Word can contain non-printing
+// characters that cause havoc with printing in user code
 let text : DocMonad<string> = 
     DocMonad <| fun doc focus -> 
         try

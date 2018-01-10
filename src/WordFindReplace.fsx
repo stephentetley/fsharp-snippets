@@ -23,8 +23,8 @@ open FSharp.Data.JsonExtensions
 
 // TODO - outputRoot is a bad idea at this stage.
 // The file path for output in the Json input should be fully resolved.
-let outputRoot = @"G:\work\Projects\samps\jan2018_zip06\"
-let templateLoc = @"G:\work\Projects\samps\TEMPLATE Samps Cover Sheet.docx"
+let outputRoot = @"G:\work\Projects\samps\__temp\"
+let templateLoc = @"G:\work\Projects\samps\Final_Docs\__Templates\TEMPLATE Samps Cover Sheet.docx"
 let allSubsitutions = @"G:\work\Projects\samps\cover-findreplace.json"
 
 
@@ -76,19 +76,26 @@ let makeOutputfile (docName:string) : string =
     System.IO.Path.Combine(outputRoot,docName) 
 
 
-let replacer (x:Word.Document) (search:string, replace:string) : bool = 
-    let replaceRange (range1:Word.Range) : bool = 
-        range1.Find.ClearFormatting ()
-        range1.Find.Execute (FindText = refobj search, 
-                                ReplaceWith = refobj replace,
-                                Replace = refobj Word.WdReplace.wdReplaceAll)
+let getHeadersOrFooters (doc:Word.Document) (proj:Word.Section -> Word.HeadersFooters) : Word.HeaderFooter list = 
+    Seq.foldBack (fun (section:Word.Section) (ac:Word.HeaderFooter list) ->
+           let headers1 = proj section |> Seq.cast<Word.HeaderFooter>
+           Seq.foldBack (fun x xs -> x::xs) headers1 ac)
+           (doc.Sections |> Seq.cast<Word.Section>)
+           []
 
-    let dstart = x.Content.Start
-    let dend = x.Content.End
-    let ans1 = replaceRange <| x.Range(refobj dstart, refobj dend)
-    let header = x.Sections.[1].Headers.[Word.WdHeaderFooterIndex.wdHeaderFooterPrimary].Range
-    let ans2 = replaceRange <| header
-    ans1 && ans2
+let replaceRange (range:Word.Range) (search:string) (replace:string) : unit =
+    range.Find.ClearFormatting ()
+    ignore <| range.Find.Execute (FindText = refobj search, 
+                                    ReplaceWith = refobj replace,
+                                    Replace = refobj Word.WdReplace.wdReplaceAll)
+
+let replacer (doc:Word.Document) (search:string, replace:string) : unit =                      
+    let rngAll = doc.Range()
+    replaceRange rngAll search replace
+    let headers = getHeadersOrFooters doc (fun section -> section.Headers)
+    let footers = getHeadersOrFooters doc (fun section -> section.Footers)
+    List.iter (fun (header:Word.HeaderFooter) -> replaceRange header.Range search replace)
+              (headers @ footers)
 
 let replaces (x:Word.Document) (zs:ReplacesList) : unit =
     List.iter (fun sr -> ignore <| replacer x sr) zs
