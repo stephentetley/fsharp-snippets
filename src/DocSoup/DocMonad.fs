@@ -1,6 +1,7 @@
 ﻿[<AutoOpen>]
 module DocSoup.DocMonad
 
+open System.Text.RegularExpressions
 open Microsoft.Office.Interop
 
 open DocSoup.Base
@@ -180,16 +181,21 @@ let augmentError (fn:string -> string) (ma:DocMonad<'a>) : DocMonad<'a> =
 
 
 // Get the text in the currently focused region.
-// TODO - this shoukld come in two versions - rawText and cleanText
-// The output returned from Range.Text in Word can contain non-printing
-// characters that cause havoc with printing in user code
-let text : DocMonad<string> = 
+
+// Returns the raw text that may include control characters.
+let rawText : DocMonad<string> = 
     DocMonad <| fun doc focus -> 
         try
             let range = doc.Range(rbox <| focus.RegionStart, rbox <| focus.RegionEnd)
             Ok <| range.Text
         with
         | ex -> Err <| sprintf "text: %s" (ex.ToString())
+
+
+// Removes all control characters except CR & LF.
+let cleanText : DocMonad<string> = 
+    fmapM (fun (s:string) -> Regex.Replace(s, @"[\p{C}-[\r\n]]+", "")) rawText
+
 
 
 // Get the currently focused region.
@@ -299,6 +305,5 @@ let mapCellsWith (ma:DocMonad<'a>) : DocMonad<'a list> =
             let cells:Word.Cell list = (range0.Cells |> Seq.cast<Word.Cell> |> Seq.toList)
             ansMapM (fun cell -> let region = extractRegion (cell :> Word.Cell).Range in apply1 ma doc region) cells
         with
-
         | ex -> Err <| ex.ToString() 
         

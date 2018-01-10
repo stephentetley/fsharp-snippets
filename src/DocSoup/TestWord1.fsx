@@ -71,19 +71,19 @@ let test05 () =
 
 // All text of the document
 let test06 () = 
-    printfn "%A" <| runOnFileE text testDoc
+    printfn "%A" <| runOnFileE cleanText testDoc
 
 // This is nice and high level...
 let test07 () = 
     let proc = docMonad { 
-        let! a0 = table 1 <| cell (0,0) text
-        let! c0 = table 3 <| cell (0,0) text
-        let! c1 = table 3 <| cell (1,0) text
-        let! c2 = table 3 <| cell (2,0) text
-        let! c3 = table 3 <| cell (3,0) text
-        let! c4 = table 3 <| cell (4,0) text
-        let! c5 = table 3 <| cell (5,0) text
-        let! c6 = table 3 << cell (6,0) <| text
+        let! a0 = table 1 <| cell (0,0) cleanText
+        let! c0 = table 3 <| cell (0,0) cleanText
+        let! c1 = table 3 <| cell (1,0) cleanText
+        let! c2 = table 3 <| cell (2,0) cleanText
+        let! c3 = table 3 <| cell (3,0) cleanText
+        let! c4 = table 3 <| cell (4,0) cleanText
+        let! c5 = table 3 <| cell (5,0) cleanText
+        let! c6 = table 3 << cell (6,0) <| cleanText
         return [a0;c0;c1;c2;c3;c4;c5]
     }
     printfn "%A" <| runOnFileE proc testDoc
@@ -92,14 +92,14 @@ let test07 () =
 let test08 () = 
     let proc = docMonad { 
         let! i = countTables
-        let! xs = mapTablesWith (fmapM shorten text)
+        let! xs = mapTablesWith (fmapM shorten cleanText)
         return (i,xs)
     }
     printfn "%A" <| runOnFileE proc testDoc
 
 let test09 () = 
     let proc = docMonad { 
-        let! (i,xs) = table 3 <| tupleM2 (countCells) (mapCellsWith (fmapM shorten text))
+        let! (i,xs) = table 3 <| tupleM2 (countCells) (mapCellsWith (fmapM shorten cleanText))
         return (i,xs)
     }
     printfn "%A" <| runOnFileE proc testDoc

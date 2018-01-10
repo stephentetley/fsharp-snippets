@@ -63,9 +63,6 @@ let sRestOfLine (s:string) : string =
     use reader = new StringReader(s)
     reader.ReadLine ()
 
-// NOTE - Region itself is complicated .
-// The semantics of Regions are probably Allen Relations
-// A (single point) cursor would be simpler
 
 // Range is a very heavy object to be manipulating start and end points
 // Use an alternative...
