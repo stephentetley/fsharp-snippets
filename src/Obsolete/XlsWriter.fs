@@ -5,7 +5,7 @@ open Microsoft.Office.Interop
 
 
  // This should be obsolete - we should be able to use 
- // ClosedXMLWriter for batch writing and it is much faster...S
+ // ClosedXMLOutput for batch writing and it is much faster...S
 type RowWriter<'a> = RowWriter of (Excel.Worksheet -> int -> ('a * int))
 
 let runRowWriter (ma:RowWriter<'a>) (sheet:Excel.Worksheet) : 'a =

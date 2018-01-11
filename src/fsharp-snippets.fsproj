@@ -98,8 +98,8 @@
     <Compile Include="SqlUtils.fs" />
     <Compile Include="PGSQLConn.fs" />
     <Compile Include="SQLiteConn.fs" />
-    <Compile Include="ClosedXMLWriter.fs" />
-    <Compile Include="CsvWriter.fs" />
+    <Compile Include="ClosedXMLOutput.fs" />
+    <Compile Include="CsvOutput.fs" />
     <Compile Include="DocOutput.fs" />
     <None Include="CsvTrim.fsx" />
     <None Include="TestGeo.fsx" />

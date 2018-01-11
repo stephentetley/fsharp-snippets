@@ -14,8 +14,8 @@ open Geo
 #I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
 #I @"..\packages\ClosedXML.0.90.0\lib\net452\"
 #r "ClosedXML"
-#load "ClosedXMLWriter.fs"
-open ClosedXMLWriter
+#load "ClosedXMLOutput.fs"
+open ClosedXMLOutput
 
 
 type InputTable = 
@@ -48,7 +48,7 @@ let correctGridRef (input:string) : string =
             | None -> sprintf "Invalid: %s" input
 
         
-let tellRow1 (row:InputRow) : ClosedXMLWriter<unit> = 
+let tellRow1 (row:InputRow) : ClosedXMLOutput<unit> = 
     // printfn "%s" (row.``Related AI Asset Name``)
     tellRow [ tellString    << defaultIfNull "" <| row.``SAI of related asset``
             ; tellString    << defaultIfNull "" <| row.``Related AI Asset Name``
@@ -62,7 +62,7 @@ let outFile : string =
 let main () : unit = 
     let input = readInputRows ()
     let proc = 
-        closedXMLWriter { do! tellHeaders headers
+        closedXMLOutput { do! tellHeaders headers
                           do! mapMz tellRow1 input }
     outputToNew proc outFile "Outfalls"         
         

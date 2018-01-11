@@ -35,8 +35,8 @@ open Newtonsoft.Json
 open JsonOutput
 
 
-#load "CsvWriter.fs"
-open CsvWriter
+#load "CsvOutput.fs"
+open CsvOutput
 
 
 let makeConnString (pwd:string) (dbname:string) : string = 
@@ -111,7 +111,7 @@ let wktOutfile = @"G:\work\Projects\events2\wkt_concave_hulls1.csv"
 // Note - main should run in the result monad...
 let main (pwd:string) = 
     let conn = pgsqlConnParamsTesting pwd "spt_geo" 
-    let csvProc (oidtexts:(int*string) list) : CsvWriter<unit> = 
+    let csvProc (oidtexts:(int*string) list) : CsvOutput<unit> = 
         tellSheetWithHeaders ["oid"; "wkt"] 
                             oidtexts
                             (fun (a,b) -> [ tellInteger a; tellQuotedString b ])

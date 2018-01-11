@@ -15,8 +15,8 @@ open ExcelUtils
 #I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
 #I @"..\packages\ClosedXML.0.90.0\lib\net452\"
 #r "ClosedXML"
-#load "ClosedXMLWriter.fs"
-open ClosedXMLWriter
+#load "ClosedXMLOutput.fs"
+open ClosedXMLOutput
 
 
 let outpath = @"G:\work\Projects\ultrasonics\ultrasonic-updates.xlsx"
@@ -52,11 +52,11 @@ let compare1 (a:MasterRow) (b:UpdateRow) : int =
     | (_,null) -> -1
     | _ -> compare a.``Common Name`` b.``Common Name``
 
-let tellHeaders : ClosedXMLWriter<unit> = tellRow <| List.map tellString headers
+let tellHeaders : ClosedXMLOutput<unit> = tellRow <| List.map tellString headers
 
-let processMasterM (x:MasterRow) : ClosedXMLWriter<unit> = 
+let processMasterM (x:MasterRow) : ClosedXMLOutput<unit> = 
     match x with
-    | null -> closedXMLWriter.Return ()
+    | null -> closedXMLOutput.Return ()
     | _ ->
         tellRow [ tellString    "Level - Ultrasonic"
                 ; tellString    <| emptyIfNull x.``Site name``
@@ -80,9 +80,9 @@ let namePart (ix:int) (common:string) : string =
         if ix < splits.Length then splits.[ix]
         else ""
 
-let processUpdateM (x:UpdateRow) : ClosedXMLWriter<unit> =  
+let processUpdateM (x:UpdateRow) : ClosedXMLOutput<unit> =  
     match x with
-    | null -> closedXMLWriter.Return ()
+    | null -> closedXMLOutput.Return ()
     | _ ->
         tellRow [ tellString        "Level - Ultrasonic"
                 ; tellString        <| namePart 0 (x.``Common Name``)
@@ -98,9 +98,9 @@ let processUpdateM (x:UpdateRow) : ClosedXMLWriter<unit> =
                 ; tellString        <| emptyIfNull x.``Specific Model/Frame``
                 ]
 
-let processMatchM (x:MasterRow) (y:UpdateRow) : ClosedXMLWriter<unit> =  
+let processMatchM (x:MasterRow) (y:UpdateRow) : ClosedXMLOutput<unit> =  
     match x with
-    | null -> printfn "null" ; closedXMLWriter.Return ()
+    | null -> printfn "null" ; closedXMLOutput.Return ()
     | _ ->
         if x.``Installed From`` <> y.``Installed From`` then
             tellRow [ tellString    "Level - Ultrasonic"
@@ -135,18 +135,18 @@ let processMatchM (x:MasterRow) (y:UpdateRow) : ClosedXMLWriter<unit> =
 //let processUpdate (x:UpdateRow) : unit = printfn "UPDATE: %s" x.``Common Name``
 //let processMatch (x:MasterRow) (y:UpdateRow) : unit = printfn "**Matching: %s" x.``Common Name``
     
-let process1 (xs:MasterRow list) (ys:UpdateRow list) : ClosedXMLWriter<unit> = 
+let process1 (xs:MasterRow list) (ys:UpdateRow list) : ClosedXMLOutput<unit> = 
     let rec go ms us = 
         match (ms,us) with
         | [], us1 -> mapMz processUpdateM us1
         | ms1, [] -> mapMz processMasterM ms1
         | (m::ms1, u::us1) -> 
             match compare1 m u with
-            | x when x < 0 -> closedXMLWriter { do! processMasterM m
+            | x when x < 0 -> closedXMLOutput { do! processMasterM m
                                                 do! go ms1 us }
-            | x when x = 0 -> closedXMLWriter { do! processMatchM m u
+            | x when x = 0 -> closedXMLOutput { do! processMatchM m u
                                                 do! go ms1 us1 }
-            | x when x > 0 -> closedXMLWriter { do! processUpdateM u
+            | x when x > 0 -> closedXMLOutput { do! processUpdateM u
                                                 do! go ms us1 }
             | x -> failwith (sprintf "Weird pattern failure: %d" x)
     go xs ys
@@ -154,8 +154,8 @@ let process1 (xs:MasterRow list) (ys:UpdateRow list) : ClosedXMLWriter<unit> =
 let main () = 
     let master = new MasterTable()
     let updates = new UpdateTable()
-    let action : ClosedXMLWriter<unit> = 
-        closedXMLWriter { do! tellHeaders
+    let action : ClosedXMLOutput<unit> = 
+        closedXMLOutput { do! tellHeaders
                           do! process1 (master.Data |> Seq.toList) (updates.Data |> Seq.toList) }
     outputToNew action outpath "Ultrasonics"
 

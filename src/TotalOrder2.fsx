@@ -8,8 +8,8 @@ open FSharp.ExcelProvider
 
 open System
 
-#load "CsvWriter.fs"
-open CsvWriter
+#load "CsvOutput.fs"
+open CsvOutput
 
 // Just names. ps> dir | select -exp name
 let directoryListing = @"G:\work\Projects\rtu\dir.txt"
@@ -43,13 +43,13 @@ let buildListing () =
         |> Seq.filter emptyPred
         |> Seq.sort
 
-let processUpdate (name:string) : CsvWriter<unit> = 
+let processUpdate (name:string) : CsvOutput<unit> = 
     tellRow [ tellString name; tellString "To make"]
 
-let processMaster (row:MasterRow) : CsvWriter<unit> = 
-    csvWriter.Return ()
+let processMaster (row:MasterRow) : CsvOutput<unit> = 
+    csvOutput.Return ()
 
-let processMatch (row:MasterRow) (name:string) : CsvWriter<unit> =
+let processMatch (row:MasterRow) (name:string) : CsvOutput<unit> =
     tellRow [ tellString name; tellString "Exists" ]
 
 let compareElements (row:MasterRow) (name:string) : int = 
@@ -59,18 +59,18 @@ let compareElements (row:MasterRow) (name:string) : int =
     // printfn "'%s' => '%s'" prefix name1
     compare prefix name1
 
-let processLists (xs:MasterRow list) (ys:string list) : CsvWriter<unit> = 
+let processLists (xs:MasterRow list) (ys:string list) : CsvOutput<unit> = 
     let rec go ms us = 
         match (ms,us) with
         | [], us1 -> mapMz processUpdate us1
         | ms1, [] -> mapMz processMaster ms1
         | (m::ms1, u::us1) -> 
             match compareElements m u with
-            | x when x < 0 -> csvWriter { do! processMaster m
+            | x when x < 0 -> csvOutput { do! processMaster m
                                           do! go ms1 us }
-            | x when x = 0 -> csvWriter { do! processMatch m u
+            | x when x = 0 -> csvOutput { do! processMatch m u
                                           do! go ms1 us1 }
-            | x when x > 0 -> csvWriter { do! processUpdate u
+            | x when x > 0 -> csvOutput { do! processUpdate u
                                           do! go ms us1 }
             | x -> failwith (sprintf "Weird pattern failure: %d" x)
     go xs ys

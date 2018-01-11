@@ -7,17 +7,14 @@ open FSharp.Data.JsonExtensions
 #r "ExcelProvider.dll"
 open FSharp.ExcelProvider
 
-
-
-
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
 #I @"..\packages\DocumentFormat.OpenXml.2.7.2\lib\net46\"
 #I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
 #I @"..\packages\ClosedXML.0.90.0\lib\net452\"
 #r "ClosedXML"
-#load "ClosedXMLWriter.fs"
-open ClosedXMLWriter
+#load "ClosedXMLOutput.fs"
+open ClosedXMLOutput
 
 
 #I @"..\packages\Npgsql.3.2.6\lib\net451\"
@@ -172,11 +169,11 @@ let pgTSPQuery (startPt:DbRecord) (endPt:DbRecord) : PGSQLConn<DbRecord list> =
 
 let outputXslx (records:DbRecord list) (fileName:string) : unit = 
     let proc1 (ix:int) (orec:DbRecord) : RowWriter<unit> = 
-        [ ClosedXMLWriter.tellInteger   (ix + 1)
-        ; ClosedXMLWriter.tellString    orec.SiteCode
-        ; ClosedXMLWriter.tellString    orec.LongName
-        ; ClosedXMLWriter.tellFloat     orec.Wgs84Lat
-        ; ClosedXMLWriter.tellFloat     orec.Wgs84Lon ]
+        [ ClosedXMLOutput.tellInteger   (ix + 1)
+        ; ClosedXMLOutput.tellString    orec.SiteCode
+        ; ClosedXMLOutput.tellString    orec.LongName
+        ; ClosedXMLOutput.tellFloat     orec.Wgs84Lat
+        ; ClosedXMLOutput.tellFloat     orec.Wgs84Lon ]
     let procM = tellSheetWithHeadersi ["Order"; "Code"; "Name"; "Latitude"; "Longitude"] records proc1 
     outputToNew procM fileName "Routes"
 

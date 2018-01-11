@@ -10,8 +10,8 @@ open Microsoft.Office.Interop
 #load "ExcelUtils.fs"
 open ExcelUtils
 
-#load "CsvWriter.fs"
-open CsvWriter
+#load "CsvOutput.fs"
+open CsvOutput
 
 // NOTE - CSV processing with FSharp.Data is very fast
 // To trim basic (macro-free) Xls files, going to and from CSV looks like

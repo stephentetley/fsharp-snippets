@@ -23,8 +23,8 @@ open SQLiteConn
 #I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
 #I @"..\packages\ClosedXML.0.90.0\lib\net452\"
 #r "ClosedXML"
-#load @"ClosedXMLWriter.fs"
-open ClosedXMLWriter
+#load @"ClosedXMLOutput.fs"
+open ClosedXMLOutput
 
 
 let connParams = 
@@ -102,7 +102,7 @@ let main () : unit =
     let workData = new WorkListTable()
     let nullPred (row:WorkListRow) = match row.sitename with null -> false | _ -> true
     let rows : WorkListRow list = workData.Data |> Seq.filter nullPred |> Seq.toList
-    let writerProc = closedXMLWriter {
+    let writerProc = closedXMLOutput {
         do! tellHeaders headers
         do! mapMz (fun a -> tellRow (makeOutputCells a)) rows }
 

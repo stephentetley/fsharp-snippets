@@ -15,8 +15,8 @@ open Geo
 #I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
 #I @"..\packages\ClosedXML.0.90.0\lib\net452\"
 #r "ClosedXML"
-#load "ClosedXMLWriter.fs"
-open ClosedXMLWriter
+#load "ClosedXMLOutput.fs"
+open ClosedXMLOutput
 
 type HospitalsTable = 
     ExcelFile< @"G:\work\Accident-and-Emergency-Hospitals-Yorkshire.xlsx",
@@ -98,7 +98,7 @@ let defaultIfNull (defaultValue:string) (check:string) =
     | null -> defaultValue
     | _ -> check
 
-let tellRow1 (hospitals:HospitalList) (row:AssetRow) : ClosedXMLWriter<unit> = 
+let tellRow1 (hospitals:HospitalList) (row:AssetRow) : ClosedXMLOutput<unit> = 
     let opt = Option.map Coord.osgb36GridToWGS84
                             <| Coord.tryReadOSGB36Grid row.``Grid Ref``
     let best = Option.bind (tryClosestHosiptal hospitals) opt
@@ -118,7 +118,7 @@ let main () =
     let hosiptalData = buildHospitalList ()
     let assetData = readAssetRows ()
     let proc = 
-        closedXMLWriter { do! tellHeaders headers
+        closedXMLOutput { do! tellHeaders headers
                           do! mapMz (tellRow1 hosiptalData) assetData }
     outputToNew proc outputFile "Hospitals"  
 

@@ -8,8 +8,8 @@ open Microsoft.Office.Interop
 
 #load "Geo.fs"
 open Geo
-#load "CsvWriter.fs"
-open CsvWriter
+#load "CsvOutput.fs"
+open CsvOutput
 
 
 type InputTable = 
@@ -48,7 +48,7 @@ let findPoints (sites:string list)  (db:CoordDB) : Geo.Coord.WGS84Point list =
         []
         sites
 
-let genWKT (orders:OrderGroups) (db:CoordDB) : CsvWriter<unit> =
+let genWKT (orders:OrderGroups) (db:CoordDB) : CsvOutput<unit> =
     let pointGroups = List.map (fun ss -> findPoints ss db) orders
     tellSheetWithHeadersi   ["oid"; "wkt"] 
                             pointGroups

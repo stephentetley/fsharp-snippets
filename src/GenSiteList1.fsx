@@ -25,8 +25,8 @@ open SQLiteConn
 #I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
 #I @"..\packages\ClosedXML.0.90.0\lib\net452\"
 #r "ClosedXML"
-#load @"ClosedXMLWriter.fs"
-open ClosedXMLWriter
+#load @"ClosedXMLOutput.fs"
+open ClosedXMLOutput
 
 
 // Note [<Literal>]'s only appear to support concat (+) and not general
@@ -110,7 +110,7 @@ let test03 () =
         printfn "%s" (String.concat "," strings)
     | None -> printfn "not found"
 
-let writeRow (sai:string) : ClosedXMLWriter<unit> = 
+let writeRow (sai:string) : ClosedXMLOutput<unit> = 
     match tryFindRow1 sai with
     | Some(dict) -> 
         tellRow <| makeOutputCells dict
@@ -123,7 +123,7 @@ let main () : unit =
     let workData = new WorkListTable()
     let nullPred (row:WorkListRow) = match row.sitename with null -> false | _ -> true
     let rows : WorkListRow list = workData.Data |> Seq.filter nullPred |> Seq.toList
-    let writerProc = closedXMLWriter {
+    let writerProc = closedXMLOutput {
         do! tellHeaders headers
         do! mapMz (fun (row:WorkListRow) -> writeRow row.uid) rows }
 

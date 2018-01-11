@@ -1,5 +1,4 @@
-﻿// TODO - name change to CsvOutput
-module CsvWriter
+﻿module CsvOutput
 
 open System.IO
 
@@ -21,112 +20,112 @@ let testQuoteField (input:string) : string =
 
 type Separator = string
 
-// TODO - name change to CsvOutput
-type CsvWriter<'a> = 
-    CsvWriter of (StreamWriter -> Separator -> 'a)
 
-let runCsvWriter (ma:CsvWriter<'a>) (handle:StreamWriter) (sep:Separator) : 'a =
-    match ma with | CsvWriter f -> f handle sep
+type CsvOutput<'a> = 
+    CsvOutput of (StreamWriter -> Separator -> 'a)
+
+let runCsvOutput (ma:CsvOutput<'a>) (handle:StreamWriter) (sep:Separator) : 'a =
+    match ma with | CsvOutput f -> f handle sep
 
 
 
-let inline private apply1 (ma : CsvWriter<'a>) (handle:StreamWriter) (sep:Separator) : 'a = 
-    runCsvWriter ma handle sep
+let inline private apply1 (ma : CsvOutput<'a>) (handle:StreamWriter) (sep:Separator) : 'a = 
+    runCsvOutput ma handle sep
 
-let private unitM (x:'a) : CsvWriter<'a> = 
-    CsvWriter <| fun handle sep -> x
+let private unitM (x:'a) : CsvOutput<'a> = 
+    CsvOutput <| fun handle sep -> x
 
-let private bindM (ma:CsvWriter<'a>) (f : 'a -> CsvWriter<'b>) : CsvWriter<'b> =
-    CsvWriter <| fun handle sep -> 
+let private bindM (ma:CsvOutput<'a>) (f : 'a -> CsvOutput<'b>) : CsvOutput<'b> =
+    CsvOutput <| fun handle sep -> 
         let a = apply1 ma handle sep in apply1 (f a) handle sep
 
-let fail : CsvWriter<'a> = 
-    CsvWriter (fun handle sep -> failwith "CsvWriter fail")
+let fail : CsvOutput<'a> = 
+    CsvOutput (fun handle sep -> failwith "CsvOutput fail")
 
-type CsvWriterBuilder() = 
+type CsvOutputBuilder() = 
     member self.Return x = unitM x
     member self.Bind (p,f) = bindM p f
     member self.Zero () = unitM ()
 
-let csvWriter:CsvWriterBuilder = new CsvWriterBuilder()
+let csvOutput:CsvOutputBuilder = new CsvOutputBuilder()
 
 // Common operations
-let fmapM (fn:'a -> 'b) (ma:CsvWriter<'a>) : CsvWriter<'b> = 
-    CsvWriter <| fun handle sep ->
+let fmapM (fn:'a -> 'b) (ma:CsvOutput<'a>) : CsvOutput<'b> = 
+    CsvOutput <| fun handle sep ->
         let a = apply1 ma handle sep in fn a
 
 
-let mapM (fn: 'a -> CsvWriter<'b>) (xs: 'a list) : CsvWriter<'b list> = 
+let mapM (fn: 'a -> CsvOutput<'b>) (xs: 'a list) : CsvOutput<'b list> = 
     let rec work ac list = 
         match list with
         | y :: ys -> bindM (fn y) (fun b -> work (b::ac) ys)
         | [] -> unitM <| List.rev ac
     work [] xs
 
-let forM (xs:'a list) (fn:'a -> CsvWriter<'b>) : CsvWriter<'b list> = mapM fn xs
+let forM (xs:'a list) (fn:'a -> CsvOutput<'b>) : CsvOutput<'b list> = mapM fn xs
 
 
-let mapMz (fn: 'a -> CsvWriter<'b>) (xs: 'a list) : CsvWriter<unit> = 
+let mapMz (fn: 'a -> CsvOutput<'b>) (xs: 'a list) : CsvOutput<unit> = 
     let rec work list = 
         match list with
         | y :: ys -> bindM (fn y) (fun _ -> work ys)
         | [] -> unitM ()
     work xs
 
-let forMz (xs:'a list) (fn:'a -> CsvWriter<'b>) : CsvWriter<unit> = mapMz fn xs
+let forMz (xs:'a list) (fn:'a -> CsvOutput<'b>) : CsvOutput<unit> = mapMz fn xs
 
-let traverseM (fn: 'a -> CsvWriter<'b>) (source:seq<'a>) : CsvWriter<seq<'b>> = 
-    CsvWriter <| fun handle sep ->
+let traverseM (fn: 'a -> CsvOutput<'b>) (source:seq<'a>) : CsvOutput<seq<'b>> = 
+    CsvOutput <| fun handle sep ->
         Seq.map (fun x -> let mf = fn x in apply1 mf handle sep) source
 
 
-let traverseiM (fn: int ->  'a -> CsvWriter<'b>) (source:seq<'a>) : CsvWriter<seq<'b>> = 
-    CsvWriter <| fun handle sep ->
+let traverseiM (fn: int ->  'a -> CsvOutput<'b>) (source:seq<'a>) : CsvOutput<seq<'b>> = 
+    CsvOutput <| fun handle sep ->
         Seq.mapi (fun ix x -> let mf = fn ix x in apply1 mf handle sep) source
 
 
 // Need to be strict - hence use a fold
-let traverseMz (fn: 'a -> CsvWriter<'b>) (source:seq<'a>) : CsvWriter<unit> = 
-    CsvWriter <| fun handle sep ->
+let traverseMz (fn: 'a -> CsvOutput<'b>) (source:seq<'a>) : CsvOutput<unit> = 
+    CsvOutput <| fun handle sep ->
         Seq.fold (fun ac x -> 
                     let ans  = apply1 (fn x) handle sep in ac) 
                  () 
                  source 
 
-let traverseiMz (fn: int -> 'a -> CsvWriter<'b>) (source:seq<'a>) : CsvWriter<unit> = 
-    CsvWriter <| fun handle sep ->
+let traverseiMz (fn: int -> 'a -> CsvOutput<'b>) (source:seq<'a>) : CsvOutput<unit> = 
+    CsvOutput <| fun handle sep ->
         ignore <| Seq.fold (fun ix x -> 
                             let ans  = apply1 (fn ix x) handle sep in (ix+1))
                             0
                             source 
 
-let mapiM (fn: 'a -> int -> CsvWriter<'b>) (xs: 'a list) : CsvWriter<'b list> = 
+let mapiM (fn: 'a -> int -> CsvOutput<'b>) (xs: 'a list) : CsvOutput<'b list> = 
     let rec work ac ix list = 
         match list with
         | y :: ys -> bindM (fn y ix) (fun b -> work (b::ac) (ix+1) ys)
         | [] -> unitM <| List.rev ac
     work [] 0 xs
 
-let mapiMz (fn: 'a -> int -> CsvWriter<'b>) (xs: 'a list) : CsvWriter<unit> = 
+let mapiMz (fn: 'a -> int -> CsvOutput<'b>) (xs: 'a list) : CsvOutput<unit> = 
     let rec work ix list = 
         match list with
         | y :: ys -> bindM (fn y ix) (fun _ -> work (ix+1) ys)
         | [] -> unitM ()
     work 0 xs
 
-// CsvWriter-specific operations
+// CsvOutput-specific operations
 
-let outputToNew (ma:CsvWriter<'a>) (fileName:string) (sep:Separator) : 'a =
+let outputToNew (ma:CsvOutput<'a>) (fileName:string) (sep:Separator) : 'a =
     use sw = new System.IO.StreamWriter(fileName)
-    runCsvWriter ma sw sep
+    runCsvOutput ma sw sep
 
 
-let tellRowStrings (values:string list) : CsvWriter<unit> =
-    CsvWriter <| fun handle sep ->
+let tellRowStrings (values:string list) : CsvOutput<unit> =
+    CsvOutput <| fun handle sep ->
         let line = String.concat sep values
         handle.WriteLine line
 
-let tellHeaders (values:string list) : CsvWriter<unit> =
+let tellHeaders (values:string list) : CsvOutput<unit> =
     tellRowStrings <| List.map testQuoteField values
 
 // Make client code less stringy and more "typeful"....
@@ -137,23 +136,23 @@ type RowWriter<'a> = CellWriter<'a> list
 let private getWrapped (cellWriter:CellWriter<'a>) : string = 
     match cellWriter with | Wrapped(s) -> match s with | null -> "" | _ -> s
 
-let tellRow (valueProcs:(CellWriter<unit>) list) : CsvWriter<unit> =
+let tellRow (valueProcs:(CellWriter<unit>) list) : CsvOutput<unit> =
     tellRowStrings <| List.map getWrapped valueProcs
 
 
-let tellRows (records:seq<'a>) (writeRow:'a -> CellWriter<unit> list) : CsvWriter<unit> = 
+let tellRows (records:seq<'a>) (writeRow:'a -> CellWriter<unit> list) : CsvOutput<unit> = 
     traverseMz (tellRow << writeRow) records
 
-let tellRowsi (records:seq<'a>) (writeRow:int -> 'a -> CellWriter<unit> list) : CsvWriter<unit> = 
+let tellRowsi (records:seq<'a>) (writeRow:int -> 'a -> CellWriter<unit> list) : CsvOutput<unit> = 
     traverseiMz (fun a ix -> tellRow <| writeRow a ix) records
 
-let tellSheetWithHeaders (headers:string list) (records:seq<'a>) (writeRow:'a -> CellWriter<unit> list) : CsvWriter<unit> = 
-    csvWriter { do! tellHeaders headers
+let tellSheetWithHeaders (headers:string list) (records:seq<'a>) (writeRow:'a -> CellWriter<unit> list) : CsvOutput<unit> = 
+    csvOutput { do! tellHeaders headers
                 do! tellRows records writeRow }
 
 
-let tellSheetWithHeadersi (headers:string list) (records:seq<'a>) (writeRow:int -> 'a -> CellWriter<unit> list) : CsvWriter<unit> = 
-    csvWriter { do! tellHeaders headers
+let tellSheetWithHeadersi (headers:string list) (records:seq<'a>) (writeRow:int -> 'a -> CellWriter<unit> list) : CsvOutput<unit> = 
+    csvOutput { do! tellHeaders headers
                 do! tellRowsi records writeRow }
 
 let tellObj (value:obj) : CellWriter<unit> = Wrapped <| value.ToString()

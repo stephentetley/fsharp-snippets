@@ -8,13 +8,12 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 #load "Geo.fs"
 open Geo
 
-#load "CsvWriter.fs"
-open CsvWriter
+#load "CsvOutput.fs"
+open CsvOutput
 
 #load @"ExcelProviderHelper.fs"
 open ExcelProviderHelper
 
-// ToDO should use CsvWriter
 
 type ConsentsTable = 
     ExcelFile< @"G:\work\Projects\events2\Consents-eastings-northings.xlsx",
@@ -29,9 +28,9 @@ let consentsTableDict : GetRowsDict<ConsentsTable, ConsentsRow> =
 
 let getConsentsRows () : ConsentsRow list = excelTableGetRows consentsTableDict (new ConsentsTable())
 
-let tellConsentsRow (row:ConsentsRow) : CsvWriter<unit> = 
+let tellConsentsRow (row:ConsentsRow) : CsvOutput<unit> = 
     match row.``Common Name`` with
-    | null -> csvWriter.Return ()
+    | null -> csvOutput.Return ()
     | _ -> let pt : Coord.OSGB36Point = 
                 let easts = row.``Outfall NGRE`` * 1.0<meter>
                 let norths = row.``Outfall NGRN`` * 1.0<meter>
@@ -46,8 +45,8 @@ let tellConsentsRow (row:ConsentsRow) : CsvWriter<unit> =
 let main () : unit = 
     let outfile = @"G:\work\Projects\events2\Consents-Gridref.csv"
     let rows:ConsentsRow list= getConsentsRows ()
-    let procM : CsvWriter<unit> = 
-        csvWriter { 
+    let procM : CsvOutput<unit> = 
+        csvOutput { 
             do! tellHeaders ["UID"; "Name" ; "Grid Ref"]
             do! mapMz tellConsentsRow rows }
                     
