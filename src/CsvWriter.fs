@@ -1,4 +1,5 @@
-﻿module CsvWriter
+﻿// TODO - name change to CsvOutput
+module CsvWriter
 
 open System.IO
 
@@ -20,6 +21,7 @@ let testQuoteField (input:string) : string =
 
 type Separator = string
 
+// TODO - name change to CsvOutput
 type CsvWriter<'a> = 
     CsvWriter of (StreamWriter -> Separator -> 'a)
 

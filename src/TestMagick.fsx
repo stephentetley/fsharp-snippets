@@ -1,5 +1,4 @@
-﻿// Make sure fsi is set to 64 bit if using x64 versions of Magick.NET
-// [Tools >> Options >> F# Tools >> F# Interactive]
+﻿
 
 open System
 

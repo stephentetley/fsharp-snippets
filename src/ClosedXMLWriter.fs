@@ -1,4 +1,5 @@
-﻿module ClosedXMLWriter
+﻿// TODO - name change to ClosedXMLOutput
+module ClosedXMLWriter
 
 // For Seq.tail
 open FSharpx.Collections
@@ -10,6 +11,7 @@ type Position = private { RowIx: int; ColIx: int}
 
 type ClosedXMLSheet = ClosedXML.Excel.IXLWorksheet
 
+// TODO - name change to ClosedXMLOutput
 type ClosedXMLWriter<'a> = 
     ClosedXMLWriter of (ClosedXMLSheet -> Position -> (Position * 'a))
 
