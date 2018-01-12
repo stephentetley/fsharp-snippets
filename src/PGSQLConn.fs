@@ -75,6 +75,7 @@ let mapiMz (fn:int -> 'a -> PGSQLConn<'b>) (xs:'a list) : PGSQLConn<unit> =
     PGSQLConn <| fun conn ->
         ResultMonad.mapiMz (fun ix a -> apply1 (fn ix a) conn) xs
 
+let foriM (xs:'a list) (fn:int -> 'a -> PGSQLConn<'b>) : PGSQLConn<'b list> = mapiM fn xs
 
 let traverseM (fn: 'a -> PGSQLConn<'b>) (source:seq<'a>) : PGSQLConn<seq<'b>> = 
     PGSQLConn <| fun conn ->
@@ -84,6 +85,14 @@ let traverseMz (fn: 'a -> PGSQLConn<'b>) (source:seq<'a>) : PGSQLConn<unit> =
     PGSQLConn <| fun conn ->
         ResultMonad.traverseMz (fun x -> let mf = fn x in apply1 mf conn) source
 
+let traverseiM (fn:int -> 'a -> PGSQLConn<'b>) (source:seq<'a>) : PGSQLConn<seq<'b>> = 
+    PGSQLConn <| fun conn ->
+        ResultMonad.traverseiM (fun ix x -> let mf = fn ix x in apply1 mf conn) source
+
+let traverseiMz (fn:int -> 'a -> PGSQLConn<'b>) (source:seq<'a>) : PGSQLConn<unit> = 
+    PGSQLConn <| fun conn ->
+        ResultMonad.traverseiMz (fun ix x -> let mf = fn ix x in apply1 mf conn) source
+
 let sequenceM (source:PGSQLConn<'a> list) : PGSQLConn<'a list> = 
     PGSQLConn <| fun conn ->
         ResultMonad.sequenceM <| List.map (fun ma -> apply1 ma conn) source
@@ -91,6 +100,27 @@ let sequenceM (source:PGSQLConn<'a> list) : PGSQLConn<'a list> =
 let sequenceMz (source:PGSQLConn<'a> list) : PGSQLConn<unit> = 
     PGSQLConn <| fun conn ->
         ResultMonad.sequenceMz <| List.map (fun ma -> apply1 ma conn) source
+
+
+// Summing variants
+
+let sumMapM (fn:'a -> PGSQLConn<int>) (xs:'a list) : PGSQLConn<int> = 
+    fmapM List.sum <| mapM fn xs
+
+let sumMapiM (fn:int -> 'a -> PGSQLConn<int>) (xs:'a list) : PGSQLConn<int> = 
+    fmapM List.sum <| mapiM fn xs
+
+let sumForM (xs:'a list) (fn:'a -> PGSQLConn<int>) : PGSQLConn<int> = 
+    fmapM List.sum <| forM xs fn
+
+let sumForiM (xs:'a list) (fn:int -> 'a -> PGSQLConn<int>) : PGSQLConn<int> = 
+    fmapM List.sum <| foriM xs fn
+
+let sumTraverseM (fn: 'a -> PGSQLConn<int>) (source:seq<'a>) : PGSQLConn<int> =
+    fmapM Seq.sum <| traverseM fn source
+
+let sumTraverseiM (fn:int -> 'a -> PGSQLConn<int>) (source:seq<'a>) : PGSQLConn<int> =
+    fmapM Seq.sum <| traverseiM fn source
 
 let sumSequenceM (source:PGSQLConn<int> list) : PGSQLConn<int> = 
     PGSQLConn <| fun conn ->

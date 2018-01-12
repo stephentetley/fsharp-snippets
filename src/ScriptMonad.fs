@@ -83,7 +83,24 @@ let mapMz (fn:'a -> ScriptMonad<'r,'b>) (xs:'a list) : ScriptMonad<'r,unit> =
     ScriptMonad <| fun sw env -> 
         ResultMonad.mapMz (fun x -> apply1 (fn x) sw env) xs
 
-let forMz (xs:'a list) (fn:'a -> ScriptMonad<'r,'b>) : ScriptMonad<'r,unit> = mapMz fn xs
+let forMz (xs:'a list) (fn:'a -> ScriptMonad<'r,'b>) : ScriptMonad<'r,unit> = 
+    mapMz fn xs
+
+
+let mapiM (fn:int -> 'a -> ScriptMonad<'r,'b>) (xs:'a list) : ScriptMonad<'r,'b list> = 
+    ScriptMonad <| fun sw env -> 
+        ResultMonad.mapiM (fun ix x -> apply1 (fn ix x) sw env) xs
+
+let mapiMz (fn:int -> 'a -> ScriptMonad<'r,'b>) (xs:'a list) : ScriptMonad<'r,unit> = 
+    ScriptMonad <| fun sw env -> 
+        ResultMonad.mapiMz (fun ix x -> apply1 (fn ix x) sw env) xs
+
+let foriM (xs:'a list) (fn:int -> 'a -> ScriptMonad<'r,'b>) : ScriptMonad<'r,'b list> =
+    mapiM fn xs
+
+let foriMz (xs:'a list) (fn:int -> 'a -> ScriptMonad<'r,'b>) : ScriptMonad<'r,unit> =
+    mapiMz fn xs
+
 
 let traverseM (fn: 'a -> ScriptMonad<'r,'b>) (source:seq<'a>) :  ScriptMonad<'r,seq<'b>> = 
     ScriptMonad <| fun sw env -> 
@@ -110,10 +127,27 @@ let sequenceMz (source:ScriptMonad<'r,'a> list) : ScriptMonad<'r,unit> =
     ScriptMonad <| fun sw env -> 
         ResultMonad.sequenceMz <| List.map (fun ma -> apply1 ma sw env) source
 
+// Summing variants
 
+let sumMapM (fn:'a -> ScriptMonad<'r,int>) (xs:'a list) : ScriptMonad<'r,int> = 
+    fmapM List.sum <| mapM fn xs
+
+let sumMapiM (fn:int -> 'a -> ScriptMonad<'r,int>) (xs:'a list) : ScriptMonad<'r,int> = 
+    fmapM List.sum <| mapiM fn xs
+
+let sumForM (xs:'a list) (fn:'a -> ScriptMonad<'r,int>) : ScriptMonad<'r,int> = 
+    fmapM List.sum <| forM xs fn
+
+let sumForiM (xs:'a list) (fn:int -> 'a -> ScriptMonad<'r,int>) : ScriptMonad<'r,int> = 
+    fmapM List.sum <| foriM xs fn
+
+let sumTraverseM (fn: 'a -> ScriptMonad<'r,int>) (source:seq<'a>) : ScriptMonad<'r,int> =
+    fmapM Seq.sum <| traverseM fn source
+
+let sumTraverseiM (fn:int -> 'a -> ScriptMonad<'r,int>) (source:seq<'a>) : ScriptMonad<'r,int> =
+    fmapM Seq.sum <| traverseiM fn source
 let sumSequenceM (source:ScriptMonad<'r,int> list) : ScriptMonad<'r,int> = 
-    ScriptMonad <| fun sw env -> 
-        ResultMonad.sumSequenceM (List.map (fun mf -> apply1 mf sw env) source)
+    fmapM List.sum <| sequenceM source
 
 
 // Applicatives (<*>)

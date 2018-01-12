@@ -77,8 +77,14 @@ let mapiMz (fn:int -> 'a -> SQLiteConn<'b>) (xs:'a list) : SQLiteConn<unit> =
     SQLiteConn <| fun conn ->
         ResultMonad.mapiMz (fun ix a -> apply1 (fn ix a) conn) xs
 
+let foriM (xs:'a list) (fn:int -> 'a -> SQLiteConn<'b>) : SQLiteConn<'b list> = 
+    mapiM fn xs
 
-// Problemmatic... See ResultMonad.traverseM
+let foriMz (xs:'a list) (fn:int -> 'a -> SQLiteConn<'b>) : SQLiteConn<unit> = 
+    mapiMz fn xs
+
+
+// Note - goes through intermediate list, see ResultMonad.traverseM
 let traverseM (fn: 'a -> SQLiteConn<'b>) (source:seq<'a>) : SQLiteConn<seq<'b>> = 
     SQLiteConn <| fun conn ->
         ResultMonad.traverseM (fun x -> let mf = fn x in apply1 mf conn) source
@@ -86,6 +92,14 @@ let traverseM (fn: 'a -> SQLiteConn<'b>) (source:seq<'a>) : SQLiteConn<seq<'b>> 
 let traverseMz (fn: 'a -> SQLiteConn<'b>) (source:seq<'a>) : SQLiteConn<unit> = 
     SQLiteConn <| fun conn ->
         ResultMonad.traverseMz (fun x -> let mf = fn x in apply1 mf conn) source
+
+let traverseiM (fn:int -> 'a -> SQLiteConn<'b>) (source:seq<'a>) : SQLiteConn<seq<'b>> = 
+    SQLiteConn <| fun conn ->
+        ResultMonad.traverseiM (fun ix x -> let mf = fn ix x in apply1 mf conn) source
+
+let traverseiMz (fn:int -> 'a -> SQLiteConn<'b>) (source:seq<'a>) : SQLiteConn<unit> = 
+    SQLiteConn <| fun conn ->
+        ResultMonad.traverseiMz (fun ix x -> let mf = fn ix x in apply1 mf conn) source
 
 let sequenceM (source:SQLiteConn<'a> list) : SQLiteConn<'a list> = 
     SQLiteConn <| fun conn ->
@@ -95,9 +109,28 @@ let sequenceMz (source:SQLiteConn<'a> list) : SQLiteConn<unit> =
     SQLiteConn <| fun conn ->
         ResultMonad.sequenceMz <| List.map (fun ma -> apply1 ma conn) source
 
+// Summing variants
+
+let sumMapM (fn:'a -> SQLiteConn<int>) (xs:'a list) : SQLiteConn<int> = 
+    fmapM List.sum <| mapM fn xs
+
+let sumMapiM (fn:int -> 'a -> SQLiteConn<int>) (xs:'a list) : SQLiteConn<int> = 
+    fmapM List.sum <| mapiM fn xs
+
+let sumForM (xs:'a list) (fn:'a -> SQLiteConn<int>) : SQLiteConn<int> = 
+    fmapM List.sum <| forM xs fn
+
+let sumForiM (xs:'a list) (fn:int -> 'a -> SQLiteConn<int>) : SQLiteConn<int> = 
+    fmapM List.sum <| foriM xs fn
+
+let sumTraverseM (fn: 'a -> SQLiteConn<int>) (source:seq<'a>) : SQLiteConn<int> =
+    fmapM Seq.sum <| traverseM fn source
+
+let sumTraverseiM (fn:int -> 'a -> SQLiteConn<int>) (source:seq<'a>) : SQLiteConn<int> =
+    fmapM Seq.sum <| traverseiM fn source
+
 let sumSequenceM (source:SQLiteConn<int> list) : SQLiteConn<int> = 
-    SQLiteConn <| fun conn ->
-        ResultMonad.sumSequenceM (List.map (fun mf -> apply1 mf conn) source)
+    fmapM List.sum <| sequenceM source
 
 
 // SQLiteConn specific operations

@@ -140,6 +140,11 @@ let mapiMz (fn:int -> 'a -> Result<'b>) (xs:'a list) : Result<unit> =
         | z :: zs -> bindM (fn ix z) (fun _ -> work (ix+1) zs)
     work 0 xs
 
+let foriM (xs:'a list) (fn:int -> 'a -> Result<'b>)  : Result<'b list> = mapiM fn xs
+
+let foriMz (xs:'a list) (fn:int -> 'a -> Result<'b>) : Result<unit> = mapiMz fn xs
+
+
 // Note - Seq going through list seems better than anything I can manage directly
 // either with recursion (bursts the stack) or an enumerator (very slow)
 // The moral is this is a abd API (currently)
@@ -173,6 +178,28 @@ let sequenceMz (results:Result<'a> list) : Result<unit> =
         | Err msg :: _ -> Err msg
         | Ok _ :: zs -> work zs
     work results
+
+// Not sure there is a case for sequenceiM
+
+// Summing variants
+
+let sumMapM (fn:'a -> Result<int>) (xs:'a list) : Result<int> = 
+    fmapM List.sum <| mapM fn xs
+
+let sumMapiM (fn:int -> 'a -> Result<int>) (xs:'a list) : Result<int> = 
+    fmapM List.sum <| mapiM fn xs
+
+let sumForM (xs:'a list) (fn:'a -> Result<int>) : Result<int> = 
+    fmapM List.sum <| forM xs fn
+
+let sumForiM (xs:'a list) (fn:int -> 'a -> Result<int>) : Result<int> = 
+    fmapM List.sum <| foriM xs fn
+
+let sumTraverseM (fn: 'a -> Result<int>) (source:seq<'a>) : Result<int> =
+    fmapM Seq.sum <| traverseM fn source
+
+let sumTraverseiM (fn:int -> 'a -> Result<int>) (source:seq<'a>) : Result<int> =
+    fmapM Seq.sum <| traverseiM fn source
 
 let sumSequenceM (results:Result<int> list) : Result<int> = 
     fmapM List.sum <| sequenceM results
