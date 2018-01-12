@@ -2,8 +2,16 @@
 
 open System.IO
 
+// NOTE - there is no real need for a corresponing CsvInput monad.
+// For most Csv reading FSharp.Data type providers should be used, the
+// main exception is trimming (unnecessarily) padded Csv.
+
+
+
 // Quoting always uses double quote (it is not user customizable).
 // I can't find much evidence that it should be user customizable.
+
+type Separator = string
 
 let quoteField (input:string) : string = 
     match input with
@@ -11,14 +19,10 @@ let quoteField (input:string) : string =
     | _ -> sprintf "\"%s\"" (input.Replace("\"", "\"\""))
 
 // Quote a field containing comma
-let testQuoteField (input:string) : string = 
+let private testQuoteField (input:string) (sep:Separator) : string = 
     match input with
         | null -> "\"\""
-        | _ -> if input.Contains(",") then quoteField input else input
-
-
-
-type Separator = string
+        | _ -> if input.Contains(sep) then quoteField input else input
 
 
 type CsvOutput<'a> = 
@@ -119,6 +123,8 @@ let outputToNew (ma:CsvOutput<'a>) (fileName:string) (sep:Separator) : 'a =
     use sw = new System.IO.StreamWriter(fileName)
     runCsvOutput ma sw sep
 
+let askSep : CsvOutput<Separator> = 
+    CsvOutput <| fun _ sep -> sep
 
 let tellRowStrings (values:string list) : CsvOutput<unit> =
     CsvOutput <| fun handle sep ->
@@ -126,18 +132,19 @@ let tellRowStrings (values:string list) : CsvOutput<unit> =
         handle.WriteLine line
 
 let tellHeaders (values:string list) : CsvOutput<unit> =
-    tellRowStrings <| List.map testQuoteField values
+    bindM askSep 
+          (fun sep -> tellRowStrings <| List.map (fun s -> testQuoteField s sep) values)
 
 // Make client code less stringy and more "typeful"....
 
-type CellWriter<'a> = private Wrapped of string
+type CellWriter<'a> = private Wrapped of (Separator -> string)
 type RowWriter<'a> = CellWriter<'a> list
 
-let private getWrapped (cellWriter:CellWriter<'a>) : string = 
-    match cellWriter with | Wrapped(s) -> match s with | null -> "" | _ -> s
+let private getWrapped (sep:Separator) (cellWriter:CellWriter<'a>) : string = 
+    match cellWriter with | Wrapped(fn) -> match fn sep with | null -> "" | s -> s
 
 let tellRow (valueProcs:(CellWriter<unit>) list) : CsvOutput<unit> =
-    tellRowStrings <| List.map getWrapped valueProcs
+    bindM askSep (fun sep -> tellRowStrings <| List.map (getWrapped sep) valueProcs)
 
 
 let tellRows (records:seq<'a>) (writeRow:'a -> CellWriter<unit> list) : CsvOutput<unit> = 
@@ -155,7 +162,10 @@ let tellSheetWithHeadersi (headers:string list) (records:seq<'a>) (writeRow:int 
     csvOutput { do! tellHeaders headers
                 do! tellRowsi records writeRow }
 
-let tellObj (value:obj) : CellWriter<unit> = Wrapped <| value.ToString()
+
+// Should testQuotedString be the default?
+let tellObj (value:obj) : CellWriter<unit> = 
+    Wrapped <| fun sep -> value.ToString() |> testQuoteField sep 
 
 let tellBool (value:bool) : CellWriter<unit> = tellObj (value :> obj)
 let tellDateTime (value:System.DateTime) : CellWriter<unit> = tellObj (value :> obj)
@@ -165,5 +175,7 @@ let tellGuid (value:System.Guid) : CellWriter<unit> = tellObj (value :> obj)
 let tellInteger (value:int) : CellWriter<unit> = tellObj (value :> obj)
 let tellInteger64 (value:int64) : CellWriter<unit> = tellObj (value :> obj)
 
-let tellString (value:string) : CellWriter<unit> = Wrapped <| value
+let tellString (value:string) : CellWriter<unit> = Wrapped <| fun sep -> testQuoteField sep value
 let tellQuotedString (value:string) : CellWriter<unit> = tellString <| quoteField value
+
+    

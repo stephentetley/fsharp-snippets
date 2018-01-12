@@ -169,6 +169,9 @@ let makeSaiSitesINSERT (row:SaiSitesRow) : string =
             ; stringValue       "asset_status"          row.AssetStatus
             ; stringValue       "site_postcode"         row.``Post Code``
             ; stringValue       "site_address"          row.``Full Address``
+            ; stringValue       "operational_contact"   row.``Operational Responsibility``
+            ; stringValue       "work_centre"           row.``Work Centre``
+            ; stringValue       "has_mains"             row.``Mains Electricity``
             ]
 
 let insertCatsConsents () : Script<int> = 
@@ -201,10 +204,10 @@ let insertSaiSites () : Script<int> =
 let main () : unit = 
     let conn = sqliteConnParamsVersion3  @"G:\work\Projects\events2\edmDB.sqlite3"
   
-    runScript (failwith) (printfn "Success: %A rows imported") (consoleLogger) conn 
+    runScript (failwith) (printfn "Success: %i modifications") (consoleLogger) conn 
         <| sumSequenceM 
-            [ logScript (sprintf "%i rows deleted")                 <| deleteAllData ()
-            ; logScript (sprintf "%i cats_consents inserted")       <| insertCatsConsents () 
-            ; logScript (sprintf "%i storm_dis_permits inserted")   <| insertStormDisPermits ()
-            ; logScript (sprintf "%i sai_sites inserted")           <| insertSaiSites ()
+            [ deleteAllData ()          |> logScript (sprintf "%i rows deleted") 
+            ; insertCatsConsents ()     |> logScript (sprintf "%i cats_consents inserted")       
+            ; insertStormDisPermits ()  |> logScript (sprintf "%i storm_dis_permits inserted")
+            ; insertSaiSites ()         |> logScript (sprintf "%i sai_sites inserted") 
             ]

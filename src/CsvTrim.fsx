@@ -24,7 +24,7 @@ let outpath = @"G:\work\Projects\rtu\RTS\RTS-outstation-dump-TRIM2.csv"
 
 
 let truncRow (row:CsvRow) : CellWriter<unit> list = 
-    let cols = Array.map (fun (x : string) -> x.Trim() |> testQuoteField |> tellString) row.Columns
+    let cols = Array.map (fun (x : string) -> x.Trim() |> tellString) row.Columns
     Array.toList cols
 
 let trimCSV (inputFile:string) (outputFile:string) (csvHasHeaders:bool): unit =
@@ -74,4 +74,7 @@ let seqMapAccumL (fn:'st -> 'a -> ('st * 'b)) (state:'st) (source:seq<'a>) : ('s
 let test04 () = 
     let input = ["a"; "b"; "c"]
     seqMapAccumL (fun st a -> (st+1, String.replicate st a)) 1 (List.toSeq input)
+
+let test05 () = 
+    suffixFileName @"G:\work\Projects\T0975_EDM2\Kim.xlsx" "-TRIM"
 
