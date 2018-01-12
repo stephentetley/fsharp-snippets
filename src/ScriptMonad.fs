@@ -101,6 +101,15 @@ let traverseiMz (fn:int -> 'a -> ScriptMonad<'r,'b>) (source:seq<'a>) :  ScriptM
     ScriptMonad <| fun sw env -> 
         ResultMonad.traverseiMz (fun ix x -> apply1 (fn ix x) sw env) source
 
+
+let sequenceM (source:ScriptMonad<'r,'a> list) : ScriptMonad<'r,'a list> = 
+    ScriptMonad <| fun sw env -> 
+        ResultMonad.sequenceM <| List.map (fun ma -> apply1 ma sw env) source
+
+let sequenceMz (source:ScriptMonad<'r,'a> list) : ScriptMonad<'r,unit> = 
+    ScriptMonad <| fun sw env -> 
+        ResultMonad.sequenceMz <| List.map (fun ma -> apply1 ma sw env) source
+
 // Applicatives (<*>)
 let apM (mf:ScriptMonad<'r,'a ->'b>) (ma:ScriptMonad<'r,'a>) : ScriptMonad<'r,'b> = 
     ScriptMonad <| fun sw env -> 

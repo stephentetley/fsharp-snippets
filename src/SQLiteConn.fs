@@ -87,6 +87,13 @@ let traverseMz (fn: 'a -> SQLiteConn<'b>) (source:seq<'a>) : SQLiteConn<unit> =
     SQLiteConn <| fun conn ->
         ResultMonad.traverseMz (fun x -> let mf = fn x in apply1 mf conn) source
 
+let sequenceM (source:SQLiteConn<'a> list) : SQLiteConn<'a list> = 
+    SQLiteConn <| fun conn ->
+        ResultMonad.sequenceM <| List.map (fun ma -> apply1 ma conn) source
+
+let sequenceMz (source:SQLiteConn<'a> list) : SQLiteConn<unit> = 
+    SQLiteConn <| fun conn ->
+        ResultMonad.sequenceMz <| List.map (fun ma -> apply1 ma conn) source
 
 // SQLiteConn specific operations
 let runSQLiteConn (ma:SQLiteConn<'a>) (connParams:SQLiteConnParams) : Result<'a> = 

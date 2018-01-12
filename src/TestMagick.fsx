@@ -47,7 +47,7 @@ let calculateNewPixelSize (info:MagickImageInfo) (maxima:int) : (int * int) =
 
 let resample72DpiAndRescale (filePath:string) : unit = 
     use (img:MagickImage) = new MagickImage(filePath)
-    let info = new MagickImageInfo(imgPath)
+    let info = new MagickImageInfo(filePath)
     let out = makeRevisedFileName "600px" filePath
     let (newWidth,newHeight) = calculateNewPixelSize info 600
     img.Density <- new Density(72.0, 72.0, DensityUnit.PixelsPerInch)

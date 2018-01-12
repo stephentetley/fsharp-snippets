@@ -158,6 +158,22 @@ let traverseiM (fn:int -> 'a -> Result<'b>) (source:seq<'a>) : Result<seq<'b>> =
 let traverseiMz (fn:int -> 'a -> Result<'b>) (source:seq<'a>) : Result<unit> = 
     mapiMz fn <| Seq.toList source
 
+let sequenceM (results:Result<'a> list) : Result<'a list> = 
+    let rec work ac ys = 
+        match ys with
+        | [] -> unitM <| List.rev ac
+        | Err msg :: _ -> Err msg
+        | Ok a :: zs -> work  (a::ac) zs
+    work [] results
+
+let sequenceMz (results:Result<'a> list) : Result<unit> = 
+    let rec work ys = 
+        match ys with
+        | [] -> unitM ()
+        | Err msg :: _ -> Err msg
+        | Ok _ :: zs -> work zs
+    work results
+
 // Applicative's (<*>)
 let apM (mf:Result<'a ->'b>) (ma:Result<'a>) : Result<'b> = 
     match mf with

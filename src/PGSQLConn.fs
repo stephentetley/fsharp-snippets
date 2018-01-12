@@ -84,6 +84,14 @@ let traverseMz (fn: 'a -> PGSQLConn<'b>) (source:seq<'a>) : PGSQLConn<unit> =
     PGSQLConn <| fun conn ->
         ResultMonad.traverseMz (fun x -> let mf = fn x in apply1 mf conn) source
 
+let sequenceM (source:PGSQLConn<'a> list) : PGSQLConn<'a list> = 
+    PGSQLConn <| fun conn ->
+        ResultMonad.sequenceM <| List.map (fun ma -> apply1 ma conn) source
+
+let sequenceMz (source:PGSQLConn<'a> list) : PGSQLConn<unit> = 
+    PGSQLConn <| fun conn ->
+        ResultMonad.sequenceMz <| List.map (fun ma -> apply1 ma conn) source
+
 // PGSQLConn-specific operations
 let runPGSQLConn (ma:PGSQLConn<'a>) (connParams:PGSQLConnParams) : Result<'a> = 
     let conn = paramsConnString connParams
