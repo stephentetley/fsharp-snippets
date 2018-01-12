@@ -34,10 +34,10 @@ type CatsPoweredTable =
 type CatsPoweredRow = CatsPoweredTable.Row
 
 let getCatsPoweredRows () : CatsPoweredRow list = 
-    let catsPoweredDict : GetRowsDict<CatsPoweredTable, CatsPoweredRow> = 
+    let dict : GetRowsDict<CatsPoweredTable, CatsPoweredRow> = 
         { GetRows     = fun imports -> imports.Data 
           NotNullProc = fun row -> match row.``Permit Reference`` with null -> false | _ -> true }
-    excelTableGetRows catsPoweredDict (new CatsPoweredTable())
+    excelTableGetRows dict (new CatsPoweredTable())
 
 
 type CatsBatteryTable = 
@@ -48,10 +48,10 @@ type CatsBatteryTable =
 type CatsBatteryRow = CatsBatteryTable.Row
 
 let getCatsBatteryRows () : CatsBatteryRow list = 
-    let catsBatteryDict : GetRowsDict<CatsBatteryTable, CatsBatteryRow> = 
+    let dict : GetRowsDict<CatsBatteryTable, CatsBatteryRow> = 
         { GetRows     = fun imports -> imports.Data 
           NotNullProc = fun row -> match row.``Permit Reference`` with null -> false | _ -> true }
-    excelTableGetRows catsBatteryDict (new CatsBatteryTable())
+    excelTableGetRows dict (new CatsBatteryTable())
 
 
 type CatsNonTelemTable = 
@@ -62,39 +62,40 @@ type CatsNonTelemTable =
 type CatsNonTelemRow = CatsNonTelemTable.Row
 
 let getCatsNonTelemRows () : CatsNonTelemRow list = 
-    let odict : GetRowsDict<CatsNonTelemTable, CatsNonTelemRow> = 
+    let dict : GetRowsDict<CatsNonTelemTable, CatsNonTelemRow> = 
         { GetRows     = fun imports -> imports.Data 
           NotNullProc = fun row -> match row.``Permit Reference`` with null -> false | _ -> true }
-    excelTableGetRows odict (new CatsNonTelemTable())
+    excelTableGetRows dict (new CatsNonTelemTable())
 
 
 
-type ImportTable = 
-    ExcelFile< @"G:\work\Projects\events2\events-stws.xlsx",
-                SheetName = "Sheet1",
-                ForceString = true >
-
-type ImportRow = ImportTable.Row
-
-
-let getImportRows () : ImportRow list = 
-    let importTableDict : GetRowsDict<ImportTable, ImportRow> = 
-        { GetRows     = fun imports -> imports.Data 
-          NotNullProc = fun row -> match row.``Overflow Name`` with null -> false | _ -> true }
-    excelTableGetRows importTableDict (new ImportTable())
                 
-type IWTable = 
+type StormDisPermitsTable = 
     ExcelFile< @"G:\work\Projects\events2\Storm-Dis-DEC2017.xlsx",
                 SheetName = "Data",
                 ForceString = true >
 
-type IWRow = IWTable.Row
+type StormDisPermitsRow = StormDisPermitsTable.Row
 
-let iwTableDict : GetRowsDict<IWTable, IWRow> = 
-    { GetRows     = fun imports -> imports.Data 
-      NotNullProc = fun row -> match row.``Related AI Asset Name`` with null -> false | _ -> true }
+let getStormDisPermitsRows () : StormDisPermitsRow list = 
+    let dict : GetRowsDict<StormDisPermitsTable, StormDisPermitsRow> = 
+        { GetRows     = fun imports -> imports.Data 
+          NotNullProc = fun row -> match row.``Related AI Asset Name`` with null -> false | _ -> true }
+    excelTableGetRows dict (new StormDisPermitsTable())
 
-let getIWRows () : IWRow list = excelTableGetRows iwTableDict (new IWTable())
+type SaiSitesTable = 
+    ExcelFile< @"G:\work\Projects\events2\sai-data-dump.xlsx",
+                SheetName = "Sai_Sites",
+                ForceString = true >
+
+type SaiSitesRow = SaiSitesTable.Row
+
+
+let getSaiSitesRows () : SaiSitesRow list = 
+    let dict : GetRowsDict<SaiSitesTable, SaiSitesRow> = 
+        { GetRows     = fun imports -> imports.Data 
+          NotNullProc = fun row -> match row.InstReference with null -> false | _ -> true }
+    excelTableGetRows dict (new SaiSitesTable())
 
 
 type Script<'a> = ScriptMonad<SQLiteConnParams,'a>
@@ -109,54 +110,44 @@ let liftWithConnParams (fn:SQLiteConnParams -> Result<'a>) : Script<'a> =
 
 let deleteAllData () : Script<int> = 
     let proc = 
-        SQLiteConn.fmapM (List.sum) 
-            <| SQLiteConn.sequenceM [ deleteAllRows "cats_consents"
-                                    ; deleteAllRows "iw_permits" 
-                                    ; deleteAllRows "sites" 
-                                    ; deleteAllRows "permits" ]
+        SQLiteConn.sumSequenceM [ deleteAllRows "cats_consents"
+                                 ; deleteAllRows "storm_dis_permits" 
+                                 ; deleteAllRows "sai_sites" ]
     liftWithConnParams <| runSQLiteConn proc
 
-let makePoweredCatConsentStmt (row:CatsPoweredRow) : string = 
+
+// Unfortunately input speadsheet has three (almost) identical tables
+let makePoweredCatConsentINSERT (row:CatsPoweredRow) : string = 
     sqlINSERT "cats_consents" 
         <|  [ stringValue       "permit_ref"            row.``Permit Reference``
             ; stringValue       "toplevel_permit_ref"   row.``Top level permit number``
             ; stringValue       "work_category"         "POWERED"
             ; stringValue       "asset_sai_number"      row.``SAI Number``
-            ; stringValue       "asset_name"            row.``Overflow Name`` ]
+            ; stringValue       "asset_name"            row.``Overflow Name`` 
+            ; stringValue       "outlet_ngr"            row.``Outlet NGR on consent`` ]
 
-let makeBatteryCatConsentStmt (row:CatsBatteryRow) : string = 
+let makeBatteryCatConsentINSERT (row:CatsBatteryRow) : string = 
     sqlINSERT "cats_consents" 
         <|  [ stringValue       "permit_ref"            row.``Permit Reference``
             ; stringValue       "toplevel_permit_ref"   row.``Top level permit number``
             ; stringValue       "work_category"         "BATTERY"
             ; stringValue       "asset_sai_number"      row.``SAI Number``
-            ; stringValue       "asset_name"            row.``Overflow Name`` ]
+            ; stringValue       "asset_name"            row.``Overflow Name`` 
+            ; stringValue       "outlet_ngr"            row.``Outlet NGR on consent`` ]
 
 
-let makeNonTelemCatConsentStmt (row:CatsNonTelemRow) : string = 
+let makeNonTelemCatConsentINSERT (row:CatsNonTelemRow) : string = 
     sqlINSERT "cats_consents" 
         <|  [ stringValue       "permit_ref"            row.``Permit Reference``
             ; stringValue       "toplevel_permit_ref"   row.``Top level permit number``
             ; stringValue       "work_category"         "NO_TELEMETRY"
             ; stringValue       "asset_sai_number"      row.``SAI Number``
-            ; stringValue       "asset_name"            row.``Overflow Name`` ]
-
-let makeInsertPermitStmt (row:ImportRow) : string =
-    sqlINSERT "permits" 
-        <|  [ stringValue       "permit_ref"        row.``Permit Reference``
-            ; stringValue       "permit_number"     row.``Top level permit number``
-            ; stringValue       "site_name"         row.``Overflow Name``
-            ; stringValue       "sai_number"        row.``SAI Number``]
+            ; stringValue       "asset_name"            row.``Overflow Name`` 
+            ; stringValue       "outlet_ngr"            row.``Outlet NGR on consent`` ]
 
 
-let makeInsertSite (row:ImportRow) : string =
-    sqlINSERT "sites" 
-        <|  [ stringValue       "sai_number"        row.``SAI Number``
-            ; stringValue       "site_name"         row.``Overflow Name`` ]
-
-
-let makeInsertIWPermit (row:IWRow) : string =
-    sqlINSERT "iw_permits" 
+let makeStormDisPermitsINSERT (row:StormDisPermitsRow) : string =
+    sqlINSERT "storm_dis_permits" 
         <|  [ stringValue       "sai_number"            row.``SAI of related asset``
             ; stringValue       "asset_name"            row.``Related AI Asset Name``
             ; stringValue       "outlet_grid_ref"       row.``Outlet NGR``
@@ -168,50 +159,52 @@ let makeInsertIWPermit (row:IWRow) : string =
             ; stringValue       "screen_type"           row.``Screen type ('1D' for bar, '2D' for mesh or 'None')``
             ]
 
+
+let makeSaiSitesINSERT (row:SaiSitesRow) : string = 
+    sqlINSERT "sai_sites" 
+        <|  [ stringValue       "sai_number"            row.InstReference
+            ; stringValue       "common_name"           row.InstCommonName 
+            ; stringValue       "site_ngr"              row.LocationReference
+            ; stringValue       "asset_type"            row.AssetType
+            ; stringValue       "asset_status"          row.AssetStatus
+            ; stringValue       "site_postcode"         row.``Post Code``
+            ; stringValue       "site_address"          row.``Full Address``
+            ]
+
 let insertCatsConsents () : Script<int> = 
     let poweredRows = getCatsPoweredRows ()
-    let poweredRowProc (row:CatsPoweredRow) : SQLiteConn<int> = execNonQuery <| makePoweredCatConsentStmt row
+    let poweredRowProc (row:CatsPoweredRow) : SQLiteConn<int> = execNonQuery <| makePoweredCatConsentINSERT row
     let batteryRows = getCatsBatteryRows ()
-    let batteryRowProc (row:CatsBatteryRow) : SQLiteConn<int> = execNonQuery <| makeBatteryCatConsentStmt row
+    let batteryRowProc (row:CatsBatteryRow) : SQLiteConn<int> = execNonQuery <| makeBatteryCatConsentINSERT row
     let nonTelemRows = getCatsNonTelemRows ()
-    let nonTelemRowProc (row:CatsNonTelemRow) : SQLiteConn<int> = execNonQuery <| makeNonTelemCatConsentStmt row
+    let nonTelemRowProc (row:CatsNonTelemRow) : SQLiteConn<int> = execNonQuery <| makeNonTelemCatConsentINSERT row
     let forMSum (xs:'a list) (proc:'a -> SQLiteConn<int>) = SQLiteConn.fmapM (List.sum) <| SQLiteConn.forM xs proc
     let combinedProc = 
-        SQLiteConn.fmapM (List.sum) 
-            <| SQLiteConn.sequenceM 
-                [ forMSum poweredRows poweredRowProc 
-                ; forMSum batteryRows batteryRowProc 
-                ; forMSum nonTelemRows nonTelemRowProc ]
+        SQLiteConn.sumSequenceM [ forMSum poweredRows poweredRowProc 
+                                ; forMSum batteryRows batteryRowProc 
+                                ; forMSum nonTelemRows nonTelemRowProc ]
     liftWithConnParams <| runSQLiteConn (withTransaction combinedProc)
 
 
-let insertPermits () : Script<int> = 
-    let importRows = getImportRows () 
-    let permitInsProc (row:ImportRow) : SQLiteConn<int> = execNonQuery <| makeInsertPermitStmt row
-    liftWithConnParams <| runSQLiteConn (withTransactionListSum importRows permitInsProc)
-    
-
-// A site may have multiple rows - use List.distinctBy ...
-let insertSites () : Script<int> = 
-    let siteRows = getImportRows () |> List.distinctBy (fun row -> row.``SAI Number``)
-    let siteInsProc (row:ImportRow) : SQLiteConn<int> = execNonQuery <| makeInsertSite row
-    liftWithConnParams <| runSQLiteConn (withTransactionListSum siteRows siteInsProc)
 
 
-let insertIWPermits () : Script<int> =  
-    let allrows = getIWRows ()
-    let iwInsProc (row:IWRow) : SQLiteConn<int> = execNonQuery <| makeInsertIWPermit row
-    liftWithConnParams <| runSQLiteConn (withTransactionListSum allrows iwInsProc)
+let insertStormDisPermits () : Script<int> =  
+    let rows = getStormDisPermitsRows ()
+    let insertProc (row:StormDisPermitsRow) : SQLiteConn<int> = execNonQuery <| makeStormDisPermitsINSERT row
+    liftWithConnParams <| runSQLiteConn (withTransactionListSum rows insertProc)
 
+let insertSaiSites () : Script<int> =  
+    let rows = getSaiSitesRows ()
+    let insertProc (row:SaiSitesRow) : SQLiteConn<int> = execNonQuery <| makeSaiSitesINSERT row
+    liftWithConnParams <| runSQLiteConn (withTransactionListSum rows insertProc)
 
 let main () : unit = 
     let conn = sqliteConnParamsVersion3  @"G:\work\Projects\events2\edmDB.sqlite3"
   
-    runScript (failwith) (printfn "Success: %A rows imported") (consoleLogger) conn <| scriptMonad { 
-        let! _ = logScript (sprintf "%i rows deleted")          <| deleteAllData ()
-        let! _ = logScript (sprintf "%i cats_consents inserted")        <| insertCatsConsents () 
-        let! a = logScript (sprintf "%i sites inserted")        <| insertSites ()
-        let! b = logScript (sprintf "%i permits inserted")      <| insertPermits () 
-        let! c = logScript (sprintf "%i iw_permits inserted")   <| insertIWPermits ()
-        return (a+b+c)
-    }
+    runScript (failwith) (printfn "Success: %A rows imported") (consoleLogger) conn 
+        <| sumSequenceM 
+            [ logScript (sprintf "%i rows deleted")                 <| deleteAllData ()
+            ; logScript (sprintf "%i cats_consents inserted")       <| insertCatsConsents () 
+            ; logScript (sprintf "%i storm_dis_permits inserted")   <| insertStormDisPermits ()
+            ; logScript (sprintf "%i sai_sites inserted")           <| insertSaiSites ()
+            ]

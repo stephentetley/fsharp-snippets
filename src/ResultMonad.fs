@@ -174,6 +174,9 @@ let sequenceMz (results:Result<'a> list) : Result<unit> =
         | Ok _ :: zs -> work zs
     work results
 
+let sumSequenceM (results:Result<int> list) : Result<int> = 
+    fmapM List.sum <| sequenceM results
+
 // Applicative's (<*>)
 let apM (mf:Result<'a ->'b>) (ma:Result<'a>) : Result<'b> = 
     match mf with

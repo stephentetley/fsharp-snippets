@@ -110,6 +110,12 @@ let sequenceMz (source:ScriptMonad<'r,'a> list) : ScriptMonad<'r,unit> =
     ScriptMonad <| fun sw env -> 
         ResultMonad.sequenceMz <| List.map (fun ma -> apply1 ma sw env) source
 
+
+let sumSequenceM (source:ScriptMonad<'r,int> list) : ScriptMonad<'r,int> = 
+    ScriptMonad <| fun sw env -> 
+        ResultMonad.sumSequenceM (List.map (fun mf -> apply1 mf sw env) source)
+
+
 // Applicatives (<*>)
 let apM (mf:ScriptMonad<'r,'a ->'b>) (ma:ScriptMonad<'r,'a>) : ScriptMonad<'r,'b> = 
     ScriptMonad <| fun sw env -> 

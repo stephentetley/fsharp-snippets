@@ -95,6 +95,11 @@ let sequenceMz (source:SQLiteConn<'a> list) : SQLiteConn<unit> =
     SQLiteConn <| fun conn ->
         ResultMonad.sequenceMz <| List.map (fun ma -> apply1 ma conn) source
 
+let sumSequenceM (source:SQLiteConn<int> list) : SQLiteConn<int> = 
+    SQLiteConn <| fun conn ->
+        ResultMonad.sumSequenceM (List.map (fun mf -> apply1 mf conn) source)
+
+
 // SQLiteConn specific operations
 let runSQLiteConn (ma:SQLiteConn<'a>) (connParams:SQLiteConnParams) : Result<'a> = 
     let conn = paramsConnString connParams

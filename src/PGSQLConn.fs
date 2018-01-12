@@ -92,6 +92,11 @@ let sequenceMz (source:PGSQLConn<'a> list) : PGSQLConn<unit> =
     PGSQLConn <| fun conn ->
         ResultMonad.sequenceMz <| List.map (fun ma -> apply1 ma conn) source
 
+let sumSequenceM (source:PGSQLConn<int> list) : PGSQLConn<int> = 
+    PGSQLConn <| fun conn ->
+        ResultMonad.sumSequenceM (List.map (fun mf -> apply1 mf conn) source)
+
+
 // PGSQLConn-specific operations
 let runPGSQLConn (ma:PGSQLConn<'a>) (connParams:PGSQLConnParams) : Result<'a> = 
     let conn = paramsConnString connParams
