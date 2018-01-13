@@ -3,13 +3,75 @@
 open System
 open Microsoft.Office.Interop
 
+open FSharp.Data
 
-// To go into a common module soon...
-let suffixFileName (filePath:string) (suffix:string) = 
-    let pathTo = IO.Path.GetDirectoryName filePath
-    let ext = IO.Path.GetExtension filePath
-    let justname = IO.Path.GetFileNameWithoutExtension filePath
-    IO.Path.Combine (pathTo, sprintf "%s%s%s" justname suffix ext)
+open SL.CommonUtils
+open SL.CsvOutput
+open SL.ClosedXMLOutput
+
+
+
+let trimCsvFile (inputFile:string) (outputFile:string) (csvHasHeaders:bool) (sep:string) : unit =
+    let truncRow (row:CsvRow) : SL.CsvOutput.CellWriter<unit> list = 
+        Array.foldBack (fun (value:string) ac -> 
+                         let a = value.Trim() |> SL.CsvOutput.tellString in a::ac) row.Columns [] 
+        
+    let csvRows : seq<CsvRow> = 
+        CsvFile.Load(uri=inputFile, hasHeaders=csvHasHeaders, quote='"').Rows
+
+    let procM : CsvOutput<unit> = 
+        SL.CsvOutput.traverseMz (SL.CsvOutput.tellRow << truncRow) csvRows
+        
+    SL.CsvOutput.outputToNew procM outputFile sep    
+
+
+// Output from Excel uses double quote and comma
+let private csvTrimToClosedXML (inputFile:string) (outputFile:string) (sheetName:string) : unit =
+    let truncRow (row:CsvRow) : SL.ClosedXMLOutput.CellWriter<unit> list = 
+        Array.foldBack (fun (value:string) ac -> 
+                         let a = value.Trim() |> tellString in a::ac) row.Columns [] 
+        
+    let csvRows : seq<CsvRow> = CsvFile.Load(uri=inputFile, hasHeaders=false, quote='"', separators=",").Rows
+    let procM : ClosedXMLOutput<unit> = 
+        SL.ClosedXMLOutput.traverseMz (SL.ClosedXMLOutput.tellRow << truncRow) csvRows
+        
+    SL.ClosedXMLOutput.outputToNew  procM outputFile sheetName
+
+
+// Outputs the first sheet to Csv, returns sheet name
+let private xlsToCsv (inputFile:string) (outputFile:string) : Choice<string,string> =
+    try 
+        let app = new Excel.ApplicationClass(Visible = true) 
+        let book : Excel.Workbook = app.Workbooks.Open(inputFile)
+        let sheet : Excel.Worksheet = book.Sheets.[1] :?> Excel.Worksheet
+        let name : string = sheet.Name
+        app.DisplayAlerts <- false      // Disable overwrite alert
+        sheet.SaveAs(Filename = outputFile, FileFormat = Excel.XlFileFormat.xlCSV)
+        app.DisplayAlerts <- true
+        book.Close ()
+        app.Quit()
+        Choice2Of2 <| name
+    with
+    | ex -> Choice1Of2 (ex.ToString())
+
+// TODO - better to use Excel to open the temporary Csv file than to use ClosedXML.
+// Doing it this way causes a stack overflow on moderately large input.
+let trimXlsFile (inputFile:string) (outputFile:string) : unit = 
+    let tempFile = IO.Path.ChangeExtension(outputFile, "csv")
+    match xlsToCsv inputFile tempFile with
+    | Choice1Of2 err -> failwith err
+    | Choice2Of2 sheet -> 
+        csvTrimToClosedXML tempFile outputFile sheet
+        IO.File.Delete tempFile
+        
+let trimXlsFileToCsv (inputFile:string) (outputFile:string) : unit = 
+    let tempFile = suffixFileName outputFile "-TEMP"
+    match xlsToCsv inputFile tempFile with
+    | Choice1Of2 err -> failwith err
+    | Choice2Of2 sheet -> 
+        printfn "TEMP written %s" tempFile
+        trimCsvFile tempFile outputFile false "," 
+        // IO.File.Delete tempFile
 
 
 // NOTE - this is largely obsolete.

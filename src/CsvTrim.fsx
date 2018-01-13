@@ -7,10 +7,22 @@ open FSharp.Data
 #I @"C:\WINDOWS\assembly\GAC_MSIL\Microsoft.Office.Interop.Excel\15.0.0.0__71e9bce111e9429c"
 #r "Microsoft.Office.Interop.Excel"
 open Microsoft.Office.Interop
+
+#load @"SL\CommonUtils.fs"
+open SL.CommonUtils
+
+#I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
+#r "FSharpx.Collections"
+#I @"..\packages\DocumentFormat.OpenXml.2.7.2\lib\net46\"
+#I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
+#I @"..\packages\ClosedXML.0.90.0\lib\net452\"
+#r "ClosedXML"
+#load @"SL\ClosedXMLOutput.fs"
+#load @"SL\CsvOutput.fs"
 #load @"SL\ExcelUtils.fs"
 open SL.ExcelUtils
 
-#load @"SL\CsvOutput.fs"
+
 open SL.CsvOutput
 
 // NOTE - CSV processing with FSharp.Data is very fast
@@ -18,26 +30,18 @@ open SL.CsvOutput
 // a good choice, given that reading and writing Excel is very slow.
 
 
-let inpath = @"G:\work\Projects\rtu\RTS\RTS-outstation-dump.csv"
-let outpath = @"G:\work\Projects\rtu\RTS\RTS-outstation-dump-TRIM2.csv"
-
-
-
-let truncRow (row:CsvRow) : CellWriter<unit> list = 
-    let cols = Array.map (fun (x : string) -> x.Trim() |> tellString) row.Columns
-    Array.toList cols
-
-let trimCSV (inputFile:string) (outputFile:string) (csvHasHeaders:bool): unit =
-    let csv = CsvFile.Load(uri=inputFile, hasHeaders=csvHasHeaders, quote='"')
-    let proc = 
-        traverseMz (tellRow << truncRow) csv.Rows
-    outputToNew proc outputFile ","           
-
+let csvPathIn = @"G:\work\Projects\rtu\RTS\RTS-outstation-dump.csv"
+let csvPathOut = @"G:\work\Projects\rtu\RTS\RTS-outstation-dump-TRIM2.csv"
+let xlsPathIn = @"G:\work\Projects\events2\rts-outstations-jan2018.xlsx"
+let xlsPathOutCsv = @"G:\work\Projects\events2\rts-outstations-jan2018-TRIM.csv"     
+let xlsPathOutXls = @"G:\work\Projects\events2\rts-outstations-jan2018-TRIM.xlsx" 
 
 let main () = 
-    trimCSV inpath outpath false
+    trimCsvFile csvPathIn csvPathOut false ","
+    trimXlsFileToCsv xlsPathIn xlsPathOutCsv
 
-
+let tooLong () = 
+    trimXlsFile xlsPathIn xlsPathOutXls
 
 // Note - this test case has headers with commas that are double quoted.
 // We have to treat the document as having no headers to render correctly.
@@ -47,34 +51,15 @@ let test01 () : unit =
     let csv2 = @"G:\work\Projects\T0975_EDM2\Kim2.csv"
     let output = @"G:\work\Projects\T0975_EDM2\Kim-TRIM.xlsx"
     covertToCSV input csv1
-    trimCSV csv1 csv2 false 
+    trimCsvFile csv1 csv2 false ","
     covertToXlOpenXML csv2 output 
 
-let test02 () = 
-    printfn "%s" <| quoteField "\"Hello.\" said Peter."
 
-// thinking about how to implement traverseM for a state monad...
-let twolist : seq<string> = seq {
-    yield "one"
-    yield "two"
-    yield! [] }
-
-let test03 () = Seq.toList twolist
-
-let seqMapAccumL (fn:'st -> 'a -> ('st * 'b)) (state:'st) (source:seq<'a>) : ('st * seq<'b>) = 
-    let rec work (st:'st) (src:seq<'a>) = 
-        if Seq.isEmpty src then (st, seq{ yield! [] })
-        else 
-            let a = Seq.head src
-            let (st1,b) = fn st a
-            let (st2,rest) = work st1 (Seq.tail src)
-            (st2, seq { yield b; yield! rest })
-    work state source
-
-let test04 () = 
-    let input = ["a"; "b"; "c"]
-    seqMapAccumL (fun st a -> (st+1, String.replicate st a)) 1 (List.toSeq input)
 
 let test05 () = 
     suffixFileName @"G:\work\Projects\T0975_EDM2\Kim.xlsx" "-TRIM"
 
+let  testQuoteField (input:string) (sep:Separator) : string = 
+    match input with
+    | null -> "\"\""
+    | _ -> if input.Contains(sep) then quoteField input else input

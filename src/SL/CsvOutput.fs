@@ -19,10 +19,12 @@ let quoteField (input:string) : string =
     | _ -> sprintf "\"%s\"" (input.Replace("\"", "\"\""))
 
 // Quote a field containing comma
-let private testQuoteField (input:string) (sep:Separator) : string = 
+// Warning to self - getting the arg order wrong of sep and input can lead to 
+// horrible to locate bugs. Maybe Separator should be wrapped?
+let private testQuoteField (sep:Separator) (input:string)  : string = 
     match input with
-        | null -> "\"\""
-        | _ -> if input.Contains(sep) then quoteField input else input
+    | null -> "\"\""
+    | _ -> if input.Contains(sep) then quoteField input else input
 
 
 type CsvOutput<'a> = 
@@ -141,10 +143,12 @@ type CellWriter<'a> = private Wrapped of (Separator -> string)
 type RowWriter<'a> = CellWriter<'a> list
 
 let private getWrapped (sep:Separator) (cellWriter:CellWriter<'a>) : string = 
-    match cellWriter with | Wrapped(fn) -> match fn sep with | null -> "" | s -> s
+    match cellWriter with 
+    | Wrapped(fn) -> match fn sep with | null -> "" | s -> s
+
 
 let tellRow (valueProcs:(CellWriter<unit>) list) : CsvOutput<unit> =
-    bindM askSep (fun sep -> tellRowStrings <| List.map (getWrapped sep) valueProcs)
+    bindM askSep (fun sep -> List.map (getWrapped sep) valueProcs |> tellRowStrings )
 
 
 let tellRows (records:seq<'a>) (writeRow:'a -> CellWriter<unit> list) : CsvOutput<unit> = 
@@ -176,6 +180,6 @@ let tellInteger (value:int) : CellWriter<unit> = tellObj (value :> obj)
 let tellInteger64 (value:int64) : CellWriter<unit> = tellObj (value :> obj)
 
 let tellString (value:string) : CellWriter<unit> = Wrapped <| fun sep -> testQuoteField sep value
-let tellQuotedString (value:string) : CellWriter<unit> = tellString <| quoteField value
+let tellQuotedString (value:string) : CellWriter<unit> = Wrapped <| fun _ -> quoteField value
 
     
