@@ -1,4 +1,4 @@
-﻿module StringUtils
+﻿module SL.StringUtils
 
 
 let doubleQuote (s:string) : string = sprintf "\"%s\"" s

@@ -6,11 +6,11 @@ open FSharp.ExcelProvider
 #r "Microsoft.Office.Interop.Excel"
 open Microsoft.Office.Interop
 
-#load "Geo.fs"
-open Geo
+#load @"SL\Geo.fs"
+open SL.Geo
 
-#load "ExcelUtils.fs"
-open ExcelUtils
+#load @"SL\ExcelUtils.fs"
+open SL.ExcelUtils
 
 
 

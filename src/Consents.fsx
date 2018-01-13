@@ -5,14 +5,14 @@ open FSharp.ExcelProvider
 
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 
-#load "Geo.fs"
-open Geo
+#load @"SL\Geo.fs"
+open SL.Geo
 
-#load "CsvOutput.fs"
-open CsvOutput
+#load @"SL\CsvOutput.fs"
+open SL.CsvOutput
 
-#load @"ExcelProviderHelper.fs"
-open ExcelProviderHelper
+#load @"SL\ExcelProviderHelper.fs"
+open SL.ExcelProviderHelper
 
 
 type ConsentsTable = 

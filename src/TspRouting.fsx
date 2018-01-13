@@ -13,8 +13,8 @@ open FSharp.ExcelProvider
 #I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
 #I @"..\packages\ClosedXML.0.90.0\lib\net452\"
 #r "ClosedXML"
-#load "ClosedXMLOutput.fs"
-open ClosedXMLOutput
+#load @"SL\ClosedXMLOutput.fs"
+open SL.ClosedXMLOutput
 
 
 #I @"..\packages\Npgsql.3.2.6\lib\net451\"
@@ -22,21 +22,21 @@ open ClosedXMLOutput
 #r "Npgsql"
 open Npgsql
 
-#load "Geo.fs"
-open Geo
-#load "ResultMonad.fs"
-open ResultMonad
-#load "SqlUtils.fs"
-open SqlUtils
-#load "PGSQLConn.fs"
-open PGSQLConn
+#load @"SL\Geo.fs"
+open SL.Geo
+#load @"SL\ResultMonad.fs"
+open SL.ResultMonad
+#load @"SL\SqlUtils.fs"
+open SL.SqlUtils
+#load @"SL\PGSQLConn.fs"
+open SL.PGSQLConn
 
 
 #I @"..\packages\Newtonsoft.Json.10.0.3\lib\net45"
 #r "Newtonsoft.Json"
 open Newtonsoft.Json
-#load "JsonOutput.fs"
-open JsonOutput
+#load @"SL\JsonOutput.fs"
+open SL.JsonOutput
 
 
 // Use PostGIS's pgr_tsp function
@@ -118,7 +118,7 @@ let genINSERT1 (rec1:DbRecord) : string =
 
 
 let pgInsertRecords (records:DbRecord list) : PGSQLConn<int> = 
-    PGSQLConn.fmapM (List.sum) <| withTransaction (PGSQLConn.forM records (execNonQuery  << genINSERT1))
+    SL.PGSQLConn.fmapM (List.sum) <| withTransaction (SL.PGSQLConn.forM records (execNonQuery  << genINSERT1))
 
 let pgInitializeTable : PGSQLConn<int> = deleteAllRows "temp_routing;"
 
@@ -169,11 +169,11 @@ let pgTSPQuery (startPt:DbRecord) (endPt:DbRecord) : PGSQLConn<DbRecord list> =
 
 let outputXslx (records:DbRecord list) (fileName:string) : unit = 
     let proc1 (ix:int) (orec:DbRecord) : RowWriter<unit> = 
-        [ ClosedXMLOutput.tellInteger   (ix + 1)
-        ; ClosedXMLOutput.tellString    orec.SiteCode
-        ; ClosedXMLOutput.tellString    orec.LongName
-        ; ClosedXMLOutput.tellFloat     orec.Wgs84Lat
-        ; ClosedXMLOutput.tellFloat     orec.Wgs84Lon ]
+        [ SL.ClosedXMLOutput.tellInteger   (ix + 1)
+        ; SL.ClosedXMLOutput.tellString    orec.SiteCode
+        ; SL.ClosedXMLOutput.tellString    orec.LongName
+        ; SL.ClosedXMLOutput.tellFloat     orec.Wgs84Lat
+        ; SL.ClosedXMLOutput.tellFloat     orec.Wgs84Lon ]
     let procM = tellSheetWithHeadersi ["Order"; "Code"; "Name"; "Latitude"; "Longitude"] records proc1 
     outputToNew procM fileName "Routes"
 

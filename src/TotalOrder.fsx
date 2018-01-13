@@ -6,8 +6,8 @@ open Microsoft.Office.Interop
 #r "ExcelProvider.dll"
 open FSharp.ExcelProvider
 
-#load @"ExcelUtils.fs"
-open ExcelUtils
+#load @"SL\ExcelUtils.fs"
+open SL.ExcelUtils
 
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
@@ -15,8 +15,8 @@ open ExcelUtils
 #I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
 #I @"..\packages\ClosedXML.0.90.0\lib\net452\"
 #r "ClosedXML"
-#load "ClosedXMLOutput.fs"
-open ClosedXMLOutput
+#load @"SL\ClosedXMLOutput.fs"
+open SL.ClosedXMLOutput
 
 
 let outpath = @"G:\work\Projects\ultrasonics\ultrasonic-updates.xlsx"

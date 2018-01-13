@@ -1,8 +1,8 @@
-﻿module ScriptMonad
+﻿module SL.ScriptMonad
 
 open System.IO
 
-open ResultMonad
+open SL.ResultMonad
 
 type LogAction = StringWriter -> unit
 

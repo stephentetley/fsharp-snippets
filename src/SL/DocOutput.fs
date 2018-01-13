@@ -1,4 +1,4 @@
-﻿module DocOutput
+﻿module SL.DocOutput
 
 open Microsoft.Office.Interop
 

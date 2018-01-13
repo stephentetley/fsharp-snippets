@@ -14,29 +14,29 @@ open Npgsql
 
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
-#load @"ResultMonad.fs"
-#load @"SqlUtils.fs"
-#load @"PGSQLConn.fs"
-open ResultMonad
-open PGSQLConn
+#load @"SL\ResultMonad.fs"
+#load @"SL\SqlUtils.fs"
+#load @"SL\PGSQLConn.fs"
+open SL.ResultMonad
+open SL.PGSQLConn
 
-#load "Geo.fs"
-open Geo
+#load @"SL\Geo.fs"
+open SL.Geo
 
-#load "JsonExtractor.fs"
-open JsonExtractor
+#load @"SL\JsonExtractor.fs"
+open SL.JsonExtractor
 
 
 
 #I @"..\packages\Newtonsoft.Json.10.0.3\lib\net45"
 #r "Newtonsoft.Json"
 open Newtonsoft.Json
-#load "JsonOutput.fs"
-open JsonOutput
+#load @"SL\JsonOutput.fs"
+open SL.JsonOutput
 
 
-#load "CsvOutput.fs"
-open CsvOutput
+#load @"SL\CsvOutput.fs"
+open SL.CsvOutput
 
 
 let makeConnString (pwd:string) (dbname:string) : string = 
@@ -59,9 +59,9 @@ type Group<'a> =
 
 let extractorM : JsonExtractor<Group<string> list> = 
     askArrayAsList 
-        <| JsonExtractor.liftM2 (fun name pts ->  { Name = name; Points = pts})
-                                (field "Responsibility" askString)
-                                (field "Outfalls" (askArrayAsList (field "OSGB36NGR" askString)))
+        <| SL.JsonExtractor.liftM2 (fun name pts ->  { Name = name; Points = pts})
+                                    (field "Responsibility" askString)
+                                    (field "Outfalls" (askArrayAsList (field "OSGB36NGR" askString)))
 
 
 let decodePoints (inputs:string list) : Coord.WGS84Point list = 
@@ -70,7 +70,7 @@ let decodePoints (inputs:string list) : Coord.WGS84Point list =
 
 
 let getInputs () : Result<Group<Coord.WGS84Point> list> = 
-    ResultMonad.fmapM (List.map (fun group -> { Name=group.Name; Points = decodePoints group.Points}))
+    SL.ResultMonad.fmapM (List.map (fun group -> { Name=group.Name; Points = decodePoints group.Points}))
                       (extractFromFile extractorM jsonInput)
 
 
@@ -98,11 +98,12 @@ let genConcaveHullQuery (points:Coord.WGS84Point list) (targetPercent:float) : s
 
 //let test02 () = inputs () |> List.take 14 |> genConvexHullQuery |> printfn "%s"
 let pgConcaveHull (points:Coord.WGS84Point list) : PGSQLConn<string> = 
-        let query = genConcaveHullQuery points 0.9
-        execReaderSingleton query <| fun reader -> reader.GetString(0)
+    let query = genConcaveHullQuery points 0.9
+    execReaderSingleton query <| fun reader -> reader.GetString(0)
 
 let pgConcaveHulls (groups:(Group<Coord.WGS84Point> list)) : PGSQLConn<(int*string) list> = 
-        PGSQLConn.mapiM (fun ix group1 -> PGSQLConn.fmapM (fun ans -> (ix+1,ans)) <| pgConcaveHull group1.Points) groups 
+    SL.PGSQLConn.mapiM (fun ix group1 -> 
+                    SL.PGSQLConn.fmapM (fun ans -> (ix+1,ans)) <| pgConcaveHull group1.Points) groups 
 
 
 let wktOutfile = @"G:\work\Projects\events2\wkt_concave_hulls1.csv"
@@ -151,12 +152,12 @@ let genJSON (groups: (string * ImportRow list) list) : JsonOutput<unit> =
     let tellOutfalls (outfalls : ImportRow list) : JsonOutput<unit> = 
         tellListAsArray outfalls 
                         (fun (row:ImportRow) ->
-                            tellObject  [ "UID",        JsonOutput.tellString <| row.``SAI Number``
-                                        ; "Name",       JsonOutput.tellString <| row.Name
-                                        ; "OSGB36NGR",  JsonOutput.tellString <| row.``Site Grid Ref`` ] )
+                            tellObject  [ "UID",        SL.JsonOutput.tellString <| row.``SAI Number``
+                                        ; "Name",       SL.JsonOutput.tellString <| row.Name
+                                        ; "OSGB36NGR",  SL.JsonOutput.tellString <| row.``Site Grid Ref`` ] )
     tellAsArray groups 
                     (fun (group:(string * ImportRow list)) -> 
-                        tellObject [ "Responsibility",  JsonOutput.tellString   <| fst group
+                        tellObject [ "Responsibility",  SL.JsonOutput.tellString   <| fst group
                                    ; "Outfalls",        tellOutfalls <| snd group ] )
 
 

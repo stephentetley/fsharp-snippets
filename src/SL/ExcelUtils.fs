@@ -1,4 +1,4 @@
-﻿module ExcelUtils
+﻿module SL.ExcelUtils
 
 open System
 open Microsoft.Office.Interop

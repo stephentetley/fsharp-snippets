@@ -1,9 +1,9 @@
-﻿module PGSQLConn
+﻿module SL.PGSQLConn
 
 open Npgsql
 
-open ResultMonad
-open SqlUtils
+open SL.ResultMonad
+open SL.SqlUtils
 
 
 type PGSQLConnParams = 

@@ -13,18 +13,18 @@ open FSharp.ExcelProvider
 
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
-#load @"ResultMonad.fs"
-open ResultMonad
-#load @"SqlUtils.fs"
-#load @"SQLiteConn.fs"
-open SQLiteConn
+#load @"SL\ResultMonad.fs"
+#load @"SL\SqlUtils.fs"
+#load @"SL\SQLiteConn.fs"
+open SL.ResultMonad
+open SL.SQLiteConn
 
 #I @"..\packages\DocumentFormat.OpenXml.2.7.2\lib\net46\"
 #I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
 #I @"..\packages\ClosedXML.0.90.0\lib\net452\"
 #r "ClosedXML"
-#load @"ClosedXMLOutput.fs"
-open ClosedXMLOutput
+#load @"SL\ClosedXMLOutput.fs"
+open SL.ClosedXMLOutput
 
 
 let connParams = 

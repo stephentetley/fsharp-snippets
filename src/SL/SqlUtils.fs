@@ -1,4 +1,4 @@
-﻿module SqlUtils
+﻿module SL.SqlUtils
 
 open System
 open System.Globalization

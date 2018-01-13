@@ -7,11 +7,11 @@ open FSharp.Data
 #I @"C:\WINDOWS\assembly\GAC_MSIL\Microsoft.Office.Interop.Excel\15.0.0.0__71e9bce111e9429c"
 #r "Microsoft.Office.Interop.Excel"
 open Microsoft.Office.Interop
-#load "ExcelUtils.fs"
-open ExcelUtils
+#load @"SL\ExcelUtils.fs"
+open SL.ExcelUtils
 
-#load "CsvOutput.fs"
-open CsvOutput
+#load @"SL\CsvOutput.fs"
+open SL.CsvOutput
 
 // NOTE - CSV processing with FSharp.Data is very fast
 // To trim basic (macro-free) Xls files, going to and from CSV looks like

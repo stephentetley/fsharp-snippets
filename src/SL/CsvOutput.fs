@@ -1,4 +1,4 @@
-﻿module CsvOutput
+﻿module SL.CsvOutput
 
 open System.IO
 

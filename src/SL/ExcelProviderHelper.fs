@@ -1,4 +1,4 @@
-﻿module ExcelProviderHelper
+﻿module SL.ExcelProviderHelper
 
 // The Excel Type Provider seems to read a trailing null row.
 // This dictionary and procedure provide a skeleton to get round this.

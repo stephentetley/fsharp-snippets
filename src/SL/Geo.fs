@@ -1,4 +1,4 @@
-﻿namespace Geo
+﻿namespace SL.Geo
 
 open System
 open System.Text.RegularExpressions

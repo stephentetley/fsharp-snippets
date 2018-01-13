@@ -1,12 +1,12 @@
-﻿module SQLiteConn
+﻿module SL.SQLiteConn
 
 open System
 open System.IO
 open System.Data
 open System.Data.SQLite
 
-open ResultMonad
-open SqlUtils
+open SL.ResultMonad
+open SL.SqlUtils
 
 
 type SQLiteConnParams = 

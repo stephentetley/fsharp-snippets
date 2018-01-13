@@ -12,18 +12,18 @@ open FSharp.ExcelProvider
 
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
-#load @"ResultMonad.fs"
-open ResultMonad
-#load @"SqlUtils.fs"
-open SqlUtils
-#load @"SQLiteConn.fs"
-open SQLiteConn
+#load @"SL\ResultMonad.fs"
+open SL.ResultMonad
+#load @"SL\SqlUtils.fs"
+open SL.SqlUtils
+#load @"SL\SQLiteConn.fs"
+open SL.SQLiteConn
 
-#load @"ScriptMonad.fs"
-open ScriptMonad
+#load @"SL\ScriptMonad.fs"
+open SL.ScriptMonad
 
-#load @"ExcelProviderHelper.fs"
-open ExcelProviderHelper
+#load @"SL\ExcelProviderHelper.fs"
+open SL.ExcelProviderHelper
 
 
 type ImportTable = 

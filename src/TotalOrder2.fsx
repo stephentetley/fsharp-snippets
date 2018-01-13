@@ -8,8 +8,8 @@ open FSharp.ExcelProvider
 
 open System
 
-#load "CsvOutput.fs"
-open CsvOutput
+#load @"SL\CsvOutput.fs"
+open SL.CsvOutput
 
 // Just names. ps> dir | select -exp name
 let directoryListing = @"G:\work\Projects\rtu\dir.txt"

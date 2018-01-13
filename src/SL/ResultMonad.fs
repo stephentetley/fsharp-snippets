@@ -1,4 +1,4 @@
-﻿module ResultMonad
+﻿module SL.ResultMonad
 
 
 // For Seq.tail

@@ -1,4 +1,4 @@
-﻿module ClosedXMLOutput
+﻿module SL.ClosedXMLOutput
 
 // For Seq.tail
 open FSharpx.Collections

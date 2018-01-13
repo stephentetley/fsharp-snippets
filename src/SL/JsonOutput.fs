@@ -1,4 +1,4 @@
-﻿module JsonOutput
+﻿module SL.JsonOutput
 
 open Newtonsoft.Json
 

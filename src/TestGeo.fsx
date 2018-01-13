@@ -2,8 +2,8 @@
 
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 
-#load "Geo.fs"
-open Geo
+#load @"SL\Geo.fs"
+open SL.Geo
 
 
 let testZ2 = Char.GetNumericValue '6'

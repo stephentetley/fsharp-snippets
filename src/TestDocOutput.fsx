@@ -5,6 +5,6 @@
 #r "Microsoft.Office.Interop.Word"
 open Microsoft.Office.Interop
 
-#load @"DocOutput.fs"
-open DocOutput
+#load @"SL\DocOutput.fs"
+open SL.DocOutput
 

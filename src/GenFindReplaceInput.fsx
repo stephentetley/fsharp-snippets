@@ -6,11 +6,11 @@ open FSharp.ExcelProvider
 #r "Newtonsoft.Json"
 open Newtonsoft.Json
 
-#load "JsonOutput.fs"
-open JsonOutput
+#load @"SL\JsonOutput.fs"
+open SL.JsonOutput
 
-#load @"ExcelProviderHelper.fs"
-open ExcelProviderHelper
+#load @"SL\ExcelProviderHelper.fs"
+open SL.ExcelProviderHelper
 
 let outputFile = @"G:\work\Projects\samps\cover-findreplace.json"
 

@@ -1,10 +1,10 @@
-﻿module JsonExtractor
+﻿module SL.JsonExtractor
 
 open FSharp.Data
 open FSharp.Data.JsonExtensions
 open System.IO
 
-open ResultMonad
+open SL.ResultMonad
 
 
 type JsonExtractor<'a> = private JsonExtractor of (JsonValue -> Result<'a>)

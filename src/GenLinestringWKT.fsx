@@ -6,10 +6,10 @@ open FSharp.ExcelProvider
 #r "Microsoft.Office.Interop.Excel"
 open Microsoft.Office.Interop
 
-#load "Geo.fs"
-open Geo
-#load "CsvOutput.fs"
-open CsvOutput
+#load @"SL\Geo.fs"
+open SL.Geo
+#load @"SL\CsvOutput.fs"
+open SL.CsvOutput
 
 
 type InputTable = 
@@ -40,7 +40,7 @@ let buildCoordDatabase () : CoordDB =
 type OrderGroups = (string list) list
 
 
-let findPoints (sites:string list)  (db:CoordDB) : Geo.Coord.WGS84Point list = 
+let findPoints (sites:string list)  (db:CoordDB) : Coord.WGS84Point list = 
     List.fold (fun ac name -> 
         match Map.tryFind name db with
         | Some(pt) -> (pt :: ac)

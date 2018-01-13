@@ -5,8 +5,8 @@ open FSharp.ExcelProvider
 
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 
-#load "Geo.fs"
-open Geo
+#load @"SL\Geo.fs"
+open SL.Geo
 
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
@@ -14,8 +14,8 @@ open Geo
 #I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
 #I @"..\packages\ClosedXML.0.90.0\lib\net452\"
 #r "ClosedXML"
-#load "ClosedXMLOutput.fs"
-open ClosedXMLOutput
+#load @"SL\ClosedXMLOutput.fs"
+open SL.ClosedXMLOutput
 
 
 type InputTable = 
