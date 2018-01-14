@@ -201,6 +201,7 @@ let logScript (makeLine:'a -> string) (proc:ScriptMonad<'r,'a>) : ScriptMonad<'r
         return a
         }
 
+// Note - pass in unit to avoid value restriction.
 let ask () : ScriptMonad<'r,'r> = 
     ScriptMonad <| fun _ env -> resultMonad.Return env
 

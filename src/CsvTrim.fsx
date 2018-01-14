@@ -17,6 +17,8 @@ open SL.CommonUtils
 #I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
 #I @"..\packages\ClosedXML.0.90.0\lib\net452\"
 #r "ClosedXML"
+#load @"SL\ResultMonad.fs"
+#load @"SL\ScriptMonad.fs"
 #load @"SL\ClosedXMLOutput.fs"
 #load @"SL\CsvOutput.fs"
 #load @"SL\ExcelUtils.fs"
@@ -30,26 +32,26 @@ open SL.CsvOutput
 // a good choice, given that reading and writing Excel is very slow.
 
 
-let csvPathIn = @"G:\work\Projects\rtu\RTS\RTS-outstation-dump.csv"
-let csvPathOut = @"G:\work\Projects\rtu\RTS\RTS-outstation-dump-TRIM2.csv"
-let xlsPathIn = @"G:\work\Projects\events2\rts-outstations-jan2018.xlsx"
-let xlsPathOutCsv = @"G:\work\Projects\events2\rts-outstations-jan2018-TRIM.csv"     
-let xlsPathOutXls = @"G:\work\Projects\events2\rts-outstations-jan2018-TRIM.xlsx" 
+let csvPathIn       = @"G:\work\Projects\rtu\RTS\RTS-outstation-dump.csv"
+let csvPathOut      = @"G:\work\Projects\rtu\RTS\RTS-outstation-dump-TRIM2.csv"
+let xlsPathIn       = @"G:\work\Projects\events2\rts-outstations-jan2018.xlsx"
+let xlsPathOutCsv   = @"G:\work\Projects\events2\rts-outstations-jan2018-TRIM.csv"     
+let xlsPathOutXls   = @"G:\work\Projects\events2\rts-outstations-jan2018-TRIM.xlsx" 
 
 let main () = 
     trimCsvFile csvPathIn csvPathOut false ","
     trimXlsFileToCsv xlsPathIn xlsPathOutCsv
+    trimXlsSheet xlsPathIn xlsPathOutXls
 
-let tooLong () = 
-    trimXlsFile xlsPathIn xlsPathOutXls
+
 
 // Note - this test case has headers with commas that are double quoted.
 // We have to treat the document as having no headers to render correctly.
 let test01 () : unit = 
-    let input = @"G:\work\Projects\T0975_EDM2\Kim.xlsx"
-    let csv1 = @"G:\work\Projects\T0975_EDM2\Kim1.csv"
-    let csv2 = @"G:\work\Projects\T0975_EDM2\Kim2.csv"
-    let output = @"G:\work\Projects\T0975_EDM2\Kim-TRIM.xlsx"
+    let input = @"G:\work\Projects\events2\Kim.xlsx"
+    let csv1 = @"G:\work\Projects\events2\Kim1.csv"
+    let csv2 = @"G:\work\Projects\events2\Kim2.csv"
+    let output = @"G:\work\Projects\events2\Kim-TRIM.xlsx"
     covertToCSV input csv1
     trimCsvFile csv1 csv2 false ","
     covertToXlOpenXML csv2 output 
@@ -59,7 +61,3 @@ let test01 () : unit =
 let test05 () = 
     suffixFileName @"G:\work\Projects\T0975_EDM2\Kim.xlsx" "-TRIM"
 
-let  testQuoteField (input:string) (sep:Separator) : string = 
-    match input with
-    | null -> "\"\""
-    | _ -> if input.Contains(sep) then quoteField input else input

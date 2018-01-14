@@ -6,6 +6,8 @@ open Microsoft.Office.Interop
 open FSharp.Data
 
 open SL.CommonUtils
+open SL.ResultMonad
+open SL.ScriptMonad
 open SL.CsvOutput
 open SL.ClosedXMLOutput
 
@@ -38,40 +40,69 @@ let private csvTrimToClosedXML (inputFile:string) (outputFile:string) (sheetName
     SL.ClosedXMLOutput.outputToNew  procM outputFile sheetName
 
 
-// Outputs the first sheet to Csv, returns sheet name
-let private xlsToCsv (inputFile:string) (outputFile:string) : Choice<string,string> =
-    try 
-        let app = new Excel.ApplicationClass(Visible = true) 
-        let book : Excel.Workbook = app.Workbooks.Open(inputFile)
-        let sheet : Excel.Worksheet = book.Sheets.[1] :?> Excel.Worksheet
-        let name : string = sheet.Name
-        app.DisplayAlerts <- false      // Disable overwrite alert
-        sheet.SaveAs(Filename = outputFile, FileFormat = Excel.XlFileFormat.xlCSV)
-        app.DisplayAlerts <- true
-        book.Close ()
-        app.Quit()
-        Choice2Of2 <| name
-    with
-    | ex -> Choice1Of2 (ex.ToString())
+type private ExcelScript<'a> = ScriptMonad<Excel.Application,'a>
 
-// TODO - better to use Excel to open the temporary Csv file than to use ClosedXML.
-// Doing it this way causes a stack overflow on moderately large input.
-let trimXlsFile (inputFile:string) (outputFile:string) : unit = 
-    let tempFile = IO.Path.ChangeExtension(outputFile, "csv")
-    match xlsToCsv inputFile tempFile with
-    | Choice1Of2 err -> failwith err
-    | Choice2Of2 sheet -> 
-        csvTrimToClosedXML tempFile outputFile sheet
-        IO.File.Delete tempFile
+let withExcel (fn:Excel.Application -> Result<'a>) : ExcelScript<'a> = 
+    scriptMonad.Bind(ask (), liftResult << fn)
+
+// Outputs the first sheet to Csv, returns sheet name
+let private xlsToCsv (inputFile:string) (outputFile:string) : ExcelScript<string> =
+    withExcel <| fun app -> 
+        try 
+            // let app = new Excel.ApplicationClass(Visible = true) :> Excel.Application
+            let book : Excel.Workbook = app.Workbooks.Open(inputFile)
+            let sheet : Excel.Worksheet = book.Sheets.[1] :?> Excel.Worksheet
+            let name : string = sheet.Name
+            app.DisplayAlerts <- false      // Disable overwrite alert
+            sheet.SaveAs(Filename = outputFile, FileFormat = Excel.XlFileFormat.xlCSV)
+            app.DisplayAlerts <- true
+            book.Close ()
+            Ok <| name
+        with
+        | ex -> Err (ex.ToString())
+
+let private csvToXls (inputFile:string) (outputFile:string) : ExcelScript<unit> =
+    withExcel <| fun app -> 
+        try 
+            let book : Excel.Workbook = app.Workbooks.Open(inputFile)
+            let sheet : Excel.Worksheet = book.Sheets.[1] :?> Excel.Worksheet
+            let name : string = sheet.Name
+            app.DisplayAlerts <- false      // Disable overwrite alert
+            sheet.SaveAs(Filename = outputFile, FileFormat = Excel.XlFileFormat.xlOpenXMLWorkbook)
+            app.DisplayAlerts <- true
+            book.Close ()
+            Ok ()
+        with
+        | ex -> Err (ex.ToString())
+
+
+let trimXlsSheet (inputFile:string) (outputFile:string) : unit = 
+    let tempFile1 = IO.Path.ChangeExtension(outputFile, "csv")
+    let tempFile2 = suffixFileName tempFile1 "-TRIM"
+    let app = new Excel.ApplicationClass(Visible = true) :> Excel.Application
+    try
+        runResultWithError (consoleLogger) app <| 
+            scriptMonad { 
+                let! sheet = xlsToCsv inputFile tempFile1
+                let! () = liftAction <| trimCsvFile tempFile1 tempFile2 false ","
+                let! () = csvToXls tempFile2 outputFile
+                return () }
+    finally
+        app.Quit()
+
         
 let trimXlsFileToCsv (inputFile:string) (outputFile:string) : unit = 
     let tempFile = suffixFileName outputFile "-TEMP"
-    match xlsToCsv inputFile tempFile with
-    | Choice1Of2 err -> failwith err
-    | Choice2Of2 sheet -> 
-        printfn "TEMP written %s" tempFile
-        trimCsvFile tempFile outputFile false "," 
-        // IO.File.Delete tempFile
+    let app = new Excel.ApplicationClass(Visible = true) :> Excel.Application
+    try
+        runResultWithError (consoleLogger) app <| 
+            scriptMonad { 
+                let! sheet = xlsToCsv inputFile tempFile
+                let! _ = trimCsvFile tempFile outputFile false ","  |> liftAction
+                return () }
+    finally 
+        app.Quit ()                               
+
 
 
 // NOTE - this is largely obsolete.
