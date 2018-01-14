@@ -75,7 +75,7 @@ let private csvToXls (inputFile:string) (outputFile:string) : ExcelScript<unit> 
         with
         | ex -> Err (ex.ToString())
 
-
+// TODO - delete temp files
 let trimXlsSheet (inputFile:string) (outputFile:string) : unit = 
     let tempFile1 = IO.Path.ChangeExtension(outputFile, "csv")
     let tempFile2 = suffixFileName tempFile1 "-TRIM"

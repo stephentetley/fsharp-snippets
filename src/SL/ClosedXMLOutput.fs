@@ -126,7 +126,7 @@ let private incrCol (pos:Position) : Position = let cx = pos.ColIx in { pos with
 
 // This is the primitive Cell writer, user code is expected to use a higher level interface.
 let tellCellObj (value:obj) : ClosedXMLOutput<unit> = 
-    ClosedXMLOutput <| fun sheet pos ->  
+    ClosedXMLOutput <| fun sheet pos -> 
         sheet.Cell(pos.RowIx, pos.ColIx).Value <- value
         (incrCol pos, ())
 
@@ -139,9 +139,10 @@ let tellRowObjs (values:obj list) : ClosedXMLOutput<unit> =
 
 // This will fail if it is not the first writer action.
 let tellHeaders (values:string list) : ClosedXMLOutput<unit> =
+    let proc1 = tellRowObjs <| List.map (fun s -> s :> obj) values
     ClosedXMLOutput <| fun sheet pos ->
         if pos.RowIx = 1 && pos.ColIx = 1 then
-            apply1 (tellCellObj <| List.map (fun s -> s :> obj) values) sheet pos
+            apply1 proc1 sheet pos
         else failwith "tellHeaders - not at first cell (something written already)"
 
 
@@ -155,17 +156,15 @@ let tellHeaders (values:string list) : ClosedXMLOutput<unit> =
 // e.g. TotalOrder, TotalOrder2 where the ouput is split between procedures.
 
 
-type CellWriter<'a> = private Wrapped of ClosedXMLOutput<'a>
+type CellWriter<'a> = private Wrapped of obj
 type RowWriter<'a> = CellWriter<'a> list
 
-let private getWrapped (cellWriter:CellWriter<'a>) : ClosedXMLOutput<'a> = 
-    match cellWriter with | Wrapped(fn) -> fn
+let private getWrapped (cellWriter:CellWriter<'a>) : obj = 
+    match cellWriter with | Wrapped o -> o
 
 
 let tellRow (valueProcs:(CellWriter<unit>) list) : ClosedXMLOutput<unit> =
-    ClosedXMLOutput <| fun sheet pos ->
-        ignore <| apply1 (mapMz getWrapped valueProcs) sheet pos
-        (nextRow pos, ())
+    tellRowObjs <| List.map getWrapped valueProcs
 
 let tellRows (records:seq<'a>) (writeRow:'a -> CellWriter<unit> list) : ClosedXMLOutput<unit> = 
     traverseMz (tellRow << writeRow) records
@@ -183,7 +182,7 @@ let tellSheetWithHeadersi (headers:string list) (records:seq<'a>) (writeRow:int 
                       do! tellRowsi records writeRow }
 
 let tellObj (value:obj) : CellWriter<unit> = 
-    Wrapped <| tellCellObj obj
+    Wrapped <| value
 
 let tellBool (value:bool) : CellWriter<unit> = tellObj (value :> obj)
 let tellDateTime (value:System.DateTime) : CellWriter<unit> = tellObj (value :> obj)
