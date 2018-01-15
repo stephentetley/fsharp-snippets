@@ -6,21 +6,21 @@ open FSharpx.Collections
 open ClosedXML
 
 // ClosedXML - First Cell is (Row=1,Col=1)
-type Position = private { RowIx: int; ColIx: int}
+type RowIx = int
 
 type ClosedXMLSheet = ClosedXML.Excel.IXLWorksheet
 
 
 type ClosedXMLOutput<'a> = 
-    ClosedXMLOutput of (ClosedXMLSheet -> Position -> (Position * 'a))
+    ClosedXMLOutput of (ClosedXMLSheet -> RowIx -> (RowIx * 'a))
 
 let runClosedXMLOutput (ma:ClosedXMLOutput<'a>) (sheet:ClosedXMLSheet) : 'a =
     match ma with
-    | ClosedXMLOutput(f) -> snd <| f sheet {RowIx=1;ColIx=1}
+    | ClosedXMLOutput(f) -> snd <| f sheet 1
 
 
-let inline apply1 (ma : ClosedXMLOutput<'a>) (sheet:ClosedXMLSheet) (pos:Position) : (Position * 'a) = 
-    let (ClosedXMLOutput f) = ma in f sheet pos
+let inline apply1 (ma : ClosedXMLOutput<'a>) (sheet:ClosedXMLSheet) (rowIx:RowIx) : (RowIx * 'a) = 
+    let (ClosedXMLOutput f) = ma in f sheet rowIx
 
 let private unitM (x:'a) : ClosedXMLOutput<'a> = 
     ClosedXMLOutput <| fun r s -> (s,x)
@@ -121,78 +121,69 @@ let outputToNew (ma:ClosedXMLOutput<'a>) (fileName:string) (sheetName:string) : 
     outputbook.SaveAs(fileName)
     ans
 
-let private nextRow (pos:Position) : Position = {RowIx=pos.RowIx+1; ColIx=1}
-let private incrCol (pos:Position) : Position = let cx = pos.ColIx in { pos with ColIx=cx+1}
 
-// This is the primitive Cell writer, user code is expected to use a higher level interface.
-let tellCellObj (value:obj) : ClosedXMLOutput<unit> = 
-    ClosedXMLOutput <| fun sheet pos -> 
-        sheet.Cell(pos.RowIx, pos.ColIx).Value <- value
-        (incrCol pos, ())
+// Having whole row writing rather than cell writing as the primitive writing 
+// operation makes the implementation simpler (state only needs to track the
+// row number).
 
 // This is the primitive Row writer, user code is expected to use a higher level interface.
 let tellRowObjs (values:obj list) : ClosedXMLOutput<unit> =
-    ClosedXMLOutput <| fun sheet pos ->
-        ignore <| apply1 (mapMz tellCellObj values) sheet pos
-        (nextRow pos, ())
+    ClosedXMLOutput <| fun sheet rowIx ->
+        List.iteri (fun ix value -> 
+                        sheet.Cell(rowIx, ix+1).Value <- value) values
+        (rowIx + 1, ())
 
 
 // This will fail if it is not the first writer action.
 let tellHeaders (values:string list) : ClosedXMLOutput<unit> =
     let proc1 = tellRowObjs <| List.map (fun s -> s :> obj) values
-    ClosedXMLOutput <| fun sheet pos ->
-        if pos.RowIx = 1 && pos.ColIx = 1 then
-            apply1 proc1 sheet pos
+    ClosedXMLOutput <| fun sheet rowIx ->
+        if rowIx = 1 then
+            apply1 proc1 sheet rowIx
         else failwith "tellHeaders - not at first cell (something written already)"
 
 
-
-// Experiment to make client code less stringy and more "typeful"....
-// There seem to be two nice interfaces - an Applicative-like chain with (*>) or 
-// List<CellWriter<unit>>.  
-// In Haskell we would probably favour an Applicative chain, but using custom operators 
-// seem a bit less pleasant in F#.
-// Note though - the CellWriter/RowWriter model suits batch output it doesn't work for
-// e.g. TotalOrder, TotalOrder2 where the ouput is split between procedures.
+// Design note - previous CellWriter had a phantom type paramater
+// but as CellWriter was never a monad it wasn't actually useful.
 
 
-type CellWriter<'a> = private Wrapped of obj
-type RowWriter<'a> = CellWriter<'a> list
+type CellWriter = private Wrapped of obj
+type RowWriter = CellWriter list
 
-let private getWrapped (cellWriter:CellWriter<'a>) : obj = 
+let private getWrapped (cellWriter:CellWriter) : obj = 
     match cellWriter with | Wrapped o -> o
 
 
-let tellRow (valueProcs:(CellWriter<unit>) list) : ClosedXMLOutput<unit> =
+let tellRow (valueProcs:CellWriter list) : ClosedXMLOutput<unit> =
     tellRowObjs <| List.map getWrapped valueProcs
 
-let tellRows (records:seq<'a>) (writeRow:'a -> CellWriter<unit> list) : ClosedXMLOutput<unit> = 
+let tellRows (records:seq<'a>) (writeRow:'a -> CellWriter list) : ClosedXMLOutput<unit> = 
     traverseMz (tellRow << writeRow) records
 
-let tellRowsi (records:seq<'a>) (writeRow:int -> 'a -> CellWriter<unit> list) : ClosedXMLOutput<unit> = 
+let tellRowsi (records:seq<'a>) (writeRow:int -> 'a -> CellWriter list) : ClosedXMLOutput<unit> = 
     traverseiMz (fun a ix -> tellRow <| writeRow a ix) records
 
-let tellSheetWithHeaders (headers:string list) (records:seq<'a>) (writeRow:'a -> CellWriter<unit> list) : ClosedXMLOutput<unit> = 
+let tellSheetWithHeaders (headers:string list) (records:seq<'a>) (writeRow:'a -> CellWriter list) : ClosedXMLOutput<unit> = 
     closedXMLOutput { do! tellHeaders headers
                       do! tellRows records writeRow }
 
 
-let tellSheetWithHeadersi (headers:string list) (records:seq<'a>) (writeRow:int -> 'a -> CellWriter<unit> list) : ClosedXMLOutput<unit> = 
+let tellSheetWithHeadersi (headers:string list) (records:seq<'a>) (writeRow:int -> 'a -> CellWriter list) : ClosedXMLOutput<unit> = 
     closedXMLOutput { do! tellHeaders headers
                       do! tellRowsi records writeRow }
 
-let tellObj (value:obj) : CellWriter<unit> = 
+let tellObj (value:obj) : CellWriter = 
     Wrapped <| value
 
-let tellBool (value:bool) : CellWriter<unit> = tellObj (value :> obj)
-let tellDateTime (value:System.DateTime) : CellWriter<unit> = tellObj (value :> obj)
-let tellDecimal (value:decimal) : CellWriter<unit> = tellObj (value :> obj)
-let tellFloat (value:float) : CellWriter<unit> = tellObj (value :> obj)
-let tellGuid (value:System.Guid) : CellWriter<unit> = tellObj (value :> obj)   
-let tellInteger (value:int) : CellWriter<unit> = tellObj (value :> obj)
-let tellInteger64 (value:int64) : CellWriter<unit> = tellObj (value :> obj)
+let tellBool (value:bool) : CellWriter = tellObj (value :> obj)
+let tellDateTime (value:System.DateTime) : CellWriter = tellObj (value :> obj)
+let tellDecimal (value:decimal) : CellWriter = tellObj (value :> obj)
+let tellFloat (value:float) : CellWriter = tellObj (value :> obj)
+let tellGuid (value:System.Guid) : CellWriter = tellObj (value :> obj)   
+let tellInteger (value:int) : CellWriter = tellObj (value :> obj)
+let tellInteger64 (value:int64) : CellWriter = tellObj (value :> obj)
 
-let tellString (value:string) : CellWriter<unit> = 
+let tellString (value:string) : CellWriter = 
     match value with 
     | null -> tellObj ("" :> obj)
     | _ -> tellObj (value :> obj)

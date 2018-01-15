@@ -137,49 +137,51 @@ let tellHeaders (values:string list) : CsvOutput<unit> =
     bindM askSep 
           (fun sep -> tellRowStrings <| List.map (fun s -> testQuoteField s sep) values)
 
-// Make client code less stringy and more "typeful"....
 
-type CellWriter<'a> = private Wrapped of (Separator -> string)
-type RowWriter<'a> = CellWriter<'a> list
+// Design note - previous CellWriter had a phantom type paramater
+// but as CellWriter was never a monad it wasn't actually useful.
 
-let private getWrapped (sep:Separator) (cellWriter:CellWriter<'a>) : string = 
+type CellWriter = private Wrapped of (Separator -> string)
+type RowWriter = CellWriter list
+
+let private getWrapped (sep:Separator) (cellWriter:CellWriter) : string = 
     match cellWriter with 
     | Wrapped(fn) -> match fn sep with | null -> "" | s -> s
 
 
-let tellRow (valueProcs:(CellWriter<unit>) list) : CsvOutput<unit> =
+let tellRow (valueProcs:CellWriter list) : CsvOutput<unit> =
     bindM askSep (fun sep -> List.map (getWrapped sep) valueProcs |> tellRowStrings )
 
 
-let tellRows (records:seq<'a>) (writeRow:'a -> CellWriter<unit> list) : CsvOutput<unit> = 
+let tellRows (records:seq<'a>) (writeRow:'a -> CellWriter list) : CsvOutput<unit> = 
     traverseMz (tellRow << writeRow) records
 
-let tellRowsi (records:seq<'a>) (writeRow:int -> 'a -> CellWriter<unit> list) : CsvOutput<unit> = 
+let tellRowsi (records:seq<'a>) (writeRow:int -> 'a -> CellWriter list) : CsvOutput<unit> = 
     traverseiMz (fun a ix -> tellRow <| writeRow a ix) records
 
-let tellSheetWithHeaders (headers:string list) (records:seq<'a>) (writeRow:'a -> CellWriter<unit> list) : CsvOutput<unit> = 
+let tellSheetWithHeaders (headers:string list) (records:seq<'a>) (writeRow:'a -> CellWriter list) : CsvOutput<unit> = 
     csvOutput { do! tellHeaders headers
                 do! tellRows records writeRow }
 
 
-let tellSheetWithHeadersi (headers:string list) (records:seq<'a>) (writeRow:int -> 'a -> CellWriter<unit> list) : CsvOutput<unit> = 
+let tellSheetWithHeadersi (headers:string list) (records:seq<'a>) (writeRow:int -> 'a -> CellWriter list) : CsvOutput<unit> = 
     csvOutput { do! tellHeaders headers
                 do! tellRowsi records writeRow }
 
 
 // Should testQuotedString be the default?
-let tellObj (value:obj) : CellWriter<unit> = 
+let tellObj (value:obj) : CellWriter = 
     Wrapped <| fun sep -> value.ToString() |> testQuoteField sep 
 
-let tellBool (value:bool) : CellWriter<unit> = tellObj (value :> obj)
-let tellDateTime (value:System.DateTime) : CellWriter<unit> = tellObj (value :> obj)
-let tellDecimal (value:decimal) : CellWriter<unit> = tellObj (value :> obj)
-let tellFloat (value:float) : CellWriter<unit> = tellObj (value :> obj)
-let tellGuid (value:System.Guid) : CellWriter<unit> = tellObj (value :> obj)   
-let tellInteger (value:int) : CellWriter<unit> = tellObj (value :> obj)
-let tellInteger64 (value:int64) : CellWriter<unit> = tellObj (value :> obj)
+let tellBool (value:bool) : CellWriter = tellObj (value :> obj)
+let tellDateTime (value:System.DateTime) : CellWriter = tellObj (value :> obj)
+let tellDecimal (value:decimal) : CellWriter = tellObj (value :> obj)
+let tellFloat (value:float) : CellWriter = tellObj (value :> obj)
+let tellGuid (value:System.Guid) : CellWriter = tellObj (value :> obj)   
+let tellInteger (value:int) : CellWriter = tellObj (value :> obj)
+let tellInteger64 (value:int64) : CellWriter = tellObj (value :> obj)
 
-let tellString (value:string) : CellWriter<unit> = Wrapped <| fun sep -> testQuoteField sep value
-let tellQuotedString (value:string) : CellWriter<unit> = Wrapped <| fun _ -> quoteField value
+let tellString (value:string) : CellWriter = Wrapped <| fun sep -> testQuoteField sep value
+let tellQuotedString (value:string) : CellWriter = Wrapped <| fun _ -> quoteField value
 
     

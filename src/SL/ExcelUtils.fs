@@ -14,7 +14,7 @@ open SL.ClosedXMLOutput
 
 
 let trimCsvFile (inputFile:string) (outputFile:string) (csvHasHeaders:bool) (sep:string) : unit =
-    let truncRow (row:CsvRow) : SL.CsvOutput.CellWriter<unit> list = 
+    let truncRow (row:CsvRow) : SL.CsvOutput.CellWriter list = 
         Array.foldBack (fun (value:string) ac -> 
                          let a = value.Trim() |> SL.CsvOutput.tellString in a::ac) row.Columns [] 
         
@@ -29,7 +29,7 @@ let trimCsvFile (inputFile:string) (outputFile:string) (csvHasHeaders:bool) (sep
 
 // Output from Excel uses double quote and comma
 let private csvTrimToClosedXML (inputFile:string) (outputFile:string) (sheetName:string) : unit =
-    let truncRow (row:CsvRow) : SL.ClosedXMLOutput.CellWriter<unit> list = 
+    let truncRow (row:CsvRow) : SL.ClosedXMLOutput.CellWriter list = 
         Array.foldBack (fun (value:string) ac -> 
                          let a = value.Trim() |> tellString in a::ac) row.Columns [] 
         
