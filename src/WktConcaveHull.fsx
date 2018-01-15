@@ -111,7 +111,7 @@ let wktOutfile = @"G:\work\Projects\events2\wkt_concave_hulls1.csv"
 
 // Note - main should run in the result monad...
 let main (pwd:string) = 
-    let conn = pgsqlConnParamsTesting pwd "spt_geo" 
+    let conn = pgsqlConnParamsTesting "spt_geo" pwd 
     let csvProc (oidtexts:(int*string) list) : CsvOutput<unit> = 
         tellSheetWithHeaders ["oid"; "wkt"] 
                             oidtexts
@@ -133,7 +133,7 @@ let main (pwd:string) =
 // Make input Json...
 
 type ImportTable = 
-    ExcelFile< @"G:\work\Projects\events2\truncated-site-list.xlsx",
+    ExcelFile< @"G:\work\Projects\events2\site-list-for-hospitals.xlsx",
                SheetName = "Site_List",
                ForceString = true >
 
@@ -141,20 +141,20 @@ type ImportRow = ImportTable.Row
 
 let buildImports () : (string * ImportRow list) list  =
     let importData = new ImportTable()
-    let nullPred (row:ImportRow) = match row.GetValue(0) with null -> false | _ -> true
+    let nullPred (row:ImportRow) = match row.operational_contact with null -> false | _ -> true
     importData.Data 
         |> Seq.filter nullPred 
         |> Seq.toList 
-        |> List.groupBy (fun row -> row.``Operational Responsibility``)
+        |> List.groupBy (fun row -> row.operational_contact)
 
 
 let genJSON (groups: (string * ImportRow list) list) : JsonOutput<unit> = 
     let tellOutfalls (outfalls : ImportRow list) : JsonOutput<unit> = 
         tellListAsArray outfalls 
                         (fun (row:ImportRow) ->
-                            tellObject  [ "UID",        SL.JsonOutput.tellString <| row.``SAI Number``
-                                        ; "Name",       SL.JsonOutput.tellString <| row.Name
-                                        ; "OSGB36NGR",  SL.JsonOutput.tellString <| row.``Site Grid Ref`` ] )
+                            tellObject  [ "UID",        SL.JsonOutput.tellString <| row.asset_sai_number
+                                        ; "Name",       SL.JsonOutput.tellString <| row.common_name
+                                        ; "OSGB36NGR",  SL.JsonOutput.tellString <| row.site_ngr ] )
     tellAsArray groups 
                     (fun (group:(string * ImportRow list)) -> 
                         tellObject [ "Responsibility",  SL.JsonOutput.tellString   <| fst group

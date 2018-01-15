@@ -168,7 +168,7 @@ let pgTSPQuery (startPt:DbRecord) (endPt:DbRecord) : PGSQLConn<DbRecord list> =
     execReaderList query procM          // for some reason execReaderList does not work and we have to inline it here...
 
 let outputXslx (records:DbRecord list) (fileName:string) : unit = 
-    let proc1 (ix:int) (orec:DbRecord) : RowWriter<unit> = 
+    let proc1 (ix:int) (orec:DbRecord) : RowWriter = 
         [ SL.ClosedXMLOutput.tellInteger   (ix + 1)
         ; SL.ClosedXMLOutput.tellString    orec.SiteCode
         ; SL.ClosedXMLOutput.tellString    orec.LongName

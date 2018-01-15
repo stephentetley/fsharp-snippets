@@ -135,7 +135,7 @@ let tellRowStrings (values:string list) : CsvOutput<unit> =
 
 let tellHeaders (values:string list) : CsvOutput<unit> =
     bindM askSep 
-          (fun sep -> tellRowStrings <| List.map (fun s -> testQuoteField s sep) values)
+          (fun sep -> tellRowStrings <| List.map (fun s -> testQuoteField sep s) values)
 
 
 // Design note - previous CellWriter had a phantom type paramater

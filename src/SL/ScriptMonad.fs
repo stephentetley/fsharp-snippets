@@ -146,6 +146,7 @@ let sumTraverseM (fn: 'a -> ScriptMonad<'r,int>) (source:seq<'a>) : ScriptMonad<
 
 let sumTraverseiM (fn:int -> 'a -> ScriptMonad<'r,int>) (source:seq<'a>) : ScriptMonad<'r,int> =
     fmapM Seq.sum <| traverseiM fn source
+
 let sumSequenceM (source:ScriptMonad<'r,int> list) : ScriptMonad<'r,int> = 
     fmapM List.sum <| sequenceM source
 

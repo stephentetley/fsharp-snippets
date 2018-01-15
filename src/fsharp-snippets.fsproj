@@ -103,6 +103,7 @@
     <None Include="Obsolete\XlsTrim.fsx" />
     <None Include="Obsolete\XlsTrim2.fsx" />
     <Compile Include="Scripts\NearestHospital.fs" />
+    <Compile Include="Scripts\PostGIS.fs" />
     <None Include="CsvTrim.fsx" />
     <None Include="TestGeo.fsx" />
     <None Include="TspRouting.fsx" />

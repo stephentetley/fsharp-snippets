@@ -25,6 +25,7 @@ open SL.ScriptMonad
 #load @"SL\ExcelProviderHelper.fs"
 open SL.ExcelProviderHelper
 
+// ********** DATA SETUP **********
 
 type CatsPoweredTable = 
     ExcelFile< @"G:\work\Projects\events2\CATS7-for-data.xlsx",
@@ -98,6 +99,19 @@ let getSaiSitesRows () : SaiSitesRow list =
     excelTableGetRows dict (new SaiSitesTable())
 
 
+type OutstationsTable = 
+    ExcelFile< @"G:\work\Projects\events2\rts-outstations-jan2018-TRIM.xlsx",
+                SheetName = "Outstations",
+                ForceString = true >
+
+type OutstationRow = OutstationsTable.Row
+
+let getOutstations () : OutstationRow list = 
+    let dict : GetRowsDict<OutstationsTable, OutstationRow> = 
+        { GetRows     = fun imports -> imports.Data 
+          NotNullProc = fun row -> match row.``OS name`` with null -> false | _ -> true }
+    excelTableGetRows dict (new OutstationsTable())
+// ********** SCRIPT **********
 type Script<'a> = ScriptMonad<SQLiteConnParams,'a>
 
 let withConnParams (fn:SQLiteConnParams -> Script<'a>) : Script<'a> = 
@@ -110,9 +124,10 @@ let liftWithConnParams (fn:SQLiteConnParams -> Result<'a>) : Script<'a> =
 
 let deleteAllData () : Script<int> = 
     let proc = 
-        SQLiteConn.sumSequenceM [ deleteAllRows "cats_consents"
-                                 ; deleteAllRows "storm_dis_permits" 
-                                 ; deleteAllRows "sai_sites" ]
+        SL.SQLiteConn.sumSequenceM [ deleteAllRows "cats_consents"
+                                    ; deleteAllRows "storm_dis_permits" 
+                                    ; deleteAllRows "sai_sites"
+                                    ; deleteAllRows "rts_outstations" ]
     liftWithConnParams <| runSQLiteConn proc
 
 
@@ -174,6 +189,16 @@ let makeSaiSitesINSERT (row:SaiSitesRow) : string =
             ; stringValue       "has_mains"             row.``Mains Electricity``
             ]
 
+let makeOutstationINSERT (row:OutstationRow) : string = 
+    sqlINSERT "rts_outstations" 
+        <|  [ stringValue       "os_name"           row.``OS name``
+            ; stringValue       "od_name"           row.``OD name``
+            ; stringValue       "od_comment"        row.``OD comment``
+            ; stringValue       "os_comment"        row.``OS comment``
+            ; stringValue       "media"             row.Media
+            ; stringValue       "os_addr"           row.``OS Addr``
+            ; stringValue       "os_type"           row.``OS type``
+            ]
 let insertCatsConsents () : Script<int> = 
     let poweredRows = getCatsPoweredRows ()
     let poweredRowProc (row:CatsPoweredRow) : SQLiteConn<int> = execNonQuery <| makePoweredCatConsentINSERT row
@@ -181,11 +206,11 @@ let insertCatsConsents () : Script<int> =
     let batteryRowProc (row:CatsBatteryRow) : SQLiteConn<int> = execNonQuery <| makeBatteryCatConsentINSERT row
     let nonTelemRows = getCatsNonTelemRows ()
     let nonTelemRowProc (row:CatsNonTelemRow) : SQLiteConn<int> = execNonQuery <| makeNonTelemCatConsentINSERT row
-    let forMSum (xs:'a list) (proc:'a -> SQLiteConn<int>) = SQLiteConn.fmapM (List.sum) <| SQLiteConn.forM xs proc
+    let forMSum (xs:'a list) (proc:'a -> SQLiteConn<int>) = SL.SQLiteConn.fmapM (List.sum) <| SL.SQLiteConn.forM xs proc
     let combinedProc = 
-        SQLiteConn.sumSequenceM [ forMSum poweredRows poweredRowProc 
-                                ; forMSum batteryRows batteryRowProc 
-                                ; forMSum nonTelemRows nonTelemRowProc ]
+        SL.SQLiteConn.sumSequenceM [ forMSum poweredRows poweredRowProc 
+                                    ; forMSum batteryRows batteryRowProc 
+                                    ; forMSum nonTelemRows nonTelemRowProc ]
     liftWithConnParams <| runSQLiteConn (withTransaction combinedProc)
 
 
@@ -201,6 +226,13 @@ let insertSaiSites () : Script<int> =
     let insertProc (row:SaiSitesRow) : SQLiteConn<int> = execNonQuery <| makeSaiSitesINSERT row
     liftWithConnParams <| runSQLiteConn (withTransactionListSum rows insertProc)
 
+
+let insertOutstations () : Script<int> =  
+    let rows = getOutstations ()
+    let insertProc (row:OutstationRow) : SQLiteConn<int> = execNonQuery <| makeOutstationINSERT row
+    liftWithConnParams <| runSQLiteConn (withTransactionListSum rows insertProc)
+
+
 let main () : unit = 
     let conn = sqliteConnParamsVersion3  @"G:\work\Projects\events2\edmDB.sqlite3"
   
@@ -210,4 +242,5 @@ let main () : unit =
             ; insertCatsConsents ()     |> logScript (sprintf "%i cats_consents inserted")       
             ; insertStormDisPermits ()  |> logScript (sprintf "%i storm_dis_permits inserted")
             ; insertSaiSites ()         |> logScript (sprintf "%i sai_sites inserted") 
+            ; insertOutstations ()      |> logScript (sprintf "%i rts_outstations inserted") 
             ]
