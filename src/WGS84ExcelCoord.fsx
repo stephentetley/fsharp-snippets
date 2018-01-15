@@ -6,8 +6,8 @@ open FSharp.ExcelProvider
 #r "Microsoft.Office.Interop.Excel"
 open Microsoft.Office.Interop
 
-#load @"SL\Geo.fs"
-open SL.Geo
+#load @"SL\Coord.fs"
+open SL.Geo.Coord
 
 
 type InputTable = 
@@ -19,7 +19,7 @@ type InputRow = InputTable.Row
 
 
 
-type CoordDB = Map<string,Coord.WGS84Point>
+type CoordDB = Map<string, WGS84Point>
 
 
 let main () = 
@@ -27,8 +27,7 @@ let main () =
     for (rowi:InputRow) in inputData.Data do
         match rowi.``Site Name`` with
         | null -> printfn "<finished>"
-        | _ ->  let opt = Option.map Coord.osgb36GridToWGS84
-                            <| Coord.tryReadOSGB36Grid rowi.``Grid Ref``
+        | _ ->  let opt = Option.map osgb36GridToWGS84 <| tryReadOSGB36Grid rowi.``Grid Ref``
                 match opt with
-                | Some(pt:Coord.WGS84Point) ->  printfn "%s,%s,%s,%f,%f" rowi.``Site Name`` rowi.``Grid Ref`` rowi.``Operational Responsibility`` pt.Latitude pt.Longitude
+                | Some(pt:WGS84Point) ->  printfn "%s,%s,%s,%f,%f" rowi.``Site Name`` rowi.``Grid Ref`` rowi.``Operational Responsibility`` pt.Latitude pt.Longitude
                 | None -> printfn "%s,%s,%s,0.0,0.0" rowi.``Site Name`` rowi.``Grid Ref`` rowi.``Operational Responsibility``

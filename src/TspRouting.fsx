@@ -22,8 +22,8 @@ open SL.ClosedXMLOutput
 #r "Npgsql"
 open Npgsql
 
-#load @"SL\Geo.fs"
-open SL.Geo
+#load @"SL\Coord.fs"
+open SL.Geo.Coord
 #load @"SL\ResultMonad.fs"
 open SL.ResultMonad
 #load @"SL\SqlUtils.fs"
@@ -87,12 +87,12 @@ let readInputJson (fileName:string) : JsonRecord list =
 // let testSOFAR () = readInputJson @"G:\work\Projects\pgrouting\routing_data1.json"
 
 let tryMakeDbRecord (ix:int) (input:JsonRecord) : DbRecord option = 
-    let proc (ngr:Coord.OSGB36Grid) : DbRecord =  
-        let wgs84 = Coord.osgb36GridToWGS84 ngr
+    let proc (ngr:OSGB36Grid) : DbRecord =  
+        let wgs84 = osgb36GridToWGS84 ngr
         { Index= ix; SiteCode = input.Uid; LongName = input.Name; 
           Wgs84Lat = float wgs84.Latitude; 
           Wgs84Lon = float wgs84.Longitude }
-    Option.map proc (Coord.tryReadOSGB36Grid <| input.Osgb36NGR) 
+    Option.map proc (tryReadOSGB36Grid <| input.Osgb36NGR) 
 
 
 let makeDBRecords (inputs:JsonRecord list) : DbRecord list = 

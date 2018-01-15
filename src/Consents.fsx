@@ -5,7 +5,7 @@ open FSharp.ExcelProvider
 
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 
-#load @"SL\Geo.fs"
+#load @"SL\Coord.fs"
 open SL.Geo
 
 #load @"SL\CsvOutput.fs"

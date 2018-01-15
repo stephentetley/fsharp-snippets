@@ -20,7 +20,8 @@ open Npgsql
 open SL.ResultMonad
 open SL.PGSQLConn
 
-#load @"SL\Geo.fs"
+#load @"SL\Coord.fs"
+#load @"SL\WellKnownText.fs"
 open SL.Geo
 
 #load @"SL\JsonExtractor.fs"
@@ -38,11 +39,8 @@ open SL.JsonOutput
 #load @"SL\CsvOutput.fs"
 open SL.CsvOutput
 
-
-let makeConnString (pwd:string) (dbname:string) : string = 
-    let fmt : Printf.StringFormat<(string -> string -> string)> = 
-        "Host=localhost;Username=postgres;Password=%s;Database=%s";
-    sprintf fmt pwd dbname
+#load @"Scripts\PostGIS.fs"
+open Scripts.PostGIS
 
 
 let jsonInput = @"G:\work\Projects\events2\concave_hull_data1.json"
@@ -74,36 +72,14 @@ let getInputs () : Result<Group<Coord.WGS84Point> list> =
                       (extractFromFile extractorM jsonInput)
 
 
-let genConvexHullQuery (points:Coord.WGS84Point list) : string = 
-    System.String.Format("""
-        SELECT ST_AsText(ST_ConvexHull(
-	        ST_Collect(
-		        ST_GeomFromText('{0}')
-                )) );
-    """, (Wkt.genMULTIPOINT points) )
-
-
-// Note TargetPercent of 1.0 gives a convex hull (0.9 seems okay)
-let genConcaveHullQuery (points:Coord.WGS84Point list) (targetPercent:float) : string = 
-    System.String.Format("""
-        SELECT ST_AsText(ST_ConcaveHull(
-	        ST_Collect(
-		        ST_GeomFromText('{0}')
-                ), {1}) );
-    """, (Wkt.genMULTIPOINT points), targetPercent )
-
 
 // Note - Delimited Text Layers in QGIS might only be able to show a single type of WKT element:
 // i.e only POLYGONs, only MULTIPOINTs.
 
-//let test02 () = inputs () |> List.take 14 |> genConvexHullQuery |> printfn "%s"
-let pgConcaveHull (points:Coord.WGS84Point list) : PGSQLConn<string> = 
-    let query = genConcaveHullQuery points 0.9
-    execReaderSingleton query <| fun reader -> reader.GetString(0)
 
 let pgConcaveHulls (groups:(Group<Coord.WGS84Point> list)) : PGSQLConn<(int*string) list> = 
     SL.PGSQLConn.mapiM (fun ix group1 -> 
-                    SL.PGSQLConn.fmapM (fun ans -> (ix+1,ans)) <| pgConcaveHull group1.Points) groups 
+                    SL.PGSQLConn.fmapM (fun ans -> (ix+1,ans)) <| pgConcaveHull group1.Points 0.9) groups 
 
 
 let wktOutfile = @"G:\work\Projects\events2\wkt_concave_hulls1.csv"

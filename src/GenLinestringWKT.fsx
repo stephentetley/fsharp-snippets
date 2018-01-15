@@ -6,7 +6,8 @@ open FSharp.ExcelProvider
 #r "Microsoft.Office.Interop.Excel"
 open Microsoft.Office.Interop
 
-#load @"SL\Geo.fs"
+#load @"SL\Coord.fs"
+#load @"SL\WellKnownText.fs"
 open SL.Geo
 #load @"SL\CsvOutput.fs"
 open SL.CsvOutput
@@ -54,7 +55,7 @@ let genWKT (orders:OrderGroups) (db:CoordDB) : CsvOutput<unit> =
                             pointGroups
                             (fun ix pts -> 
                                 [ tellInteger <| ix+1
-                                ; tellQuotedString <| Wkt.genLINESTRING pts ])
+                                ; tellQuotedString <| WellKnownText.genLINESTRING pts ])
 
 
 let partition (lines:string list) : OrderGroups = 

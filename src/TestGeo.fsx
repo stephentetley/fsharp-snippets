@@ -2,7 +2,8 @@
 
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 
-#load @"SL\Geo.fs"
+#load @"SL\Coord.fs"
+#load @"SL\WellKnownText.fs"
 open SL.Geo
 
 

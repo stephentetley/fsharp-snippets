@@ -1,4 +1,8 @@
-﻿#I @"..\packages\ExcelProvider.0.8.2\lib"
+﻿#I @"..\packages\FSharp.Data.2.3.3\lib\net40"
+#r @"FSharp.Data.dll"
+open FSharp.Data
+
+#I @"..\packages\ExcelProvider.0.8.2\lib"
 #r "ExcelProvider.dll"
 open FSharp.ExcelProvider
 
@@ -6,7 +10,20 @@ open FSharp.ExcelProvider
 #r "Microsoft.Office.Interop.Excel"
 open Microsoft.Office.Interop
 
-#load @"SL\Geo.fs"
+#I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
+#r "FSharpx.Collections"
+#I @"..\packages\DocumentFormat.OpenXml.2.7.2\lib\net46\"
+#I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
+#I @"..\packages\ClosedXML.0.90.0\lib\net452\"
+#r "ClosedXML"
+
+#load @"SL\CommonUtils.fs"
+#load @"SL\ResultMonad.fs"
+#load @"SL\ScriptMonad.fs"
+#load @"SL\CsvOutput.fs"
+#load @"SL\ClosedXMLOutput.fs"
+
+#load @"SL\Coord.fs"
 open SL.Geo
 
 #load @"SL\ExcelUtils.fs"

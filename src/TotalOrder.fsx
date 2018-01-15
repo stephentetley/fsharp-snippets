@@ -1,13 +1,14 @@
-﻿#I @"C:\WINDOWS\assembly\GAC_MSIL\Microsoft.Office.Interop.Excel\15.0.0.0__71e9bce111e9429c"
-#r "Microsoft.Office.Interop.Excel"
-open Microsoft.Office.Interop
+﻿#I @"..\packages\FSharp.Data.2.3.3\lib\net40"
+#r @"FSharp.Data.dll"
+open FSharp.Data
 
 #I @"..\packages\ExcelProvider.0.8.2\lib"
 #r "ExcelProvider.dll"
 open FSharp.ExcelProvider
 
-#load @"SL\ExcelUtils.fs"
-open SL.ExcelUtils
+#I @"C:\WINDOWS\assembly\GAC_MSIL\Microsoft.Office.Interop.Excel\15.0.0.0__71e9bce111e9429c"
+#r "Microsoft.Office.Interop.Excel"
+open Microsoft.Office.Interop
 
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
@@ -15,8 +16,16 @@ open SL.ExcelUtils
 #I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
 #I @"..\packages\ClosedXML.0.90.0\lib\net452\"
 #r "ClosedXML"
+
+#load @"SL\CommonUtils.fs"
+#load @"SL\ResultMonad.fs"
+#load @"SL\ScriptMonad.fs"
+#load @"SL\CsvOutput.fs"
 #load @"SL\ClosedXMLOutput.fs"
 open SL.ClosedXMLOutput
+
+#load @"SL\ExcelUtils.fs"
+open SL.ExcelUtils
 
 
 let outpath = @"G:\work\Projects\ultrasonics\ultrasonic-updates.xlsx"

@@ -6,7 +6,7 @@ open FSharp.Data
 #r "Microsoft.Office.Interop.Excel"
 open Microsoft.Office.Interop
 
-#load @"SL\Geo.fs"
+#load @"SL\Coord.fs"
 open SL.Geo
 
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
