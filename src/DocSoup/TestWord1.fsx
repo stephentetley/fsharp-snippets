@@ -75,17 +75,17 @@ let test06 () =
 
 // This is nice and high level...
 let test07 () = 
-    let proc = docMonad { 
-        let! a0 = table 1 <| cell (0,0) cleanText
-        let! c0 = table 3 <| cell (0,0) cleanText
-        let! c1 = table 3 <| cell (1,0) cleanText
-        let! c2 = table 3 <| cell (2,0) cleanText
-        let! c3 = table 3 <| cell (3,0) cleanText
-        let! c4 = table 3 <| cell (4,0) cleanText
-        let! c5 = table 3 <| cell (5,0) cleanText
-        let! c6 = table 3 << cell (6,0) <| cleanText
-        return [a0;c0;c1;c2;c3;c4;c5]
-    }
+    let proc = 
+        sequenceM   [ table 1 <| cell (0,0) cleanText
+                    ; table 3 <| cell (0,0) cleanText
+                    ; table 3 <| cell (1,0) cleanText
+                    ; table 3 <| cell (2,0) cleanText
+                    ; table 3 <| cell (3,0) cleanText
+                    ; table 3 <| cell (4,0) cleanText
+                    ; table 3 <| cell (5,0) cleanText
+                    ; table 3 << cell (6,0) <| cleanText
+                    ]
+   
     printfn "%A" <| runOnFileE proc testDoc
 
 

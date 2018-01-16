@@ -10,10 +10,10 @@ open DocSoup.Base
 
 
 // DocMonad is Reader(immutable)+Reader+Error
-type DocMonad<'a> = DocMonad of (Word.Document -> Region -> Answer<'a>)
+type DocMonad<'a> = DocMonad of (Word.Document -> Region -> Ans<'a>)
 
 
-let inline apply1 (ma : DocMonad<'a>) (doc:Word.Document) (focus:Region) : Answer<'a>= 
+let inline apply1 (ma : DocMonad<'a>) (doc:Word.Document) (focus:Region) : Ans<'a>= 
     let (DocMonad f) = ma in f doc focus
 
 let private unitM (x:'a) : DocMonad<'a> = DocMonad <| fun _ _ -> Ok x
@@ -109,6 +109,10 @@ let tupleM4 (ma:DocMonad<'a>) (mb:DocMonad<'b>) (mc:DocMonad<'c>) (md:DocMonad<'
 let tupleM5 (ma:DocMonad<'a>) (mb:DocMonad<'b>) (mc:DocMonad<'c>) (md:DocMonad<'d>) (me:DocMonad<'e>) : DocMonad<'a * 'b * 'c * 'd * 'e> = 
     liftM5 (fun a b c d e -> (a,b,c,d,e)) ma mb mc md me
 
+let sequenceM (source:DocMonad<'a> list) : DocMonad<'a list> = 
+    DocMonad <| fun doc focus -> 
+        Base.sequenceM <| List.map (fun fn -> apply1 fn doc focus) source
+
 // Left biased choice, if ``ma`` succeeds return its result, otherwise try ``mb``.
 let alt (ma:DocMonad<'a>) (mb:DocMonad<'a>) : DocMonad<'a> = 
     DocMonad <| fun doc focus ->
@@ -147,7 +151,7 @@ let seqR (ma:DocMonad<'a>) (mb:DocMonad<'b>) : DocMonad<'b> =
             | Ok b -> Ok b
 
 // DocMonad specific operations
-let runOnFile (ma:DocMonad<'a>) (fileName:string) : Answer<'a> =
+let runOnFile (ma:DocMonad<'a>) (fileName:string) : Ans<'a> =
     if System.IO.File.Exists (fileName) then
         let app = new Word.ApplicationClass (Visible = true) 
         let doc = app.Documents.Open(FileName = ref (fileName :> obj))
