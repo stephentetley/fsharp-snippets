@@ -23,12 +23,12 @@ open SL.ClosedXMLOutput
 open Npgsql
 
 #load @"SL\Coord.fs"
-open SL.Geo.Coord
-#load @"SL\ResultMonad.fs"
-open SL.ResultMonad
+#load @"SL\AnswerMonad.fs"
 #load @"SL\SqlUtils.fs"
-open SL.SqlUtils
 #load @"SL\PGSQLConn.fs"
+open SL.Geo.Coord
+open SL.AnswerMonad
+open SL.SqlUtils
 open SL.PGSQLConn
 
 
@@ -179,7 +179,7 @@ let outputXslx (records:DbRecord list) (fileName:string) : unit =
 
 let findStartAndEnd (findStart:DbRecord list -> DbRecord option) 
                     (findEnd:DbRecord list -> DbRecord option)
-                    (records:DbRecord list) : Result<DbRecord*DbRecord> = 
+                    (records:DbRecord list) : Answer<DbRecord*DbRecord> = 
     match (findStart records, findEnd records) with
         | (Some(start1) , Some(end1)) -> Ok(start1,end1)
         | (Some(_), None) -> Err "Cannot find end"
@@ -195,8 +195,8 @@ let main (pwd:string) : unit =
                     let! ans = pgInsertRecords records 
                     return ans }
     let ans = 
-        runResultWithError 
-            <| resultMonad { 
+        runAnswerWithError 
+            <| answerMonad { 
                 let! count1        = runPGSQLConn procSetup conn
                 let! (start1,end1) = findStartAndEnd tryFindFurthestNorth tryFindFurthestSouth records
                 let! results       = runPGSQLConn (pgTSPQuery start1 end1) conn

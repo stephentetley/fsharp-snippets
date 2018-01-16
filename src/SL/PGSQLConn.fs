@@ -2,7 +2,7 @@
 
 open Npgsql
 
-open SL.ResultMonad
+open SL.AnswerMonad
 open SL.SqlUtils
 
 
@@ -23,9 +23,9 @@ let pgsqlConnParamsTesting (dbName:string) (password:string) : PGSQLConnParams =
 
 
 // SQLiteConn Monad
-type PGSQLConn<'a> = PGSQLConn of (NpgsqlConnection -> Result<'a>)
+type PGSQLConn<'a> = PGSQLConn of (NpgsqlConnection -> Answer<'a>)
 
-let inline private apply1 (ma : PGSQLConn<'a>) (conn:NpgsqlConnection) : Result<'a> = 
+let inline private apply1 (ma : PGSQLConn<'a>) (conn:NpgsqlConnection) : Answer<'a> = 
     let (PGSQLConn f) = ma in f conn
 
 let inline private unitM (x:'a) : PGSQLConn<'a> = PGSQLConn (fun _ -> Ok x)
@@ -57,49 +57,49 @@ let fmapM (fn:'a -> 'b) (ma:PGSQLConn<'a>) : PGSQLConn<'b> =
 
 let mapM (fn:'a -> PGSQLConn<'b>) (xs:'a list) : PGSQLConn<'b list> = 
     PGSQLConn <| fun conn ->
-        ResultMonad.mapM (fun a -> apply1 (fn a) conn) xs
+        AnswerMonad.mapM (fun a -> apply1 (fn a) conn) xs
 
 let forM (xs:'a list) (fn:'a -> PGSQLConn<'b>) : PGSQLConn<'b list> = mapM fn xs
 
 let mapMz (fn:'a -> PGSQLConn<'b>) (xs:'a list) : PGSQLConn<unit> = 
     PGSQLConn <| fun conn ->
-        ResultMonad.mapMz (fun a -> apply1 (fn a) conn) xs
+        AnswerMonad.mapMz (fun a -> apply1 (fn a) conn) xs
 
 let forMz (xs:'a list) (fn:'a -> PGSQLConn<'b>) : PGSQLConn<unit> = mapMz fn xs
 
 let mapiM (fn:int -> 'a -> PGSQLConn<'b>) (xs:'a list) : PGSQLConn<'b list> = 
     PGSQLConn <| fun conn ->
-        ResultMonad.mapiM (fun ix a -> apply1 (fn ix a) conn) xs
+        AnswerMonad.mapiM (fun ix a -> apply1 (fn ix a) conn) xs
 
 let mapiMz (fn:int -> 'a -> PGSQLConn<'b>) (xs:'a list) : PGSQLConn<unit> = 
     PGSQLConn <| fun conn ->
-        ResultMonad.mapiMz (fun ix a -> apply1 (fn ix a) conn) xs
+        AnswerMonad.mapiMz (fun ix a -> apply1 (fn ix a) conn) xs
 
 let foriM (xs:'a list) (fn:int -> 'a -> PGSQLConn<'b>) : PGSQLConn<'b list> = mapiM fn xs
 
 let traverseM (fn: 'a -> PGSQLConn<'b>) (source:seq<'a>) : PGSQLConn<seq<'b>> = 
     PGSQLConn <| fun conn ->
-        ResultMonad.traverseM (fun x -> let mf = fn x in apply1 mf conn) source
+        AnswerMonad.traverseM (fun x -> let mf = fn x in apply1 mf conn) source
 
 let traverseMz (fn: 'a -> PGSQLConn<'b>) (source:seq<'a>) : PGSQLConn<unit> = 
     PGSQLConn <| fun conn ->
-        ResultMonad.traverseMz (fun x -> let mf = fn x in apply1 mf conn) source
+        AnswerMonad.traverseMz (fun x -> let mf = fn x in apply1 mf conn) source
 
 let traverseiM (fn:int -> 'a -> PGSQLConn<'b>) (source:seq<'a>) : PGSQLConn<seq<'b>> = 
     PGSQLConn <| fun conn ->
-        ResultMonad.traverseiM (fun ix x -> let mf = fn ix x in apply1 mf conn) source
+        AnswerMonad.traverseiM (fun ix x -> let mf = fn ix x in apply1 mf conn) source
 
 let traverseiMz (fn:int -> 'a -> PGSQLConn<'b>) (source:seq<'a>) : PGSQLConn<unit> = 
     PGSQLConn <| fun conn ->
-        ResultMonad.traverseiMz (fun ix x -> let mf = fn ix x in apply1 mf conn) source
+        AnswerMonad.traverseiMz (fun ix x -> let mf = fn ix x in apply1 mf conn) source
 
 let sequenceM (source:PGSQLConn<'a> list) : PGSQLConn<'a list> = 
     PGSQLConn <| fun conn ->
-        ResultMonad.sequenceM <| List.map (fun ma -> apply1 ma conn) source
+        AnswerMonad.sequenceM <| List.map (fun ma -> apply1 ma conn) source
 
 let sequenceMz (source:PGSQLConn<'a> list) : PGSQLConn<unit> = 
     PGSQLConn <| fun conn ->
-        ResultMonad.sequenceMz <| List.map (fun ma -> apply1 ma conn) source
+        AnswerMonad.sequenceMz <| List.map (fun ma -> apply1 ma conn) source
 
 
 // Summing variants
@@ -124,11 +124,11 @@ let sumTraverseiM (fn:int -> 'a -> PGSQLConn<int>) (source:seq<'a>) : PGSQLConn<
 
 let sumSequenceM (source:PGSQLConn<int> list) : PGSQLConn<int> = 
     PGSQLConn <| fun conn ->
-        ResultMonad.sumSequenceM (List.map (fun mf -> apply1 mf conn) source)
+        AnswerMonad.sumSequenceM (List.map (fun mf -> apply1 mf conn) source)
 
 
 // PGSQLConn-specific operations
-let runPGSQLConn (ma:PGSQLConn<'a>) (connParams:PGSQLConnParams) : Result<'a> = 
+let runPGSQLConn (ma:PGSQLConn<'a>) (connParams:PGSQLConnParams) : Answer<'a> = 
     let conn = paramsConnString connParams
     let dbconn = new NpgsqlConnection(conn)
     dbconn.Open()
@@ -141,11 +141,11 @@ let throwError (msg:string) : PGSQLConn<'a> =
 
 let swapError (msg:string) (ma:PGSQLConn<'a>) : PGSQLConn<'a> = 
     PGSQLConn <| fun conn -> 
-        ResultMonad.swapError msg (apply1 ma conn)
+        AnswerMonad.swapError msg (apply1 ma conn)
 
 let augmentError (fn:string -> string) (ma:PGSQLConn<'a>) : PGSQLConn<'a> = 
     PGSQLConn <| fun conn -> 
-        ResultMonad.augmentError fn (apply1 ma conn)
+        AnswerMonad.augmentError fn (apply1 ma conn)
 
 let liftConn (proc:NpgsqlConnection -> 'a) : PGSQLConn<'a> = 
     PGSQLConn <| fun conn -> 

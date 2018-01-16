@@ -4,14 +4,14 @@ open FSharp.Data
 open FSharp.Data.JsonExtensions
 open System.IO
 
-open SL.ResultMonad
+open SL.AnswerMonad
 
 
-type JsonExtractor<'a> = private JsonExtractor of (JsonValue -> Result<'a>)
+type JsonExtractor<'a> = private JsonExtractor of (JsonValue -> Answer<'a>)
 
 
 
-let inline private apply1 (ma : JsonExtractor<'a>) (jsVal:JsonValue)  : Result<'a> = 
+let inline private apply1 (ma : JsonExtractor<'a>) (jsVal:JsonValue)  : Answer<'a> = 
     let (JsonExtractor fn) = ma  in  fn jsVal
 
 let private unitM (x:'a) : JsonExtractor<'a> = 
@@ -36,23 +36,23 @@ let jsonExtractor:JsonExtractorBuilder = new JsonExtractorBuilder()
 // Common operations
 let fmapM (fn:'a -> 'b) (ma:JsonExtractor<'a>) : JsonExtractor<'b> = 
     JsonExtractor <| fun r ->
-        ResultMonad.fmapM fn (apply1 ma r)
+        AnswerMonad.fmapM fn (apply1 ma r)
 
 let liftM2 (fn:'a -> 'b -> 'r) (ma:JsonExtractor<'a>) (mb:JsonExtractor<'b>) : JsonExtractor<'r> = 
     JsonExtractor <| fun r ->
-        ResultMonad.liftM2 fn (apply1 ma r) (apply1 mb r)
+        AnswerMonad.liftM2 fn (apply1 ma r) (apply1 mb r)
 
 let liftM3 (fn:'a -> 'b -> 'c -> 'r) (ma:JsonExtractor<'a>) (mb:JsonExtractor<'b>) (mc:JsonExtractor<'c>) : JsonExtractor<'r> = 
     JsonExtractor <| fun r ->
-        ResultMonad.liftM3 fn (apply1 ma r) (apply1 mb r) (apply1 mc r)
+        AnswerMonad.liftM3 fn (apply1 ma r) (apply1 mb r) (apply1 mc r)
 
 let liftM4 (fn:'a -> 'b -> 'c -> 'd -> 'r) (ma:JsonExtractor<'a>) (mb:JsonExtractor<'b>) (mc:JsonExtractor<'c>) (md:JsonExtractor<'d>) : JsonExtractor<'r> = 
     JsonExtractor <| fun r ->
-        ResultMonad.liftM4 fn (apply1 ma r) (apply1 mb r) (apply1 mc r) (apply1 md r)
+        AnswerMonad.liftM4 fn (apply1 ma r) (apply1 mb r) (apply1 mc r) (apply1 md r)
 
 let liftM5 (fn:'a -> 'b -> 'c -> 'd -> 'e -> 'r) (ma:JsonExtractor<'a>) (mb:JsonExtractor<'b>) (mc:JsonExtractor<'c>) (md:JsonExtractor<'d>) (me:JsonExtractor<'e>) : JsonExtractor<'r> = 
     JsonExtractor <| fun r ->
-        ResultMonad.liftM5 fn (apply1 ma r) (apply1 mb r) (apply1 mc r) (apply1 md r) (apply1 me r)
+        AnswerMonad.liftM5 fn (apply1 ma r) (apply1 mb r) (apply1 mc r) (apply1 md r) (apply1 me r)
 
 
 let tupleM2 (ma:JsonExtractor<'a>) (mb:JsonExtractor<'b>) : JsonExtractor<'a * 'b> = 
@@ -70,42 +70,42 @@ let tupleM5 (ma:JsonExtractor<'a>) (mb:JsonExtractor<'b>) (mc:JsonExtractor<'c>)
 
 let apM (mf:JsonExtractor<'a -> 'b>) (ma:JsonExtractor<'a>) : JsonExtractor<'b> = 
     JsonExtractor <| fun r ->
-        ResultMonad.apM (apply1 mf r) (apply1 ma r)
+        AnswerMonad.apM (apply1 mf r) (apply1 ma r)
 
 
 let mapM (fn: 'a -> JsonExtractor<'b>) (xs: 'a list) : JsonExtractor<'b list> = 
     JsonExtractor <| fun r ->
-        ResultMonad.mapM (fun a -> apply1 (fn a) r) xs
+        AnswerMonad.mapM (fun a -> apply1 (fn a) r) xs
 
 let forM (xs:'a list) (fn:'a -> JsonExtractor<'b>) : JsonExtractor<'b list> = mapM fn xs
 
 
 let mapMz (fn: 'a -> JsonExtractor<'b>) (xs: 'a list) : JsonExtractor<unit> = 
     JsonExtractor <| fun r ->
-        ResultMonad.mapMz (fun a -> apply1 (fn a) r) xs
+        AnswerMonad.mapMz (fun a -> apply1 (fn a) r) xs
 
 let forMz (xs:'a list) (fn:'a -> JsonExtractor<'b>) : JsonExtractor<unit> = mapMz fn xs
 
 let traverseM (fn: 'a -> JsonExtractor<'b>) (source:seq<'a>) : JsonExtractor<seq<'b>> = 
     JsonExtractor <| fun r ->
-        ResultMonad.traverseM (fun a -> apply1 (fn a) r) source
+        AnswerMonad.traverseM (fun a -> apply1 (fn a) r) source
 
 
 let traverseMz (fn: 'a -> JsonExtractor<'b>) (source:seq<'a>) : JsonExtractor<unit> = 
     JsonExtractor <| fun r ->
-        ResultMonad.traverseMz (fun a -> apply1 (fn a) r) source
+        AnswerMonad.traverseMz (fun a -> apply1 (fn a) r) source
 
 let mapiM (fn:int -> 'a -> JsonExtractor<'b>) (xs: 'a list) : JsonExtractor<'b list> = 
     JsonExtractor <| fun r ->
-        ResultMonad.mapiM (fun ix a -> apply1 (fn ix a) r) xs
+        AnswerMonad.mapiM (fun ix a -> apply1 (fn ix a) r) xs
 
 let mapiMz (fn:int -> 'a -> JsonExtractor<'b>) (xs: 'a list) : JsonExtractor<unit> = 
     JsonExtractor <| fun r ->
-        ResultMonad.mapiMz (fun ix a -> apply1 (fn ix a) r) xs
+        AnswerMonad.mapiMz (fun ix a -> apply1 (fn ix a) r) xs
 
 
 // JsonExtractor-specific operations
-let extractFromFile (ma:JsonExtractor<'a>) (fileName:string) : Result<'a> =
+let extractFromFile (ma:JsonExtractor<'a>) (fileName:string) : Answer<'a> =
     fileName 
         |> System.IO.File.ReadAllText
         |> JsonValue.Parse 
@@ -117,12 +117,12 @@ let throwError (msg:string) : JsonExtractor<'a> =
 
 let swapError (msg:string) (ma:JsonExtractor<'a>) : JsonExtractor<'a> = 
     JsonExtractor <| fun r -> 
-        ResultMonad.swapError msg (apply1 ma r)
+        AnswerMonad.swapError msg (apply1 ma r)
 
 
 let augmentError (fn:string -> string) (ma:JsonExtractor<'a>) : JsonExtractor<'a> = 
     JsonExtractor <| fun r -> 
-        ResultMonad.augmentError fn (apply1 ma r)
+        AnswerMonad.augmentError fn (apply1 ma r)
 
 
 let askM : JsonExtractor<JsonValue> = JsonExtractor <| Ok
@@ -158,15 +158,15 @@ let askString : JsonExtractor<string> = liftJson <| fun r -> r.AsString()
 let askArrayOf (ma:JsonExtractor<'a>) : JsonExtractor<'a []> = 
     JsonExtractor <| fun r ->
         let arr: JsonValue [] = [| for o in r -> o |]
-        ResultMonad.fmapM Seq.toArray <| ResultMonad.traverseM (fun a -> apply1 ma a) arr 
+        AnswerMonad.fmapM Seq.toArray <| AnswerMonad.traverseM (fun a -> apply1 ma a) arr 
 
 
 let askArrayAsList (ma:JsonExtractor<'a>) : JsonExtractor<'a list> = 
     JsonExtractor <| fun r ->
         let arr: JsonValue [] = [| for o in r -> o |]
-        ResultMonad.fmapM Seq.toList <| ResultMonad.traverseM (fun a -> apply1 ma a) arr 
+        AnswerMonad.fmapM Seq.toList <| AnswerMonad.traverseM (fun a -> apply1 ma a) arr 
 
 let askArrayAsSeq (ma:JsonExtractor<'a>) : JsonExtractor<seq<'a>> = 
     JsonExtractor <| fun r ->
         let arr: JsonValue [] = [| for o in r -> o |]
-        ResultMonad.traverseM (fun a -> apply1 ma a) arr 
+        AnswerMonad.traverseM (fun a -> apply1 ma a) arr 

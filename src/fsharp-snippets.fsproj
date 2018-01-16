@@ -69,7 +69,7 @@
     <None Include="DocSoup\OldTestRange.fsx" />
     <Compile Include="SL\CommonUtils.fs" />
     <Compile Include="SL\StringUtils.fs" />
-    <Compile Include="SL\ResultMonad.fs" />
+    <Compile Include="SL\AnswerMonad.fs" />
     <Compile Include="SL\ScriptMonad.fs" />
     <Compile Include="SL\Coord.fs" />
     <Compile Include="SL\WellKnownText.fs" />

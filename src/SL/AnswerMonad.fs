@@ -1,49 +1,49 @@
-﻿module SL.ResultMonad
+﻿module SL.AnswerMonad
 
 
 // For Seq.tail
 open FSharpx.Collections
 
-// Result is the answer type for connection monads, etc.
+// Answer is the answer type for connection monads, etc. that can fail.
 // We also want monadic chaining.
 
-type Result<'a> = 
+type Answer<'a> = 
     | Ok of 'a
     | Err of string
 
-let resultToChoice (result:Result<'a>) : Choice<string,'a> =
+let answerToChoice (result:Answer<'a>) : Choice<string,'a> =
     match result with
     | Err msg -> Choice1Of2(msg)
     | Ok a -> Choice2Of2(a)
 
 
-let inline private unitM (x:'a) : Result<'a> = Ok x
+let inline private unitM (x:'a) : Answer<'a> = Ok x
 
 
-let inline private bindM (ma:Result<'a>) (f : 'a -> Result<'b>) : Result<'b> =
+let inline private bindM (ma:Answer<'a>) (f : 'a -> Answer<'b>) : Answer<'b> =
     match ma with
     | Ok a -> f a
     | Err msg -> Err(msg)
 
-let fail : Result<'a> = Err "Result fail"
+let fail : Answer<'a> = Err "Answer fail"
 
 
-type ResultBuilder() = 
+type AnswerBuilder() = 
     member self.Return x = unitM x
     member self.Bind (p,f) = bindM p f
     member self.Zero () = unitM ()
 
-let (resultMonad:ResultBuilder) = new ResultBuilder()
+let (answerMonad:AnswerBuilder) = new AnswerBuilder()
 
 // Common monadic operations
-let fmapM (fn:'a -> 'b) (ma:Result<'a>) : Result<'b> = 
+let fmapM (fn:'a -> 'b) (ma:Answer<'a>) : Answer<'b> = 
     match ma with
     | Err msg -> Err msg
     | Ok a -> Ok <| fn a
 
-let liftM (fn:'a -> 'r) (ma:Result<'a>) : Result<'r> = fmapM fn ma
+let liftM (fn:'a -> 'r) (ma:Answer<'a>) : Answer<'r> = fmapM fn ma
 
-let liftM2 (fn:'a -> 'b -> 'r) (ma:Result<'a>) (mb:Result<'b>) : Result<'r> = 
+let liftM2 (fn:'a -> 'b -> 'r) (ma:Answer<'a>) (mb:Answer<'b>) : Answer<'r> = 
     match ma with
     | Err msg -> Err msg
     | Ok a -> 
@@ -51,7 +51,7 @@ let liftM2 (fn:'a -> 'b -> 'r) (ma:Result<'a>) (mb:Result<'b>) : Result<'r> =
         | Err msg -> Err msg
         | Ok b -> Ok (fn a b)
 
-let liftM3 (fn:'a -> 'b -> 'c -> 'r) (ma:Result<'a>) (mb:Result<'b>) (mc:Result<'c>) : Result<'r> = 
+let liftM3 (fn:'a -> 'b -> 'c -> 'r) (ma:Answer<'a>) (mb:Answer<'b>) (mc:Answer<'c>) : Answer<'r> = 
     match ma with
     | Err msg -> Err msg
     | Ok a -> 
@@ -62,7 +62,7 @@ let liftM3 (fn:'a -> 'b -> 'c -> 'r) (ma:Result<'a>) (mb:Result<'b>) (mc:Result<
             | Err msg -> Err msg
             | Ok c -> Ok (fn a b c)
 
-let liftM4 (fn:'a -> 'b -> 'c -> 'd -> 'r) (ma:Result<'a>) (mb:Result<'b>) (mc:Result<'c>) (md:Result<'d>) : Result<'r> = 
+let liftM4 (fn:'a -> 'b -> 'c -> 'd -> 'r) (ma:Answer<'a>) (mb:Answer<'b>) (mc:Answer<'c>) (md:Answer<'d>) : Answer<'r> = 
     match ma with
     | Err msg -> Err msg
     | Ok a -> 
@@ -76,7 +76,7 @@ let liftM4 (fn:'a -> 'b -> 'c -> 'd -> 'r) (ma:Result<'a>) (mb:Result<'b>) (mc:R
                 | Err msg -> Err msg
                 | Ok d -> Ok (fn a b c d)
 
-let liftM5 (fn:'a -> 'b -> 'c -> 'd -> 'e -> 'r) (ma:Result<'a>) (mb:Result<'b>) (mc:Result<'c>) (md:Result<'d>) (me:Result<'e>) : Result<'r> = 
+let liftM5 (fn:'a -> 'b -> 'c -> 'd -> 'e -> 'r) (ma:Answer<'a>) (mb:Answer<'b>) (mc:Answer<'c>) (md:Answer<'d>) (me:Answer<'e>) : Answer<'r> = 
     match ma with
     | Err msg -> Err msg
     | Ok a -> 
@@ -93,39 +93,39 @@ let liftM5 (fn:'a -> 'b -> 'c -> 'd -> 'e -> 'r) (ma:Result<'a>) (mb:Result<'b>)
                     | Err msg -> Err msg
                     | Ok e -> Ok (fn a b c d e)
 
-let tupleM2 (ma:Result<'a>) (mb:Result<'b>) : Result<'a * 'b> = 
+let tupleM2 (ma:Answer<'a>) (mb:Answer<'b>) : Answer<'a * 'b> = 
     liftM2 (fun a b -> (a,b)) ma mb
 
-let tupleM3 (ma:Result<'a>) (mb:Result<'b>) (mc:Result<'c>) : Result<'a * 'b * 'c> = 
+let tupleM3 (ma:Answer<'a>) (mb:Answer<'b>) (mc:Answer<'c>) : Answer<'a * 'b * 'c> = 
     liftM3 (fun a b c -> (a,b,c)) ma mb mc
 
-let tupleM4 (ma:Result<'a>) (mb:Result<'b>) (mc:Result<'c>) (md:Result<'d>) : Result<'a * 'b * 'c * 'd> = 
+let tupleM4 (ma:Answer<'a>) (mb:Answer<'b>) (mc:Answer<'c>) (md:Answer<'d>) : Answer<'a * 'b * 'c * 'd> = 
     liftM4 (fun a b c d -> (a,b,c,d)) ma mb mc md
 
-let tupleM5 (ma:Result<'a>) (mb:Result<'b>) (mc:Result<'c>) (md:Result<'d>) (me:Result<'e>)  : Result<'a * 'b * 'c * 'd * 'e> = 
+let tupleM5 (ma:Answer<'a>) (mb:Answer<'b>) (mc:Answer<'c>) (md:Answer<'d>) (me:Answer<'e>)  : Answer<'a * 'b * 'c * 'd * 'e> = 
     liftM5 (fun a b c d e -> (a,b,c,d,e)) ma mb mc md me
 
 // NOTE - FParsec defines flipped versions of liftM* (e.g. pipe2, pipe3, ...)
 
-let mapM (fn:'a -> Result<'b>) (xs:'a list) : Result<'b list> = 
+let mapM (fn:'a -> Answer<'b>) (xs:'a list) : Answer<'b list> = 
     let rec work ac ys = 
         match ys with
         | [] -> unitM <| List.rev ac
         | z :: zs -> bindM (fn z) (fun a -> work (a::ac) zs)
     work [] xs
 
-let forM (xs:'a list) (fn:'a -> Result<'b>) : Result<'b list> = mapM fn xs
+let forM (xs:'a list) (fn:'a -> Answer<'b>) : Answer<'b list> = mapM fn xs
 
-let mapMz (fn:'a -> Result<'b>) (xs:'a list) : Result<unit> = 
+let mapMz (fn:'a -> Answer<'b>) (xs:'a list) : Answer<unit> = 
     let rec work ys = 
         match ys with
         | [] -> unitM ()
         | z :: zs -> bindM (fn z) (fun _ -> work zs)
     work xs
 
-let forMz (xs:'a list) (fn:'a -> Result<'b>) : Result<unit> = mapMz fn xs
+let forMz (xs:'a list) (fn:'a -> Answer<'b>) : Answer<unit> = mapMz fn xs
 
-let mapiM (fn:int -> 'a -> Result<'b>) (xs:'a list) : Result<'b list> = 
+let mapiM (fn:int -> 'a -> Answer<'b>) (xs:'a list) : Answer<'b list> = 
     let rec work ix ac ys = 
         match ys with
         | [] -> unitM <| List.rev ac
@@ -133,16 +133,16 @@ let mapiM (fn:int -> 'a -> Result<'b>) (xs:'a list) : Result<'b list> =
     work 0 [] xs
 
 
-let mapiMz (fn:int -> 'a -> Result<'b>) (xs:'a list) : Result<unit> = 
+let mapiMz (fn:int -> 'a -> Answer<'b>) (xs:'a list) : Answer<unit> = 
     let rec work ix ys = 
         match ys with
         | [] -> unitM ()
         | z :: zs -> bindM (fn ix z) (fun _ -> work (ix+1) zs)
     work 0 xs
 
-let foriM (xs:'a list) (fn:int -> 'a -> Result<'b>)  : Result<'b list> = mapiM fn xs
+let foriM (xs:'a list) (fn:int -> 'a -> Answer<'b>)  : Answer<'b list> = mapiM fn xs
 
-let foriMz (xs:'a list) (fn:int -> 'a -> Result<'b>) : Result<unit> = mapiMz fn xs
+let foriMz (xs:'a list) (fn:int -> 'a -> Answer<'b>) : Answer<unit> = mapiMz fn xs
 
 
 // Note - Seq going through list seems better than anything I can manage directly
@@ -150,20 +150,20 @@ let foriMz (xs:'a list) (fn:int -> 'a -> Result<'b>) : Result<unit> = mapiMz fn 
 // The moral is this is a abd API (currently)
 
 
-let traverseM (fn: 'a -> Result<'b>) (source:seq<'a>) : Result<seq<'b>> =
+let traverseM (fn: 'a -> Answer<'b>) (source:seq<'a>) : Answer<seq<'b>> =
     fmapM (List.toSeq) (mapM fn <| Seq.toList source) 
 
 
-let traverseMz (fn: 'a -> Result<'b>) (source:seq<'a>) : Result<unit> = 
+let traverseMz (fn: 'a -> Answer<'b>) (source:seq<'a>) : Answer<unit> = 
     mapMz fn <| Seq.toList source
 
-let traverseiM (fn:int -> 'a -> Result<'b>) (source:seq<'a>) : Result<seq<'b>> = 
+let traverseiM (fn:int -> 'a -> Answer<'b>) (source:seq<'a>) : Answer<seq<'b>> = 
     fmapM (List.toSeq) (mapiM fn <| Seq.toList source) 
 
-let traverseiMz (fn:int -> 'a -> Result<'b>) (source:seq<'a>) : Result<unit> = 
+let traverseiMz (fn:int -> 'a -> Answer<'b>) (source:seq<'a>) : Answer<unit> = 
     mapiMz fn <| Seq.toList source
 
-let sequenceM (results:Result<'a> list) : Result<'a list> = 
+let sequenceM (results:Answer<'a> list) : Answer<'a list> = 
     let rec work ac ys = 
         match ys with
         | [] -> unitM <| List.rev ac
@@ -171,7 +171,7 @@ let sequenceM (results:Result<'a> list) : Result<'a list> =
         | Ok a :: zs -> work  (a::ac) zs
     work [] results
 
-let sequenceMz (results:Result<'a> list) : Result<unit> = 
+let sequenceMz (results:Answer<'a> list) : Answer<unit> = 
     let rec work ys = 
         match ys with
         | [] -> unitM ()
@@ -183,29 +183,29 @@ let sequenceMz (results:Result<'a> list) : Result<unit> =
 
 // Summing variants
 
-let sumMapM (fn:'a -> Result<int>) (xs:'a list) : Result<int> = 
+let sumMapM (fn:'a -> Answer<int>) (xs:'a list) : Answer<int> = 
     fmapM List.sum <| mapM fn xs
 
-let sumMapiM (fn:int -> 'a -> Result<int>) (xs:'a list) : Result<int> = 
+let sumMapiM (fn:int -> 'a -> Answer<int>) (xs:'a list) : Answer<int> = 
     fmapM List.sum <| mapiM fn xs
 
-let sumForM (xs:'a list) (fn:'a -> Result<int>) : Result<int> = 
+let sumForM (xs:'a list) (fn:'a -> Answer<int>) : Answer<int> = 
     fmapM List.sum <| forM xs fn
 
-let sumForiM (xs:'a list) (fn:int -> 'a -> Result<int>) : Result<int> = 
+let sumForiM (xs:'a list) (fn:int -> 'a -> Answer<int>) : Answer<int> = 
     fmapM List.sum <| foriM xs fn
 
-let sumTraverseM (fn: 'a -> Result<int>) (source:seq<'a>) : Result<int> =
+let sumTraverseM (fn: 'a -> Answer<int>) (source:seq<'a>) : Answer<int> =
     fmapM Seq.sum <| traverseM fn source
 
-let sumTraverseiM (fn:int -> 'a -> Result<int>) (source:seq<'a>) : Result<int> =
+let sumTraverseiM (fn:int -> 'a -> Answer<int>) (source:seq<'a>) : Answer<int> =
     fmapM Seq.sum <| traverseiM fn source
 
-let sumSequenceM (results:Result<int> list) : Result<int> = 
+let sumSequenceM (results:Answer<int> list) : Answer<int> = 
     fmapM List.sum <| sequenceM results
 
 // Applicative's (<*>)
-let apM (mf:Result<'a ->'b>) (ma:Result<'a>) : Result<'b> = 
+let apM (mf:Answer<'a ->'b>) (ma:Answer<'a>) : Answer<'b> = 
     match mf with
     | Err msg -> Err msg
     | Ok fn -> 
@@ -214,7 +214,7 @@ let apM (mf:Result<'a ->'b>) (ma:Result<'a>) : Result<'b> =
         | Ok a -> Ok <| fn a
 
 // Perform two actions in sequence. Ignore the results of the second action if both succeed.
-let seqL (ma:Result<'a>) (mb:Result<'b>) : Result<'a> = 
+let seqL (ma:Answer<'a>) (mb:Answer<'b>) : Answer<'a> = 
     match ma with
     | Err msg -> Err msg
     | Ok a -> 
@@ -223,7 +223,7 @@ let seqL (ma:Result<'a>) (mb:Result<'b>) : Result<'a> =
         | Ok _ -> Ok a
 
 // Perform two actions in sequence. Ignore the results of the first action if both succeed.
-let seqR (ma:Result<'a>) (mb:Result<'b>) : Result<'b> = 
+let seqR (ma:Answer<'a>) (mb:Answer<'b>) : Answer<'b> = 
     match ma with
     | Err msg -> Err msg
     | Ok _ -> 
@@ -231,38 +231,38 @@ let seqR (ma:Result<'a>) (mb:Result<'b>) : Result<'b> =
         | Err msg -> Err msg
         | Ok b -> Ok b
 
-// Result specific operations
-let runResult (failure: string -> 'b) (success: 'a -> 'b) (ma:Result<'a>) : 'b = 
+// Answer specific operations
+let runAnswer (failure: string -> 'b) (success: 'a -> 'b) (ma:Answer<'a>) : 'b = 
     match ma with
     | Err msg -> failure msg
     | Ok a -> success a
 
-let resultToOption (ma:Result<'a>) : Option<'a> = 
+let resultToOption (ma:Answer<'a>) : Option<'a> = 
     match ma with
     | Err _ -> None
     | Ok a -> Some a
 
-let runResultWithError (ma:Result<'a>) : 'a = 
+let runAnswerWithError (ma:Answer<'a>) : 'a = 
     match ma with
     | Err msg -> failwith msg
     | Ok a -> a
 
 
-let throwError (msg:string) : Result<'a> = Err msg
+let throwError (msg:string) : Answer<'a> = Err msg
 
-let swapError (msg:string) (ma:Result<'a>) : Result<'a> = 
+let swapError (msg:string) (ma:Answer<'a>) : Answer<'a> = 
     match ma with
     | Err _ -> Err msg
     | Ok a -> Ok a
 
 
-let augmentError (fn:string -> string) (ma:Result<'a>) : Result<'a> = 
+let augmentError (fn:string -> string) (ma:Answer<'a>) : Answer<'a> = 
     match ma with
     | Err msg -> Err <| fn msg
     | Ok a -> Ok a
 
 
-let liftAction (action:'a) : Result<'a> = 
+let liftAction (action:'a) : Answer<'a> = 
     try
         let ans = action
         Ok ans
@@ -270,21 +270,21 @@ let liftAction (action:'a) : Result<'a> =
     | ex -> Err <| ex.ToString()
 
 // Left biased choice, if ``ma`` succeeds return its result, otherwise try ``mb``.
-let alt (ma:Result<'a>) (mb:Result<'a>) : Result<'a> = 
+let alt (ma:Answer<'a>) (mb:Answer<'a>) : Answer<'a> = 
     match ma with
     | Err _ -> mb
     | Ok a -> Ok a
 
 // Catch failing computations, return None. 
 // Successful operations are returned as Some(_).
-let optional (ma:Result<'a>) : Result<'a option> = 
+let optional (ma:Answer<'a>) : Answer<'a option> = 
     match ma with
     | Err _ -> Ok None
     | Ok a -> Ok <| Some a
 
 // Perform an operation for its effect, ignore whether it succeeds or fails.
 // (Comptations always return ``Ok ()``)
-let optionalz (ma:Result<'a>) : Result<unit> = 
+let optionalz (ma:Answer<'a>) : Answer<unit> = 
     match ma with
     | Err _ -> Ok ()
     | Ok _ -> Ok ()

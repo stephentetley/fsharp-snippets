@@ -14,10 +14,10 @@ open Npgsql
 
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
-#load @"SL\ResultMonad.fs"
+#load @"SL\AnswerMonad.fs"
 #load @"SL\SqlUtils.fs"
 #load @"SL\PGSQLConn.fs"
-open SL.ResultMonad
+open SL.AnswerMonad
 open SL.PGSQLConn
 
 #load @"SL\Coord.fs"
@@ -67,8 +67,8 @@ let decodePoints (inputs:string list) : Coord.WGS84Point list =
 
 
 
-let getInputs () : Result<Group<Coord.WGS84Point> list> = 
-    SL.ResultMonad.fmapM (List.map (fun group -> { Name=group.Name; Points = decodePoints group.Points}))
+let getInputs () : Answer<Group<Coord.WGS84Point> list> = 
+    SL.AnswerMonad.fmapM (List.map (fun group -> { Name=group.Name; Points = decodePoints group.Points}))
                       (extractFromFile extractorM jsonInput)
 
 
@@ -85,15 +85,15 @@ let pgConcaveHulls (groups:(Group<Coord.WGS84Point> list)) : PGSQLConn<(int*stri
 let wktOutfile = @"G:\work\Projects\events2\wkt_concave_hulls1.csv"
 
 
-// Note - main should run in the result monad...
+// TODO - change to Script monad...
 let main (pwd:string) = 
     let conn = pgsqlConnParamsTesting "spt_geo" pwd 
     let csvProc (oidtexts:(int*string) list) : CsvOutput<unit> = 
         tellSheetWithHeaders ["oid"; "wkt"] 
                             oidtexts
                             (fun (a,b) -> [ tellInteger a; tellQuotedString b ])
-    runResultWithError
-        <| resultMonad { 
+    runAnswerWithError
+        <| answerMonad { 
                 let! groups = getInputs () 
                 let! results1 = runPGSQLConn (pgConcaveHulls groups) conn
                 do! liftAction (outputToNew (csvProc results1) wktOutfile ",")

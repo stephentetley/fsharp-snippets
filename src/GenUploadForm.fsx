@@ -13,10 +13,10 @@ open FSharp.ExcelProvider
 
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
-#load @"SL\ResultMonad.fs"
+#load @"SL\AnswerMonad.fs"
 #load @"SL\SqlUtils.fs"
 #load @"SL\SQLiteConn.fs"
-open SL.ResultMonad
+open SL.AnswerMonad
 open SL.SQLiteConn
 
 #I @"..\packages\DocumentFormat.OpenXml.2.7.2\lib\net46\"

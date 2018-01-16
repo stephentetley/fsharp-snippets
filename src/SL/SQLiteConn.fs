@@ -5,7 +5,7 @@ open System.IO
 open System.Data
 open System.Data.SQLite
 
-open SL.ResultMonad
+open SL.AnswerMonad
 open SL.SqlUtils
 
 
@@ -24,9 +24,9 @@ let sqliteConnParamsVersion3 (pathToDB:string) : SQLiteConnParams =
 
 
 // SQLiteConn Monad - a Reader-Error monad
-type SQLiteConn<'a> = SQLiteConn of (SQLite.SQLiteConnection -> Result<'a>)
+type SQLiteConn<'a> = SQLiteConn of (SQLite.SQLiteConnection -> Answer<'a>)
 
-let inline private apply1 (ma : SQLiteConn<'a>) (conn:SQLite.SQLiteConnection) : Result<'a> = 
+let inline private apply1 (ma : SQLiteConn<'a>) (conn:SQLite.SQLiteConnection) : Answer<'a> = 
     let (SQLiteConn f) = ma in f conn
 
 let inline private unitM (x:'a) : SQLiteConn<'a> = SQLiteConn (fun _ -> Ok x)
@@ -53,29 +53,29 @@ let (sqliteConn:SQLiteConnBuilder) = new SQLiteConnBuilder()
 // Common operations
 let fmapM (fn:'a -> 'b) (ma:SQLiteConn<'a>) : SQLiteConn<'b> = 
     SQLiteConn <| fun conn ->
-       ResultMonad.fmapM fn <| apply1 ma conn
+       AnswerMonad.fmapM fn <| apply1 ma conn
        
 
 let mapM (fn:'a -> SQLiteConn<'b>) (xs:'a list) : SQLiteConn<'b list> = 
     SQLiteConn <| fun conn ->
-        ResultMonad.mapM (fun a -> apply1 (fn a) conn) xs
+        AnswerMonad.mapM (fun a -> apply1 (fn a) conn) xs
 
 let forM (xs:'a list) (fn:'a -> SQLiteConn<'b>) : SQLiteConn<'b list> = mapM fn xs
 
 let mapMz (fn:'a -> SQLiteConn<'b>) (xs:'a list) : SQLiteConn<unit> = 
     SQLiteConn <| fun conn ->
-        ResultMonad.mapMz (fun a -> apply1 (fn a) conn) xs
+        AnswerMonad.mapMz (fun a -> apply1 (fn a) conn) xs
 
 let forMz (xs:'a list) (fn:'a -> SQLiteConn<'b>) : SQLiteConn<unit> = mapMz fn xs
 
 
 let mapiM (fn:int -> 'a -> SQLiteConn<'b>) (xs:'a list) : SQLiteConn<'b list> = 
     SQLiteConn <| fun conn ->
-        ResultMonad.mapiM (fun ix a -> apply1 (fn ix a) conn) xs
+        AnswerMonad.mapiM (fun ix a -> apply1 (fn ix a) conn) xs
 
 let mapiMz (fn:int -> 'a -> SQLiteConn<'b>) (xs:'a list) : SQLiteConn<unit> = 
     SQLiteConn <| fun conn ->
-        ResultMonad.mapiMz (fun ix a -> apply1 (fn ix a) conn) xs
+        AnswerMonad.mapiMz (fun ix a -> apply1 (fn ix a) conn) xs
 
 let foriM (xs:'a list) (fn:int -> 'a -> SQLiteConn<'b>) : SQLiteConn<'b list> = 
     mapiM fn xs
@@ -84,30 +84,30 @@ let foriMz (xs:'a list) (fn:int -> 'a -> SQLiteConn<'b>) : SQLiteConn<unit> =
     mapiMz fn xs
 
 
-// Note - goes through intermediate list, see ResultMonad.traverseM
+// Note - goes through intermediate list, see AnswerMonad.traverseM
 let traverseM (fn: 'a -> SQLiteConn<'b>) (source:seq<'a>) : SQLiteConn<seq<'b>> = 
     SQLiteConn <| fun conn ->
-        ResultMonad.traverseM (fun x -> let mf = fn x in apply1 mf conn) source
+        AnswerMonad.traverseM (fun x -> let mf = fn x in apply1 mf conn) source
 
 let traverseMz (fn: 'a -> SQLiteConn<'b>) (source:seq<'a>) : SQLiteConn<unit> = 
     SQLiteConn <| fun conn ->
-        ResultMonad.traverseMz (fun x -> let mf = fn x in apply1 mf conn) source
+        AnswerMonad.traverseMz (fun x -> let mf = fn x in apply1 mf conn) source
 
 let traverseiM (fn:int -> 'a -> SQLiteConn<'b>) (source:seq<'a>) : SQLiteConn<seq<'b>> = 
     SQLiteConn <| fun conn ->
-        ResultMonad.traverseiM (fun ix x -> let mf = fn ix x in apply1 mf conn) source
+        AnswerMonad.traverseiM (fun ix x -> let mf = fn ix x in apply1 mf conn) source
 
 let traverseiMz (fn:int -> 'a -> SQLiteConn<'b>) (source:seq<'a>) : SQLiteConn<unit> = 
     SQLiteConn <| fun conn ->
-        ResultMonad.traverseiMz (fun ix x -> let mf = fn ix x in apply1 mf conn) source
+        AnswerMonad.traverseiMz (fun ix x -> let mf = fn ix x in apply1 mf conn) source
 
 let sequenceM (source:SQLiteConn<'a> list) : SQLiteConn<'a list> = 
     SQLiteConn <| fun conn ->
-        ResultMonad.sequenceM <| List.map (fun ma -> apply1 ma conn) source
+        AnswerMonad.sequenceM <| List.map (fun ma -> apply1 ma conn) source
 
 let sequenceMz (source:SQLiteConn<'a> list) : SQLiteConn<unit> = 
     SQLiteConn <| fun conn ->
-        ResultMonad.sequenceMz <| List.map (fun ma -> apply1 ma conn) source
+        AnswerMonad.sequenceMz <| List.map (fun ma -> apply1 ma conn) source
 
 // Summing variants
 
@@ -134,7 +134,7 @@ let sumSequenceM (source:SQLiteConn<int> list) : SQLiteConn<int> =
 
 
 // SQLiteConn specific operations
-let runSQLiteConn (ma:SQLiteConn<'a>) (connParams:SQLiteConnParams) : Result<'a> = 
+let runSQLiteConn (ma:SQLiteConn<'a>) (connParams:SQLiteConnParams) : Answer<'a> = 
     let conn = paramsConnString connParams
     let dbconn = new SQLiteConnection(conn)
     dbconn.Open()
@@ -147,11 +147,11 @@ let throwError (msg:string) : SQLiteConn<'a> =
 
 let swapError (msg:string) (ma:SQLiteConn<'a>) : SQLiteConn<'a> = 
     SQLiteConn <| fun conn -> 
-        ResultMonad.swapError msg (apply1 ma conn)
+        AnswerMonad.swapError msg (apply1 ma conn)
 
 let augmentError (fn:string -> string) (ma:SQLiteConn<'a>) : SQLiteConn<'a> = 
     SQLiteConn <| fun conn ->
-        ResultMonad.augmentError fn (apply1 ma conn)
+        AnswerMonad.augmentError fn (apply1 ma conn)
 
 
 let liftConn (proc:SQLite.SQLiteConnection -> 'a) : SQLiteConn<'a> = 

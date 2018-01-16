@@ -12,11 +12,11 @@ open FSharp.ExcelProvider
 
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
-#load @"SL\ResultMonad.fs"
-open SL.ResultMonad
+#load @"SL\AnswerMonad.fs"
 #load @"SL\SqlUtils.fs"
-open SL.SqlUtils
 #load @"SL\SQLiteConn.fs"
+open SL.AnswerMonad
+open SL.SqlUtils
 open SL.SQLiteConn
 
 #load @"SL\ScriptMonad.fs"
@@ -117,8 +117,8 @@ type Script<'a> = ScriptMonad<SQLiteConnParams,'a>
 let withConnParams (fn:SQLiteConnParams -> Script<'a>) : Script<'a> = 
     scriptMonad.Bind (ask (), fn)
 
-let liftWithConnParams (fn:SQLiteConnParams -> Result<'a>) : Script<'a> = 
-    withConnParams <| (liftResult << fn)
+let liftWithConnParams (fn:SQLiteConnParams -> Answer<'a>) : Script<'a> = 
+    withConnParams <| (liftAnswer << fn)
 
 //  **** DB Import
 

@@ -10,8 +10,8 @@ open System.Collections.Generic
 open Microsoft.Office.Interop
 
 
-// We may want to extract DocMonad to a separate project, so it doesn't depend on ResultMonad
-// Replicated here as Ans - this is the error/either monad
+// We may want to extract DocMonad to a separate project, so it doesn't depend on AnswerMonad
+// Replicated here - this is the error/either monad
 
 type Answer<'a> = 
     | Err of string

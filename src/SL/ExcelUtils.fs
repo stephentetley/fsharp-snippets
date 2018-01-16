@@ -6,7 +6,7 @@ open Microsoft.Office.Interop
 open FSharp.Data
 
 open SL.CommonUtils
-open SL.ResultMonad
+open SL.AnswerMonad
 open SL.ScriptMonad
 open SL.CsvOutput
 open SL.ClosedXMLOutput
@@ -42,8 +42,8 @@ let private csvTrimToClosedXML (inputFile:string) (outputFile:string) (sheetName
 
 type private ExcelScript<'a> = ScriptMonad<Excel.Application,'a>
 
-let withExcel (fn:Excel.Application -> Result<'a>) : ExcelScript<'a> = 
-    scriptMonad.Bind(ask (), liftResult << fn)
+let withExcel (fn:Excel.Application -> Answer<'a>) : ExcelScript<'a> = 
+    scriptMonad.Bind(ask (), liftAnswer << fn)
 
 // Outputs the first sheet to Csv, returns sheet name
 let private xlsToCsv (inputFile:string) (outputFile:string) : ExcelScript<string> =
@@ -81,7 +81,7 @@ let trimXlsSheet (inputFile:string) (outputFile:string) : unit =
     let tempFile2 = suffixFileName tempFile1 "-TRIM"
     let app = new Excel.ApplicationClass(Visible = true) :> Excel.Application
     try
-        runResultWithError (consoleLogger) app <| 
+        runAnswerWithError (consoleLogger) app <| 
             scriptMonad { 
                 let! sheet = xlsToCsv inputFile tempFile1
                 let! () = liftAction <| trimCsvFile tempFile1 tempFile2 false ","
@@ -95,7 +95,7 @@ let trimXlsFileToCsv (inputFile:string) (outputFile:string) : unit =
     let tempFile = suffixFileName outputFile "-TEMP"
     let app = new Excel.ApplicationClass(Visible = true) :> Excel.Application
     try
-        runResultWithError (consoleLogger) app <| 
+        runAnswerWithError (consoleLogger) app <| 
             scriptMonad { 
                 let! sheet = xlsToCsv inputFile tempFile
                 let! _ = trimCsvFile tempFile outputFile false ","  |> liftAction

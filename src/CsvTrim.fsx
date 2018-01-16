@@ -17,7 +17,7 @@ open SL.CommonUtils
 #I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
 #I @"..\packages\ClosedXML.0.90.0\lib\net452\"
 #r "ClosedXML"
-#load @"SL\ResultMonad.fs"
+#load @"SL\AnswerMonad.fs"
 #load @"SL\ScriptMonad.fs"
 #load @"SL\ClosedXMLOutput.fs"
 #load @"SL\CsvOutput.fs"
