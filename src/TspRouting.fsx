@@ -165,7 +165,7 @@ let pgTSPQuery (startPt:DbRecord) (endPt:DbRecord) : PGSQLConn<DbRecord list> =
           LongName  = reader.GetString(4)
           Wgs84Lat  = float <| reader.GetDouble(5)
           Wgs84Lon  = float <| reader.GetDouble(6) }
-    execReaderList query procM          // for some reason execReaderList does not work and we have to inline it here...
+    execReaderList query procM   
 
 let outputXslx (records:DbRecord list) (fileName:string) : unit = 
     let proc1 (ix:int) (orec:DbRecord) : RowWriter = 

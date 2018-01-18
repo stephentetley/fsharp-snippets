@@ -25,4 +25,7 @@ let levenshtein (s:string) (t:string) : int =
             v1.[j+1] <- min a (min b c)
         ArraySwap v0 v1
     v0.[n]
-    
+
+let makeGlobPattern (questions:string list) (stars:string list) (source:string) : string =
+    let s1 = List.fold (fun (s:string) rep -> s.Replace(rep, "?")) source questions
+    List.fold (fun (s:string) rep -> s.Replace(rep, "*")) s1 stars
