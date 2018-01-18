@@ -17,6 +17,7 @@ open FSharp.ExcelProvider
 #I @"..\packages\ClosedXML.0.90.0\lib\net452\"
 #r "ClosedXML"
 
+
 #load @"SL\AnswerMonad.fs"
 #load @"SL\StringUtils.fs"
 #load @"SL\SqlUtils.fs"
@@ -29,6 +30,7 @@ open SL.SqlUtils
 open SL.SQLiteConn
 open SL.ClosedXMLOutput
 open SL.ScriptMonad
+
 
 #load @"SL\ExcelProviderHelper.fs"
 open SL.ExcelProviderHelper
@@ -147,38 +149,8 @@ let exportSiteList (recs:ResultRec list) (xlsOutPath:string) : Script<unit> =
         outputToNew (tellSheetWithHeaders ["Name"; "Uid"; "NGR"] recs proc1) xlsOutPath "Sites"
 
 let tempSiteList = 
-    [ @"FOSS ISLANDS ROAD/CSO"
-    ; @"BARMBY MOOR/CSO"
-    ; @"THE MALTINGS/CSO"
-    ; @"VICTORIA PARK/DTK"
-    ; @"BULLS HEAD/CSO"
-    ; @"LANGSETT ROAD/SCC"
-    ; @"LOW MOOR LANE/NO 2 CSO"
-    ; @"BURCROFT HILL/CSO"
-    ; @"DALTON LONG LANE/NO 2 CSO"
-    ; @"HEWORTH GREEN/NO 2 CSO"
-    ; @"MANSE LANE 57/CSO"
-    ; @"MARYGATE LANE/CSO"
-    ; @"ATWICK/NO 2 STW"
-    ; @"BRANKSOME DRIVE/CSO"
-    ; @"CALVERLEY EAST/NO 2 CSO"
-    ; @"DENBY DALE ROAD/CSO"
-    ; @"FENAY BRIDGE TANK/CSO"
-    ; @"HAWKSWELL LANE/CSO"
-    ; @"KITCHENER STREET/CSO"
-    ; @"OUTGANG LANE/SCC"
-    ; @"QUEENS STAITH/CSO"
-    ; @"RAGLAN STREET/CSO"
-    ; @"RED DOLES ROAD/CSO"
-    ; @"RIVER STREET/CSO"
-    ; @"UNION STREET/CSO"
-    ; @"HAREHILLS LANE/NO 2 CSO"
-    ; @"DANBY/STW"
-    ; @"WEST BARS ROUNDABOUT/CSO"
-    ; @"LOWTHER STREET/CSO"
-    ; @"CITY SQUARE/CSO"
-    ; @"ROUNDHAY MOUNT/NO 2 CSO"
-    ; @"RYHILL STATION ROAD/CSO"
+    [ @"FOSTER ROAD/URS"
+    ; @"BURNLEY MOOR/URS"
     ]
 
 let genSiteList () : unit = 
@@ -189,4 +161,9 @@ let genSiteList () : unit =
         let! records = queryNames tempSiteList
         do! exportSiteList records outPath
     }
+
+
+
     
+    
+        
