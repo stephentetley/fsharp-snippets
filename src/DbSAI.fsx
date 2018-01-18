@@ -106,7 +106,7 @@ let makeNameGlob (source:string) : string = makeGlobPattern ["_"] [" "] source
 let genNameQuery (name:string) : string = 
     System.String.Format("""
         SELECT 
-            asset_common_name, asset_sai_ref
+            asset_common_name, asset_sai_ref, osgb36_gridref
         FROM
             installations
         WHERE
@@ -115,13 +115,17 @@ let genNameQuery (name:string) : string =
 
 type ResultRec = 
     { CommonName: string
-      SaiRef: string } 
+      SaiRef: string
+      GridRef: string } 
 
 // THis can probably have mutliple matches as the glob may be lax...
 let nameGlobQuery (name:string) : SQLiteConn<ResultRec list> = 
     let query = genNameQuery name
     let procM (reader:SQLiteDataReader) : ResultRec = 
-        { CommonName = reader.GetString(0); SaiRef = reader.GetString(1) }
+        { CommonName = reader.GetString(0)
+        ; SaiRef = reader.GetString(1) 
+        ; GridRef = reader.GetString(2)
+        }
     execReaderList query procM          
 
 
@@ -134,18 +138,52 @@ let queryNames (names:string list) : Script<ResultRec list> =
 
 let exportSiteList (recs:ResultRec list) (xlsOutPath:string) : Script<unit> = 
     let proc1 (record:ResultRec) = 
-        [ tellString record.CommonName; tellString record.SaiRef ]
+        [ tellString record.CommonName
+        ; tellString record.SaiRef 
+        ; tellString record.GridRef
+        ]
         
     liftAction <| 
-        outputToNew (tellSheetWithHeaders ["Name"; "Uid"] recs proc1) xlsOutPath "Sites"
+        outputToNew (tellSheetWithHeaders ["Name"; "Uid"; "NGR"] recs proc1) xlsOutPath "Sites"
 
 let tempSiteList = 
-    [ @"NETHERVALE_STW"
+    [ @"FOSS ISLANDS ROAD/CSO"
+    ; @"BARMBY MOOR/CSO"
+    ; @"THE MALTINGS/CSO"
+    ; @"VICTORIA PARK/DTK"
+    ; @"BULLS HEAD/CSO"
+    ; @"LANGSETT ROAD/SCC"
+    ; @"LOW MOOR LANE/NO 2 CSO"
+    ; @"BURCROFT HILL/CSO"
+    ; @"DALTON LONG LANE/NO 2 CSO"
+    ; @"HEWORTH GREEN/NO 2 CSO"
+    ; @"MANSE LANE 57/CSO"
+    ; @"MARYGATE LANE/CSO"
+    ; @"ATWICK/NO 2 STW"
+    ; @"BRANKSOME DRIVE/CSO"
+    ; @"CALVERLEY EAST/NO 2 CSO"
+    ; @"DENBY DALE ROAD/CSO"
+    ; @"FENAY BRIDGE TANK/CSO"
+    ; @"HAWKSWELL LANE/CSO"
+    ; @"KITCHENER STREET/CSO"
+    ; @"OUTGANG LANE/SCC"
+    ; @"QUEENS STAITH/CSO"
+    ; @"RAGLAN STREET/CSO"
+    ; @"RED DOLES ROAD/CSO"
+    ; @"RIVER STREET/CSO"
+    ; @"UNION STREET/CSO"
+    ; @"HAREHILLS LANE/NO 2 CSO"
+    ; @"DANBY/STW"
+    ; @"WEST BARS ROUNDABOUT/CSO"
+    ; @"LOWTHER STREET/CSO"
+    ; @"CITY SQUARE/CSO"
+    ; @"ROUNDHAY MOUNT/NO 2 CSO"
+    ; @"RYHILL STATION ROAD/CSO"
     ]
 
 let genSiteList () : unit = 
     let conn = makeConnParams ()
-    let outPath = @"G:\work\Projects\barriers\sites-temp.xlsx"
+    let outPath = @"G:\work\Projects\rtu\sites-NS-NGR.xlsx"
     
     runScript (failwith) (printfn "Success: %A") (consoleLogger) conn <| scriptMonad { 
         let! records = queryNames tempSiteList
