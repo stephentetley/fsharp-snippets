@@ -56,8 +56,26 @@ let sqlINSERT (tableName:string) (values:InsertValues) : string =
             (columnsList <| List.map (fun v -> v.columnName) values)
             (valuesList values)
 
+// Writes TRUE or FALSE
+let boolValue (column:string) (value:bool) : InsertValue = 
+    let render (o:obj) = 
+        let v = o :?> bool in match v with | true -> "TRUE" | false -> "FALSE"
+    { columnName = column
+    ; renderFun = render
+    ; dynValue = value :> obj
+    }
+
+    
+let boolNumericValue (column:string) (value:bool) : InsertValue = 
+    let render (o:obj) = 
+        let v = o :?> bool in match v with | true -> "1" | false -> "0"
+    { columnName = column
+    ; renderFun = render
+    ; dynValue = value :> obj
+    }
+
 let stringValue (column:string) (value:string) : InsertValue = 
-    // TODO escaping special chars to add...
+    // TODO escaping special chars to check...
     let render (o:obj) = 
         let s = o :?> string in sprintf "'%s'" (cleanseValue s)
     { columnName = column
@@ -65,37 +83,100 @@ let stringValue (column:string) (value:string) : InsertValue =
     ; dynValue = value :> obj
     }
 
+let stringNullableValue (column:string) (value:string) : InsertValue = 
+    // TODO escaping special chars to check...
+    let render (o:obj) = 
+        let s = o :?> string 
+        match s with | null -> "NULL" | ss -> sprintf "'%s'" (cleanseValue ss)
+    { columnName = column
+    ; renderFun = render
+    ; dynValue = value :> obj
+    }
+    
 let intValue (column:string) (value:int) : InsertValue = 
     let render (o:obj) = 
-        let i = o :?> int in sprintf "%d" i
+        let i = o :?> int in i.ToString()
     { columnName = column
     ; renderFun = render
     ; dynValue = value :> obj
     }
-
-
-let floatValue (column:string) (value:float) : InsertValue = 
-    let render (o:obj) = 
-        let d = o :?> float in sprintf "%f" d
-    { columnName = column
-    ; renderFun = render
-    ; dynValue = value :> obj
-    }
-
+    
 let intNullableValue (column:string) (value:Nullable<int>) : InsertValue = 
     let render (o:obj) = 
         let i = o :?> Nullable<int>
-        if i.HasValue then sprintf "%d" i.Value else "NULL"
+        if i.HasValue then i.Value.ToString() else "NULL"
     { columnName = column
     ; renderFun = render
     ; dynValue = value :> obj
     }
 
+let floatValue (column:string) (value:float) : InsertValue = 
+    let render (o:obj) = 
+        let d = o :?> float in d.ToString()
+    { columnName = column
+    ; renderFun = render
+    ; dynValue = value :> obj
+    }
 
 let floatNullableValue (column:string) (value:Nullable<float>) : InsertValue = 
     let render (o:obj) = 
         let d = o :?> Nullable<float>
-        if d.HasValue then sprintf "%f" d.Value else "NULL"
+        if d.HasValue then d.Value.ToString() else "NULL"
+    { columnName = column
+    ; renderFun = render
+    ; dynValue = value :> obj
+    }
+
+
+let int64Value (column:string) (value:int64) : InsertValue = 
+    let render (o:obj) = 
+        let i = o :?> int64 in i.ToString()
+    { columnName = column
+    ; renderFun = render
+    ; dynValue = value :> obj
+    }
+
+let int64NullableValue (column:string) (value:Nullable<int64>) : InsertValue = 
+    let render (o:obj) = 
+        let i = o :?> Nullable<int64>
+        if i.HasValue then i.Value.ToString() else "NULL"
+    { columnName = column
+    ; renderFun = render
+    ; dynValue = value :> obj
+    }
+
+
+let decimalValue (column:string) (value:decimal) : InsertValue = 
+    let render (o:obj) = 
+        let d = o :?> decimal in d.ToString()
+    { columnName = column
+    ; renderFun = render
+    ; dynValue = value :> obj
+    }
+
+let decimalNullableValue (column:string) (value:Nullable<decimal>) : InsertValue = 
+    let render (o:obj) = 
+        let d = o :?> Nullable<decimal>
+        if d.HasValue then d.Value.ToString() else "NULL"
+    { columnName = column
+    ; renderFun = render
+    ; dynValue = value :> obj
+    }
+
+
+let sqliteDateTimeValue (column:string) (value:DateTime) : InsertValue = 
+    let render (o:obj) = 
+        let dt = o :?> DateTime in sprintf "'%s'" (sqliteEncodeTime dt)
+    { columnName = column
+    ; renderFun = render
+    ; dynValue = value :> obj
+    }
+
+
+let pgsqlDateTimeValue (column:string) (value:DateTime) : InsertValue = 
+    let render (o:obj) = 
+        let dt = o :?> DateTime 
+        sprintf "to_date('%s', '%s')" (sqliteEncodeTime dt) "YYYY-MM-DD HH24:MI:SS"
     { columnName = column
     ; renderFun = render
     ; dynValue = value :> obj
