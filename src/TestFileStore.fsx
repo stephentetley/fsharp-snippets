@@ -13,3 +13,9 @@ let test01 () =
     match readDirRecurseOutput path1 with
     | Choice1Of2 err -> failwith err
     | Choice2Of2 ans -> printfn "%A" ans
+
+let test02 () = 
+    let path1 = System.IO.Path.Combine(__SOURCE_DIRECTORY__,"..","data/dir-no-recurse.txt")
+    match readDirRecurseOutput path1 with
+    | Choice1Of2 err -> failwith err
+    | Choice2Of2 ans -> printfn "%A" ans

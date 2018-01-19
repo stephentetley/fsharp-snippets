@@ -81,3 +81,22 @@ let floatValue (column:string) (value:float) : InsertValue =
     ; renderFun = render
     ; dynValue = value :> obj
     }
+
+let intNullableValue (column:string) (value:Nullable<int>) : InsertValue = 
+    let render (o:obj) = 
+        let i = o :?> Nullable<int>
+        if i.HasValue then sprintf "%d" i.Value else "NULL"
+    { columnName = column
+    ; renderFun = render
+    ; dynValue = value :> obj
+    }
+
+
+let floatNullableValue (column:string) (value:Nullable<float>) : InsertValue = 
+    let render (o:obj) = 
+        let d = o :?> Nullable<float>
+        if d.HasValue then sprintf "%f" d.Value else "NULL"
+    { columnName = column
+    ; renderFun = render
+    ; dynValue = value :> obj
+    }

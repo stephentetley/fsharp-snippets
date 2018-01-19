@@ -10,17 +10,24 @@ open Microsoft.Office.Interop
 #r "ExcelProvider.dll"
 open FSharp.ExcelProvider
 
+#I @"..\packages\FSharp.Data.2.3.3\lib\net40"
+#r @"FSharp.Data.dll"
+open FSharp.Data
+
+open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
+
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
 #load @"SL\AnswerMonad.fs"
 #load @"SL\SqlUtils.fs"
 #load @"SL\SQLiteConn.fs"
+#load @"SL\ScriptMonad.fs"
+#load @"SL\Coord.fs"
 open SL.AnswerMonad
 open SL.SqlUtils
 open SL.SQLiteConn
-
-#load @"SL\ScriptMonad.fs"
 open SL.ScriptMonad
+open SL.Geo.Coord
 
 #load @"SL\ExcelProviderHelper.fs"
 open SL.ExcelProviderHelper
@@ -28,7 +35,7 @@ open SL.ExcelProviderHelper
 // ********** DATA SETUP **********
 
 type CatsPoweredTable = 
-    ExcelFile< @"G:\work\Projects\events2\CATS7-for-data.xlsx",
+    ExcelFile< @"G:\work\Projects\events2\db-import-tables\CATS7-for-data.xlsx",
                 SheetName = "Powered",
                 ForceString = true >
 
@@ -42,7 +49,7 @@ let getCatsPoweredRows () : CatsPoweredRow list =
 
 
 type CatsBatteryTable = 
-    ExcelFile< @"G:\work\Projects\events2\CATS7-for-data.xlsx",
+    ExcelFile< @"G:\work\Projects\events2\db-import-tables\CATS7-for-data.xlsx",
                 SheetName = "Battery",
                 ForceString = true >
 
@@ -56,7 +63,7 @@ let getCatsBatteryRows () : CatsBatteryRow list =
 
 
 type CatsNonTelemTable = 
-    ExcelFile< @"G:\work\Projects\events2\CATS7-for-data.xlsx",
+    ExcelFile< @"G:\work\Projects\events2\db-import-tables\CATS7-for-data.xlsx",
                 SheetName = "Non_Telemetry",
                 ForceString = true >
 
@@ -72,7 +79,7 @@ let getCatsNonTelemRows () : CatsNonTelemRow list =
 
                 
 type StormDisPermitsTable = 
-    ExcelFile< @"G:\work\Projects\events2\Storm-Dis-DEC2017.xlsx",
+    ExcelFile< @"G:\work\Projects\events2\db-import-tables\Storm-Dis-DEC2017.xlsx",
                 SheetName = "Data",
                 ForceString = true >
 
@@ -85,7 +92,7 @@ let getStormDisPermitsRows () : StormDisPermitsRow list =
     excelTableGetRows dict (new StormDisPermitsTable())
 
 type SaiSitesTable = 
-    ExcelFile< @"G:\work\Projects\events2\sai-data-dump.xlsx",
+    ExcelFile< @"G:\work\Projects\events2\db-import-tables\sai-data-dump.xlsx",
                 SheetName = "Sai_Sites",
                 ForceString = true >
 
@@ -100,7 +107,7 @@ let getSaiSitesRows () : SaiSitesRow list =
 
 
 type OutstationsTable = 
-    ExcelFile< @"G:\work\Projects\events2\rts-outstations-jan2018-TRIM.xlsx",
+    ExcelFile< @"G:\work\Projects\events2\db-import-tables\rts-outstations-jan2018-TRIM.xlsx",
                 SheetName = "Outstations",
                 ForceString = true >
 
@@ -110,7 +117,17 @@ let getOutstations () : OutstationRow list =
     let dict : GetRowsDict<OutstationsTable, OutstationRow> = 
         { GetRows     = fun imports -> imports.Data 
           NotNullProc = fun row -> match row.``OS name`` with null -> false | _ -> true }
-    excelTableGetRows dict (new OutstationsTable())
+    excelTableGetRows dict (new OutstationsTable ())
+
+
+type LotusData = 
+    CsvProvider< @"G:\work\Projects\events2\db-import-tables\lnotes-secondary.csv",
+                 HasHeaders = true>
+
+type LotusRow = LotusData.Row
+
+let getLotusContents () : LotusRow list = (new LotusData ()).Rows |> Seq.toList
+
 // ********** SCRIPT **********
 type Script<'a> = ScriptMonad<SQLiteConnParams,'a>
 
@@ -127,7 +144,8 @@ let deleteAllData () : Script<int> =
         SL.SQLiteConn.sumSequenceM [ deleteAllRows "cats_consents"
                                     ; deleteAllRows "storm_dis_permits" 
                                     ; deleteAllRows "sai_sites"
-                                    ; deleteAllRows "rts_outstations" ]
+                                    ; deleteAllRows "rts_outstations"
+                                    ; deleteAllRows "lotus_consents" ]
     liftWithConnParams <| runSQLiteConn proc
 
 
@@ -199,6 +217,28 @@ let makeOutstationINSERT (row:OutstationRow) : string =
             ; stringValue       "os_addr"           row.``OS Addr``
             ; stringValue       "os_type"           row.``OS type``
             ]
+
+            
+let makeLotusConsentINSERT (row:LotusRow) : string = 
+    let gridref : string  = 
+        match row.``Outfall NGRE``.HasValue, row.``Outfall NGRN``.HasValue with
+        | true,true -> 
+            let easts = 1.0<meter> * (float <| row.``Outfall NGRE``.Value)
+            let norths = 1.0<meter> * (float <| row.``Outfall NGRN``.Value)
+            osgb36PointToGrid { Eastings = easts; Northings = norths } |> showOSGB36Grid
+        | _ ,_ -> null
+
+    sqlINSERT "lotus_consents" 
+        <|  [ stringValue       "common_name"           row.``Common Name``
+            ; stringValue       "sai_number"            row.``AIB Reference``
+            ; intNullableValue  "outfall_easting"       row.``Outfall NGRE``
+            ; intNullableValue  "outfall_northing"      row.``Outfall NGRN``
+            ; stringValue       "outfall_osgb36"        gridref
+            ; stringValue       "full_consent_name"     row.``Full Consent``
+            ; stringValue       "short_consent_name"    row.``Consent Number``
+            ]
+
+// ***** Run inserts...
 let insertCatsConsents () : Script<int> = 
     let poweredRows = getCatsPoweredRows ()
     let poweredRowProc (row:CatsPoweredRow) : SQLiteConn<int> = execNonQuery <| makePoweredCatConsentINSERT row
@@ -232,6 +272,11 @@ let insertOutstations () : Script<int> =
     let insertProc (row:OutstationRow) : SQLiteConn<int> = execNonQuery <| makeOutstationINSERT row
     liftWithConnParams <| runSQLiteConn (withTransactionListSum rows insertProc)
 
+let insertLotusConsents () : Script<int> =  
+    let rows = getLotusContents ()
+    let insertProc (row:LotusRow) : SQLiteConn<int> = execNonQuery <| makeLotusConsentINSERT row
+    liftWithConnParams <| runSQLiteConn (withTransactionListSum rows insertProc)
+
 
 let main () : unit = 
     let conn = sqliteConnParamsVersion3  @"G:\work\Projects\events2\edmDB.sqlite3"
@@ -243,4 +288,5 @@ let main () : unit =
             ; insertStormDisPermits ()  |> logScript (sprintf "%i storm_dis_permits inserted")
             ; insertSaiSites ()         |> logScript (sprintf "%i sai_sites inserted") 
             ; insertOutstations ()      |> logScript (sprintf "%i rts_outstations inserted") 
+            ; insertLotusConsents ()    |> logScript (sprintf "%i lotus consents inserted") 
             ]
