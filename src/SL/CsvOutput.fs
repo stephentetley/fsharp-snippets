@@ -2,7 +2,7 @@
 
 open System.IO
 
-// NOTE - there is no real need for a corresponing CsvInput monad.
+// NOTE - there is no real need for a corresponding CsvInput monad.
 // For most Csv reading FSharp.Data type providers should be used, the
 // main exception is trimming (unnecessarily) padded Csv.
 

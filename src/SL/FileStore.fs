@@ -6,6 +6,7 @@ open System.IO
 open FParsec
 open FSharpx.Collections
 
+open SL.SwOutput
 
 type Name = string
 type FilePath = string
@@ -30,6 +31,27 @@ let makeDateTime (year:int) (month:int) (day:int) (hour:int) (minute:int) (secon
     new DateTime(year, month, day, hour, minute, second)
 
 
+/// ***** Operations on Files and Folders
+
+let isFile (source:FileObj) : bool = 
+    match source with
+    | FsFolder _ -> false
+    | FsFile _ -> true
+
+let isFolder (source:FileObj) : bool = 
+    match source with
+    | FsFolder _ -> true
+    | FsFile _ -> false
+
+let tryGetExtension (source:FileObj) : string option = 
+    match source with
+    | FsFolder _ -> None
+    | FsFile (name,_,_) -> Some <| Path.GetExtension name
+
+let getFiles1 (source:FileStore) : FileObj list = 
+    match source with
+    | FileStore (_,xs) -> List.filter isFile xs
+    
 
 /// ***** PARSER
 // Parsing output of "dir -Recurse"
@@ -155,3 +177,30 @@ let readDirRecurseOutput (inputPath:string) : Choice<string,FileStore> =
         | None -> Choice1Of2 "Parsed, but could not build FileStore"
         | Some ans -> Choice2Of2 ans
     | Failure(s,_,_) -> Choice1Of2 s
+
+
+
+// ***** Display
+
+let private catPath (str1:string) (str2:string) : string = 
+    if String.IsNullOrEmpty str1 then str2 else str1 + "\\" + str2
+
+let private display1 (source:FileObj) : SwOutput<unit> = 
+    let rec work (path:string) (obj1:FileObj)  = 
+        match obj1 with
+        | FsFile (name,_,_) -> tellLine <| catPath path name
+        | FsFolder (name,_,xs) -> 
+            let path1 = catPath path name
+            ignore <| tellLine path1
+            let sortedKids = xs // TODO - need case-insensitive sort...
+            forMz sortedKids (work path1)
+    work "" source
+
+let display (source:FileStore) : string = 
+    let procM = 
+        match source with
+        | FileStore (path,kids) -> 
+            swOutput { do! tellLine path
+                       do! forMz kids display1 }
+    fst <| runSwOutput procM
+    
