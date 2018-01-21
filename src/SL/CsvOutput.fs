@@ -18,9 +18,10 @@ let quoteField (input:string) : string =
     | null -> "\"\""
     | _ -> sprintf "\"%s\"" (input.Replace("\"", "\"\""))
 
-// Quote a field containing comma
-// Warning to self - getting the arg order wrong of sep and input can lead to 
-// horrible to locate bugs. Maybe Separator should be wrapped?
+/// Quote a field containing comma
+///
+/// Warning- getting the arg order wrong of sep and input can lead to 
+/// horrible to locate bugs. Possibly Separator should be wrapped but that seems an overhead too far.
 let private testQuoteField (sep:Separator) (input:string)  : string = 
     match input with
     | null -> "\"\""

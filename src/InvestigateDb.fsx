@@ -2,6 +2,12 @@
 #r "System.Data.SQLite"
 open System.Data.SQLite
 
+
+#I @"..\\packages\SQLProvider.1.0.54\lib"
+#r "FSharp.Data.SQLProvider.dll"
+open FSharp.Data.Sql
+
+
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
 
@@ -16,20 +22,35 @@ open SL.SqlUtils
 open SL.SQLiteConn
 open SL.ScriptMonad
 
+let [<Literal>] ResolutionPath1 = __SOURCE_DIRECTORY__ + @"\..\packages\System.Data.SQLite.Core.1.0.105.0\lib\net451"
+let [<Literal>] ConnectionString1 = @"Data Source=G:\work\Projects\events2\edmDB.sqlite3;Version=3"
 
+type SqlDB = SqlDataProvider< 
+              ConnectionString = ConnectionString1,
+              DatabaseVendor = Common.DatabaseProviderTypes.SQLITE,
+              ResolutionPath = ResolutionPath1,
+              IndividualsAmount = 1000,
+              UseOptionTypes = true >
+let ctx = SqlDB.GetDataContext()
+
+let distinctAssetsTP () : string list = 
+    query { for a in ctx.Main.CatsConsents do
+            select (a.AssetName) }
+        |> Seq.toList
 
 type DistinctAsset = 
     { SaiNumber: string
       AssetName: string
       WorkCategory: string }
 
-// Note TargetPercent of 1.0 gives a convex hull (0.9 seems okay)
+// outlet_ngr has poor data
 let genDistinctAssetsQuery () : string = 
     System.String.Format("""
         SELECT DISTINCT 
             asset_sai_number, 
             asset_name, 
-            work_category 
+            work_category,
+            outlet_ngr
         FROM 
             cats_consents
     """)
@@ -60,3 +81,6 @@ let main () : unit =
   
     runScript (failwith) (printfn "Success: %A") (consoleLogger) conn 
         <| fmapM (List.map (fun o -> o.AssetName)) distinctAssets
+
+let test01 () = 
+    distinctAssetsTP () |> List.iter (printfn "%s")

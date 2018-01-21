@@ -128,6 +128,16 @@ type LotusRow = LotusData.Row
 
 let getLotusContents () : LotusRow list = (new LotusData ()).Rows |> Seq.toList
 
+
+type GisOutfallData = 
+    CsvProvider< @"G:\work\Projects\events2\db-import-tables\gis-outlets-wkt.csv",
+                 HasHeaders = true>
+
+type GisOutfallRow = GisOutfallData.Row
+
+let getGisOutfalls () : GisOutfallRow list = (new GisOutfallData ()).Rows |> Seq.toList
+
+
 // ********** SCRIPT **********
 type Script<'a> = ScriptMonad<SQLiteConnParams,'a>
 
@@ -223,9 +233,9 @@ let makeLotusConsentINSERT (row:LotusRow) : string =
     let gridref : string  = 
         match row.``Outfall NGRE``.HasValue, row.``Outfall NGRN``.HasValue with
         | true,true -> 
-            let easts = 1.0<meter> * (float <| row.``Outfall NGRE``.Value)
-            let norths = 1.0<meter> * (float <| row.``Outfall NGRN``.Value)
-            osgb36PointToGrid { Easting = easts; Northing = norths } |> showOSGB36Grid
+            let east    = 1.0<meter> * (float <| row.``Outfall NGRE``.Value)
+            let north   = 1.0<meter> * (float <| row.``Outfall NGRN``.Value)
+            osgb36PointToGrid { Easting = east; Northing = north } |> showOSGB36Grid
         | _ ,_ -> null
 
     sqlINSERT "lotus_consents" 
@@ -237,6 +247,20 @@ let makeLotusConsentINSERT (row:LotusRow) : string =
             ; stringValue       "full_consent_name"     row.``Full Consent``
             ; stringValue       "short_consent_name"    row.``Consent Number``
             ]
+            
+let makeGisOutfallINSERT (row:GisOutfallRow) : string = 
+    let gridref : string  = 
+        let east    = 1.0<meter> * (float <| row.METREEASTING)
+        let north   = 1.0<meter> * (float <| row.METRENORTHING)
+        osgb36PointToGrid { Easting = east; Northing = north} |> showOSGB36Grid
+
+    sqlINSERT "gis_outfalls" 
+        <|  [ stringValue       "stc25_ref"             row.STC25_REF
+            ; decimalValue      "easting"               row.METREEASTING
+            ; decimalValue      "northing"              row.METRENORTHING
+            ; stringValue       "osgb36_gridref"        gridref
+            ]
+
 
 // ***** Run inserts...
 let insertCatsConsents () : Script<int> = 
@@ -277,6 +301,11 @@ let insertLotusConsents () : Script<int> =
     let insertProc (row:LotusRow) : SQLiteConn<int> = execNonQuery <| makeLotusConsentINSERT row
     liftWithConnParams <| runSQLiteConn (withTransactionListSum rows insertProc)
 
+let insertGisOutfalls () : Script<int> =  
+    let rows = getGisOutfalls ()
+    let insertProc (row:GisOutfallRow) : SQLiteConn<int> = execNonQuery <| makeGisOutfallINSERT row
+    liftWithConnParams <| runSQLiteConn (withTransactionListSum rows insertProc)
+
 
 let main () : unit = 
     let conn = sqliteConnParamsVersion3  @"G:\work\Projects\events2\edmDB.sqlite3"
@@ -289,4 +318,5 @@ let main () : unit =
             ; insertSaiSites ()         |> logScript (sprintf "%i sai_sites inserted") 
             ; insertOutstations ()      |> logScript (sprintf "%i rts_outstations inserted") 
             ; insertLotusConsents ()    |> logScript (sprintf "%i lotus consents inserted") 
+            ; insertGisOutfalls ()      |> logScript (sprintf "%i gis outfalls inserted") 
             ]
