@@ -1,4 +1,7 @@
-﻿#I @"..\packages\System.Data.SQLite.Core.1.0.105.0\lib\net451"
+﻿open System
+open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
+
+#I @"..\packages\System.Data.SQLite.Core.1.0.105.0\lib\net451"
 #r "System.Data.SQLite"
 open System.Data.SQLite
 
@@ -12,15 +15,8 @@ open FSharp.Data.Sql
 #r "FSharpx.Collections"
 
 #load @"SL\Coord.fs"
-#load @"SL\AnswerMonad.fs"
-#load @"SL\SqlUtils.fs"
-#load @"SL\SQLiteConn.fs"
-#load @"SL\ScriptMonad.fs"
 open SL.Geo.Coord
-open SL.AnswerMonad
-open SL.SqlUtils
-open SL.SQLiteConn
-open SL.ScriptMonad
+
 
 let [<Literal>] ResolutionPath1 = __SOURCE_DIRECTORY__ + @"\..\packages\System.Data.SQLite.Core.1.0.105.0\lib\net451"
 let [<Literal>] ConnectionString1 = @"Data Source=G:\work\Projects\events2\edmDB.sqlite3;Version=3"
@@ -33,54 +29,76 @@ type SqlDB = SqlDataProvider<
               UseOptionTypes = true >
 let ctx = SqlDB.GetDataContext()
 
-let distinctAssetsTP () : string list = 
-    query { for a in ctx.Main.CatsConsents do
-            select (a.AssetName) }
-        |> Seq.toList
 
-type DistinctAsset = 
+// SaiNumber and OutletGridRef can be missing
+type StormDisPermit = 
+    { AssetName: string
+    ; SaiNumber: string option
+    ; OutletGriRef: string
+    }
+
+type LotusConsent = 
+    { CommonName: string
+    ; SaiNumber: string
+    ; OutfallGridRef : OSGB36Point option 
+    }
+
+type CatsAsset = 
     { SaiNumber: string
       AssetName: string
       WorkCategory: string }
 
-// outlet_ngr has poor data
-let genDistinctAssetsQuery () : string = 
-    System.String.Format("""
-        SELECT DISTINCT 
-            asset_sai_number, 
-            asset_name, 
-            work_category,
-            outlet_ngr
-        FROM 
-            cats_consents
-    """)
+let tryMakeGridRefA (east:Nullable<int>) (north:Nullable<int>) : OSGB36Point option = 
+    match east.HasValue, north.HasValue with
+    | true,true -> 
+        if east.Value > 0 && north.Value > 0 then 
+            Some {Easting = 1.0<meter> * float east.Value; Northing = 1.0<meter> * float north.Value}
+        else None
+    | _,_ -> None
 
-// Force the seq to a List otherwise the connection appears to close with returning
-// any values.
-let distinctAssetsQuery : SQLiteConn<DistinctAsset list> = 
-    let query = genDistinctAssetsQuery ()
-    let procM (reader:SQLiteDataReader) : DistinctAsset = 
-        { SaiNumber     = reader.GetString(0)
-        ; AssetName     = reader.GetString(1)
-        ; WorkCategory  = reader.GetString(2) }
-    execReaderList query procM   
+let tryMakeGridRefB (east:int64 option) (north:int64 option) : OSGB36Point option = 
+    match east, north with
+    | Some (east1), Some (north1) -> 
+        if east1 > 0L && north1 > 0L then 
+            Some {Easting = 1.0<meter> * float east1; Northing = 1.0<meter> * float north1}
+        else None
+    | _, _ -> None
 
-type Script<'a> = ScriptMonad<SQLiteConnParams,'a>
+// SQLProvider clearly wins when it can be used...
+let catsAssetsTP () : CatsAsset list  = 
+    query { for cc in ctx.Main.CatsConsents do
+            sortBy (cc.AssetName)
+            select ({ SaiNumber = cc.AssetSaiNumber
+                    ; AssetName = cc.AssetName
+                    ; WorkCategory = cc.WorkCategory}:CatsAsset)
+            distinct }
+        |> Seq.toList
 
-let withConnParams (fn:SQLiteConnParams -> Script<'a>) : Script<'a> = 
-    scriptMonad.Bind (ask (), fn)
+let lotusConsentsTP () : LotusConsent list  = 
+    query { for lc in ctx.Main.LotusConsents do
+            sortBy (lc.CommonName)
+            select ({ CommonName = lc.CommonName
+                    ; SaiNumber = match lc.SaiNumber with | None -> "" | Some s -> s
+                    ; OutfallGridRef = tryMakeGridRefB lc.OutfallEasting lc.OutfallNorthing } : LotusConsent)
+            distinct }
+        |> Seq.toList
 
-let liftWithConnParams (fn:SQLiteConnParams -> Answer<'a>) : Script<'a> = 
-    withConnParams <| (liftAnswer << fn)
+let lotusConsentsBySai (sai:String) : LotusConsent list  = 
+    query { for lc in ctx.Main.LotusConsents do
+            where (lc.SaiNumber = Some sai)
+            sortBy (lc.CommonName)
+            select ({ CommonName = lc.CommonName
+                    ; SaiNumber = match lc.SaiNumber with | None -> "" | Some s -> s
+                    ; OutfallGridRef = tryMakeGridRefB lc.OutfallEasting lc.OutfallNorthing } : LotusConsent)
+            distinct }
+        |> Seq.toList
 
-let distinctAssets : Script<DistinctAsset list> = 
-    liftWithConnParams <| runSQLiteConn distinctAssetsQuery
-
-let main () : unit = 
-    let conn = sqliteConnParamsVersion3  @"G:\work\Projects\events2\edmDB.sqlite3"
-  
-    runScript (failwith) (printfn "Success: %A") (consoleLogger) conn 
-        <| fmapM (List.map (fun o -> o.AssetName)) distinctAssets
 
 let test01 () = 
-    distinctAssetsTP () |> List.iter (printfn "%s")
+    catsAssetsTP () |> List.iter (fun ca -> printfn "%s" ca.AssetName)
+
+let test02 () = 
+    lotusConsentsTP () |> List.iter (fun lc -> printfn "%s" lc.CommonName)
+
+let test03 () = 
+    lotusConsentsBySai "SAI00000225" |> List.iter (fun lc -> printfn "%s, %s" lc.CommonName lc.SaiNumber)

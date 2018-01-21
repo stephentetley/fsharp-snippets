@@ -25,7 +25,10 @@ module Coord =
     // So we have two versions.
 
     [<StructuredFormatDisplay("{Easting}E {Northing}E")>]
-    type OSGB36Point = { Easting : float<meter>; Northing : float<meter> }
+    type OSGB36Point = 
+        { Easting : float<meter>
+        ; Northing : float<meter> }
+        
 
     [<StructuredFormatDisplay("{MajorSquare}{MinorSquare} {MinorEasting} {MinorNorthing}")>]
     type OSGB36Grid = 
