@@ -13,7 +13,7 @@ let phi1 : float<Coord.degree> = Coord.makeDegree 52 39 27.2531
 let lam1 : float<Coord.degree> = Coord.makeDegree 1 43 4.5177
 
 let test01 = Coord.wgs84ToOSGB36Point {Latitude = phi1; Longitude = lam1}
-let test02 = Coord.osgb36PointToWGS84 {Eastings = 651409.903<meter>; Northings = 313177.270<meter>}
+let test02 = Coord.osgb36PointToWGS84 {Easting = 651409.903<meter>; Northing = 313177.270<meter>}
 
 //let test03 = Coord.decodeMinor 'c' ;;
 //let testit c = Coord.decodeAlpha c
@@ -39,7 +39,7 @@ let isleOfLewis =
 let dover : Coord.OSGB36Point = 
     Coord.osgb36GridToPoint <|  Coord.readOSGB36Grid "TR2845841168"
 
-let dover2 = {Coord.Eastings = 628458.0<meter>; Coord.Northings =  141168.0<meter>}
+let dover2 = {Coord.Easting = 628458.0<meter>; Coord.Northing =  141168.0<meter>}
 
 
 let testD1 () = 

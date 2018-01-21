@@ -6,6 +6,8 @@ open SL.AnswerMonad
 
 type LogAction = StringWriter -> unit
 
+
+/// This is the default logger, writes the output to the console with printfn.
 let consoleLogger : LogAction = fun sw -> printfn "--- Log: ----------\n%s" (sw.ToString())
 
 type ScriptMonad<'r,'a> = private ScriptMonad of (StringWriter -> 'r -> Answer<'a>)

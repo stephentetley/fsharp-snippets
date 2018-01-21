@@ -32,9 +32,9 @@ let tellConsentsRow (row:ConsentsRow) : CsvOutput<unit> =
     match row.``Common Name`` with
     | null -> csvOutput.Return ()
     | _ -> let pt : Coord.OSGB36Point = 
-                let easts = row.``Outfall NGRE`` * 1.0<meter>
-                let norths = row.``Outfall NGRN`` * 1.0<meter>
-                { Coord.Eastings = easts; Coord.Northings = norths }
+                let east = row.``Outfall NGRE`` * 1.0<meter>
+                let north = row.``Outfall NGRN`` * 1.0<meter>
+                { Coord.Easting = east; Coord.Northing = north }
            let gridref = Coord.osgb36PointToGrid pt
            tellRow [ tellString row.``AIB Reference``
                    ; tellString row.``Common Name`` 

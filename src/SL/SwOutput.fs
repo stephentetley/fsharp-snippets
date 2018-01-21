@@ -2,9 +2,7 @@
 
 open System.IO
 
-type SwOutput<'a> = 
-    SwOutput of (StringWriter -> 'a)
-
+type SwOutput<'a> = SwOutput of (StringWriter -> 'a)
 
 
 let inline private apply1 (ma : SwOutput<'a>) (handle:StringWriter) : 'a = 

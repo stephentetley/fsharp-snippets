@@ -33,6 +33,12 @@ let makeDateTime (year:int) (month:int) (day:int) (hour:int) (minute:int) (secon
 
 /// ***** Operations on Files and Folders
 
+
+let getName (source:FileObj) : string = 
+    match source with
+    | FsFolder(name,_ ,_) -> name
+    | FsFile(name,_,_) -> name
+
 let isFile (source:FileObj) : bool = 
     match source with
     | FsFolder _ -> false
@@ -182,6 +188,9 @@ let readDirRecurseOutput (inputPath:string) : Choice<string,FileStore> =
 
 // ***** Display
 
+let private ciCompare (obj1:FileObj) (obj2:FileObj) : int  = 
+    String.Compare(getName obj1, getName obj2, ignoreCase=true)
+
 let private catPath (str1:string) (str2:string) : string = 
     if String.IsNullOrEmpty str1 then str2 else str1 + "\\" + str2
 
@@ -192,15 +201,18 @@ let private display1 (source:FileObj) : SwOutput<unit> =
         | FsFolder (name,_,xs) -> 
             let path1 = catPath path name
             ignore <| tellLine path1
-            let sortedKids = xs // TODO - need case-insensitive sort...
+            let sortedKids = List.sortWith ciCompare xs
             forMz sortedKids (work path1)
     work "" source
 
+/// Displays the output as a simple list of folders and files in
+/// case-insensitive order. The output is patterned after DiffMerge's folder view.
 let display (source:FileStore) : string = 
     let procM = 
         match source with
-        | FileStore (path,kids) -> 
+        | FileStore (path,xs) -> 
+            let sortedKids = List.sortWith ciCompare xs
             swOutput { do! tellLine path
-                       do! forMz kids display1 }
+                       do! forMz sortedKids display1 }
     fst <| runSwOutput procM
     

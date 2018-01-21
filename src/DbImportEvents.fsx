@@ -225,7 +225,7 @@ let makeLotusConsentINSERT (row:LotusRow) : string =
         | true,true -> 
             let easts = 1.0<meter> * (float <| row.``Outfall NGRE``.Value)
             let norths = 1.0<meter> * (float <| row.``Outfall NGRN``.Value)
-            osgb36PointToGrid { Eastings = easts; Northings = norths } |> showOSGB36Grid
+            osgb36PointToGrid { Easting = easts; Northing = norths } |> showOSGB36Grid
         | _ ,_ -> null
 
     sqlINSERT "lotus_consents" 

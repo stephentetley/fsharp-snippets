@@ -24,15 +24,15 @@ module Coord =
     // E.g Sullom Voe oil terminal in the Shetlands can be specified as HU396753 or 439668,1175316.
     // So we have two versions.
 
-    [<StructuredFormatDisplay("{Eastings}E {Northings}E")>]
-    type OSGB36Point = { Eastings : float<meter>; Northings : float<meter> }
+    [<StructuredFormatDisplay("{Easting}E {Northing}E")>]
+    type OSGB36Point = { Easting : float<meter>; Northing : float<meter> }
 
-    [<StructuredFormatDisplay("{Letter1}{Letter2} {Eastings} {Northings}")>]
+    [<StructuredFormatDisplay("{MajorSquare}{MinorSquare} {MinorEasting} {MinorNorthing}")>]
     type OSGB36Grid = 
-        { Letter1 : char; 
-          Letter2 : char; 
-          Eastings : float<meter>; 
-          Northings : float<meter> }
+        { MajorSquare : char; 
+          MinorSquare : char; 
+          MinorEasting : float<meter>; 
+          MinorNorthing : float<meter> }
 
     [<StructuredFormatDisplay("{Latitude}Lat {Longitude}Lon")>]
     type WGS84Point = { Latitude : float<degree>; Longitude : float<degree> }
@@ -118,12 +118,12 @@ module Coord =
         let VI = nu / 120.0 * cos5Phi * (5.0 - 18.0 * tan2Phi + tan4Phi + 14.0 * eta2 - 58.0 * tan2Phi * eta2)
         let N = I + II * lamMlam0 ** 2.0 + III * lamMlam0 ** 4.0 + IIIA * lamMlam0 ** 6.0
         let E = E0 + IV * lamMlam0 + V * lamMlam0 ** 3.0 + VI * lamMlam0 ** 5.0
-        { Eastings = E * 1.0<meter>; Northings = N * 1.0<meter> }
+        { Easting = E * 1.0<meter>; Northing = N * 1.0<meter> }
 
 
     let osgb36PointToWGS84 (osgb36:OSGB36Point) : WGS84Point =
-        let E               = osgb36.Eastings
-        let N               = osgb36.Northings
+        let E               = osgb36.Easting
+        let N               = osgb36.Northing
         let rec makePhi p m = 
             if abs (float N - N0 - m) < 0.01 then 
                 p 
@@ -226,24 +226,27 @@ module Coord =
         else 'X'
 
     let private makeOSGB36Grid (c1:char) (c2:char) (east:int) (north:int) : OSGB36Grid =  
-        { Letter1 = c1; Letter2 = c2; Eastings = 1.0<meter> *float east; Northings = 1.0<meter> * float north  }
+        { MajorSquare = c1
+        ; MinorSquare = c2
+        ; MinorEasting = 1.0<meter> *float east
+        ; MinorNorthing = 1.0<meter> * float north }
 
         
     let private makeOSGB36Point (m : char) (mm : char) (east : float<meter>) (north : float<meter>) : OSGB36Point = 
         let (majE, majN) = decodeAlpha m mm 
-        { Eastings = east + LanguagePrimitives.FloatWithMeasure majE
-        ; Northings = north + LanguagePrimitives.FloatWithMeasure majN }
+        { Easting = east + LanguagePrimitives.FloatWithMeasure majE
+        ; Northing = north + LanguagePrimitives.FloatWithMeasure majN }
     
 
-    let osgb36PointToGrid ({Eastings = easting; Northings = northing} : OSGB36Point) : OSGB36Grid =  
+    let osgb36PointToGrid ({Easting = easting; Northing = northing} : OSGB36Point) : OSGB36Grid =  
         let major = findMajor (float easting) (float northing)
         let minor = findMinor (float easting) (float northing)
         let smallE = easting % 100000.0<meter>
         let smallN = northing % 100000.0<meter>
-        { Letter1 = major; Letter2 = minor; Eastings = smallE; Northings = smallN }
+        { MajorSquare = major; MinorSquare = minor; MinorEasting = smallE; MinorNorthing = smallN }
     
     let osgb36GridToPoint (gridRef:OSGB36Grid) : OSGB36Point =
-        makeOSGB36Point gridRef.Letter1 gridRef.Letter2 gridRef.Eastings gridRef.Northings
+        makeOSGB36Point gridRef.MajorSquare gridRef.MinorSquare gridRef.MinorEasting gridRef.MinorNorthing
 
 
     let osgb36GridToWGS84 (gridref : OSGB36Grid) : WGS84Point =
@@ -254,7 +257,7 @@ module Coord =
 
     // Needs 0 padding, width five
     let showOSGB36Grid (pt:OSGB36Grid) : string = 
-        sprintf "%c%c%05i%05i" pt.Letter1 pt.Letter2 (int pt.Eastings) (int pt.Northings)
+        sprintf "%c%c%05i%05i" pt.MajorSquare pt.MinorSquare (int pt.MinorEasting) (int pt.MinorNorthing)
 
     let private (|OSGB36Regex|_|) (pattern:string) (input:string) : option<GroupCollection> =
         let m = Regex.Match(input.Trim(), pattern)
