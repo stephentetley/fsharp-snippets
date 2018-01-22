@@ -252,15 +252,19 @@ module Coord =
         makeOSGB36Point gridRef.MajorSquare gridRef.MinorSquare gridRef.MinorEasting gridRef.MinorNorthing
 
 
-    let osgb36GridToWGS84 (gridref : OSGB36Grid) : WGS84Point =
-        osgb36PointToWGS84 <| osgb36GridToPoint gridref
+    let osgb36GridToWGS84 (gridRef : OSGB36Grid) : WGS84Point =
+        osgb36PointToWGS84 <| osgb36GridToPoint gridRef
 
-    let wgs84ToOSGB36Grid (latlon : WGS84Point) : OSGB36Grid = 
-        osgb36PointToGrid <| wgs84ToOSGB36Point latlon
+    let wgs84ToOSGB36Grid (latLon : WGS84Point) : OSGB36Grid = 
+        osgb36PointToGrid <| wgs84ToOSGB36Point latLon
 
-    // Needs 0 padding, width five
-    let showOSGB36Grid (pt:OSGB36Grid) : string = 
-        sprintf "%c%c%05i%05i" pt.MajorSquare pt.MinorSquare (int pt.MinorEasting) (int pt.MinorNorthing)
+    /// Print in the form 'SE9055679132' 
+    let showOSGB36Grid (gridRef:OSGB36Grid) : string = 
+        sprintf "%c%c%05i%05i" 
+                gridRef.MajorSquare 
+                gridRef.MinorSquare 
+                (int gridRef.MinorEasting) 
+                (int gridRef.MinorNorthing)
 
     let private (|OSGB36Regex|_|) (pattern:string) (input:string) : option<GroupCollection> =
         let m = Regex.Match(input.Trim(), pattern)

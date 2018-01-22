@@ -168,40 +168,63 @@ let makeAssets () : Asset list =
 let catsConsentString (source:CatsConsent list) : string = 
     let proc1 (cc:CatsConsent) : string = 
         sprintf "%s => %s" cc.PermitRef cc.OutletGridRef
-    String.concat "; " <| List.map proc1 source
+    String.concat " & " <| List.map proc1 source
 
+let catsConsentRefs (source:CatsConsent list) : string = 
+    let proc1 (cc:CatsConsent) : string = 
+        match tryReadOSGB36Grid cc.OutletGridRef with
+        | Some ngr -> showOSGB36Grid ngr
+        | None -> "??"
+    String.concat " & " <| List.map proc1 source
 
 let lotusConsentString (source:LotusConsent list) : string = 
     let proc1 (lc:LotusConsent) : string = 
         let gridref = 
             match lc.OutfallGridRef with 
-            | None -> "?" 
+            | None -> "??" 
             | Some pt -> showOSGB36Grid <| osgb36PointToGrid pt
         sprintf "%s => %s" lc.FullConsentName gridref
-    String.concat "; " <| List.map proc1 source
+    String.concat " & " <| List.map proc1 source
+
+let lotusConsentRefs (source:LotusConsent list) : string = 
+    let proc1 (lc:LotusConsent) : string = 
+        match lc.OutfallGridRef with 
+        | None -> "??" 
+        | Some pt -> showOSGB36Grid <| osgb36PointToGrid pt
+    String.concat " & " <| List.map proc1 source
 
 let stormDischargeString (source:StormDisPermit list) : string = 
     let proc1 (sdp:StormDisPermit) : string = 
         sprintf "%s => %s" sdp.PermitUrn sdp.OutletGridRef
-    String.concat "; " <| List.map proc1 source
+    String.concat " & " <| List.map proc1 source
+
+let stormDischargeRefs (source:StormDisPermit list) : string = 
+    let proc1 (sdp:StormDisPermit) : string = 
+        match tryReadOSGB36Grid sdp.OutletGridRef with
+        | Some ngr -> showOSGB36Grid ngr
+        | None -> "??"
+    String.concat " & " <| List.map proc1 source
 
 let main () = 
     let assetList = makeAssets ()
     let outFile = @"G:work\Projects\events2\Asset-collected-data.csv"
     let headers = 
         [ "SAI Number"; "Asset Name"
-        ; "Cats Consent Count"; "Cats Consents"
-        ; "Lotus Consent Count"; "Lotus Consents"
-        ; "Storm Permit Count"; "Permit Outfalls" 
+        ; "Cats Consent Count"; "Cats NGRs"; "Cats Consents"
+        ; "Lotus Consent Count"; "Lotus NGRs"; "Lotus Consents"
+        ; "Storm Permit Count"; "Permit NGRs"; "Permit Outfalls" 
         ]
     let rowProc (a:Asset) : CellWriter list = 
         [ tellString        a.SaiNumber
         ; tellString        a.AssetName
         ; tellInt           <| List.length a.CatsConsents
+        ; tellString        <| catsConsentRefs a.CatsConsents
         ; tellString        <| catsConsentString a.CatsConsents
         ; tellInt           <| List.length a.LotusConsents
+        ; tellString        <| lotusConsentRefs a.LotusConsents
         ; tellString        <| lotusConsentString a.LotusConsents
         ; tellInt           <| List.length a.StormDisPermits
+        ; tellString        <| stormDischargeRefs a.StormDisPermits
         ; tellString        <| stormDischargeString a.StormDisPermits
         ]
     let csvProc = 
