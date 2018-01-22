@@ -122,6 +122,8 @@ let mapiMz (fn: 'a -> int -> CsvOutput<'b>) (xs: 'a list) : CsvOutput<unit> =
 
 // CsvOutput-specific operations
 
+
+// TODO - filename should be last arg, but should we wrap sep?
 let outputToNew (ma:CsvOutput<'a>) (fileName:string) (sep:Separator) : 'a =
     use sw = new System.IO.StreamWriter(fileName)
     runCsvOutput ma sw sep
@@ -181,6 +183,11 @@ let tellFloat (value:float) : CellWriter = tellObj (value :> obj)
 let tellGuid (value:System.Guid) : CellWriter = tellObj (value :> obj)   
 let tellInteger (value:int) : CellWriter = tellObj (value :> obj)
 let tellInteger64 (value:int64) : CellWriter = tellObj (value :> obj)
+
+
+let tellInt (value:int) : CellWriter = tellObj (value :> obj)
+let tellInt64 (value:int64) : CellWriter = tellObj (value :> obj)
+
 
 let tellString (value:string) : CellWriter = Wrapped <| fun sep -> testQuoteField sep value
 let tellQuotedString (value:string) : CellWriter = Wrapped <| fun _ -> quoteField value

@@ -14,14 +14,10 @@ open FSharp.Data.Sql
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
 
-#I @"..\packages\DocumentFormat.OpenXml.2.7.2\lib\net46\"
-#I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
-#I @"..\packages\ClosedXML.0.90.0\lib\net452\"
-#r "ClosedXML"
 #load @"SL\Coord.fs"
-#load @"SL\ClosedXMLOutput.fs"
+#load @"SL\CsvOutput.fs"
 open SL.Geo.Coord
-open SL.ClosedXMLOutput
+open SL.CsvOutput
 
 let [<Literal>] ResolutionPath1 = __SOURCE_DIRECTORY__ + @"\..\packages\System.Data.SQLite.Core.1.0.105.0\lib\net451"
 let [<Literal>] ConnectionString1 = @"Data Source=G:\work\Projects\events2\edmDB.sqlite3;Version=3"
@@ -139,15 +135,6 @@ let getLotusConsentsFor (sai:String) : LotusConsent list  =
         |> Seq.toList
 
 
-let test01 () = 
-    getCatsAssets () |> List.iter (fun ca -> printfn "%s" ca.AssetName)
-
-let test02 () = 
-    lotusConsentsTP () |> List.iter (fun lc -> printfn "%A" lc)
-
-let test03 () = 
-    getLotusConsentsFor "SAI00000225" |> List.iter (fun lc -> printfn "%s, %s" lc.CommonName lc.SaiNumber)
-
 let getStormDisPermitsFor (assetName:String) : StormDisPermit list  = 
     query { for sdp in ctx.Main.StormDisPermits do
             where (sdp.AssetName = Some assetName)
@@ -174,15 +161,7 @@ let makeAssets () : Asset list =
                 ; StormDisPermits = getStormDisPermitsFor ca.AssetName
                 } : Asset )
 
-let test04 () = 
-    makeAssets ()
-        |> List.iter (fun a -> printfn "%s,%s,%i cats-consents,%i lotus-consents,%i dis-permits" 
-                                        a.SaiNumber
-                                        a.AssetName
-                                        (List.length a.CatsConsents)
-                                        (List.length a.LotusConsents)
-                                        (List.length a.StormDisPermits)
-                                        )
+
 // Writing to xls has the same cardinality problems as SQL, we collapse
 // consents / permits and their outfalls into a single string
 
@@ -208,7 +187,7 @@ let stormDischargeString (source:StormDisPermit list) : string =
 
 let main () = 
     let assetList = makeAssets ()
-    let outFile = @"G:work\Projects\events2\Asset-collected-data.xlsx"
+    let outFile = @"G:work\Projects\events2\Asset-collected-data.csv"
     let headers = 
         [ "SAI Number"; "Asset Name"
         ; "Cats Consent Count"; "Cats Consents"
@@ -225,6 +204,33 @@ let main () =
         ; tellInt           <| List.length a.StormDisPermits
         ; tellString        <| stormDischargeString a.StormDisPermits
         ]
-    let xlsProc = 
+    let csvProc = 
         tellSheetWithHeaders headers assetList rowProc
-    outputToNew xlsProc outFile "Assets" 
+    outputToNew csvProc outFile ","
+
+type GisOutfall = 
+    { Stc25Ref: string
+      FunctionNode: string
+      Osgb36GridRef: string }
+
+let getGisOutfalls () : seq<GisOutfall>  = 
+    query { for go in ctx.Main.GisOutfalls do
+            select ({ Stc25Ref = go.Stc25Ref
+                    ; FunctionNode = go.FunctionNode
+                    ; Osgb36GridRef = go.Osgb36Gridref
+                    } : GisOutfall)
+            distinct } |> Seq.cast<GisOutfall>
+
+let GisOutfalls () = 
+    let assetList = getGisOutfalls ()
+    let outFile = @"G:work\Projects\events2\GIS-outfalls.csv"
+    let headers = 
+        [ "STC25 Ref"; "Function Node"; "OSGB36 Gridref" ]
+    let rowProc (a:GisOutfall) : CellWriter list = 
+        [ tellString        a.Stc25Ref
+        ; tellString        a.FunctionNode
+        ; tellString        a.Osgb36GridRef
+        ]
+    let csvProc = 
+        tellSheetWithHeaders headers assetList rowProc
+    outputToNew csvProc outFile ","

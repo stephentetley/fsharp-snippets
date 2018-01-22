@@ -151,11 +151,12 @@ let liftWithConnParams (fn:SQLiteConnParams -> Answer<'a>) : Script<'a> =
 
 let deleteAllData () : Script<int> = 
     let proc = 
-        SL.SQLiteConn.sumSequenceM [ deleteAllRows "cats_consents"
+        SL.SQLiteConn.sumSequenceM [  deleteAllRows "cats_consents"
                                     ; deleteAllRows "storm_dis_permits" 
                                     ; deleteAllRows "sai_sites"
                                     ; deleteAllRows "rts_outstations"
-                                    ; deleteAllRows "lotus_consents" ]
+                                    ; deleteAllRows "lotus_consents"
+                                    ; deleteAllRows "gis_outfalls"]
     liftWithConnParams <| runSQLiteConn proc
 
 
@@ -259,6 +260,7 @@ let makeGisOutfallINSERT (row:GisOutfallRow) : string =
             ; decimalValue      "easting"               row.METREEASTING
             ; decimalValue      "northing"              row.METRENORTHING
             ; stringValue       "osgb36_gridref"        gridref
+            ; stringValue       "function_node"         row.FUNCTION_NODE
             ]
 
 
