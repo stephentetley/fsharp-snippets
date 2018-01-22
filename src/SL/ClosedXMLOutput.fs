@@ -183,6 +183,10 @@ let tellGuid (value:System.Guid) : CellWriter = tellObj (value :> obj)
 let tellInteger (value:int) : CellWriter = tellObj (value :> obj)
 let tellInteger64 (value:int64) : CellWriter = tellObj (value :> obj)
 
+let tellInt (value:int) : CellWriter = tellObj (value :> obj)
+let tellInt64 (value:int64) : CellWriter = tellObj (value :> obj)
+
+
 let tellString (value:string) : CellWriter = 
     match value with 
     | null -> tellObj ("" :> obj)
