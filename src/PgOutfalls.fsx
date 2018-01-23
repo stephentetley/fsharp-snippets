@@ -131,6 +131,7 @@ let printNeighbours (recs:NeighbourRec list) : string =
 type OutputRow = 
     { Sai: string
       Name: string
+      AssetNGR: string
       CatsNGRs: string
       OutfallBestGuessNgr: string
       OutfallBestGuessStc25: string
@@ -154,6 +155,7 @@ let genOutputRow (limit:int) (row:NeighboursRow) : Script<OutputRow> =
         let (ngr1,stc1) = ngrAndStc25OfOne nsList
         return { Sai = row.``SAI Number``
                ; Name = row.``Asset Name``
+               ; AssetNGR = row.``Asset OSGB36``
                ; CatsNGRs = row.``Cats NGRs``
                ; OutfallBestGuessNgr = ngr1
                ; OutfallBestGuessStc25 = stc1
@@ -164,13 +166,14 @@ let genOutputRow (limit:int) (row:NeighboursRow) : Script<OutputRow> =
 let tellOutputRow (row:OutputRow) : CellWriter list = 
     [ tellString row.Sai
     ; tellString row.Name
+    ; tellString row.AssetNGR
     ; tellString row.CatsNGRs
     ; tellString row.OutfallBestGuessNgr
     ; tellString (sprintf "stc25=%s" row.OutfallBestGuessStc25)
     ; tellString row.OutfallNNs ]
 
 let csvHeaders = 
-    [ "SAI Number"; "Asset Name"; "Cats NGRs"
+    [ "SAI Number"; "Asset Name"; "Asset OSGB36"; "Cats NGRs"
     ; "Best Match NGR"; "Best Match STC25Ref"
     ; "Outfall NNs"]
 
