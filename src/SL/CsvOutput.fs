@@ -25,7 +25,10 @@ let quoteField (input:string) : string =
 let private testQuoteField (sep:Separator) (input:string)  : string = 
     match input with
     | null -> "\"\""
-    | _ -> if input.Contains(sep) then quoteField input else input
+    | _ -> 
+        if input.Contains(sep) || input.Contains("\n") then 
+            quoteField input 
+        else input
 
 
 type CsvOutput<'a> = 

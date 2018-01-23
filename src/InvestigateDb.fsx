@@ -205,7 +205,7 @@ let stormDischargeRefs (source:StormDisPermit list) : string =
         | None -> "??"
     String.concat " & " <| List.map proc1 source
 
-let main () = 
+let AssetCollectedData () = 
     let assetList = makeAssets ()
     let outFile = @"G:work\Projects\events2\Asset-collected-data.csv"
     let headers = 
