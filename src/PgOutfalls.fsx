@@ -26,6 +26,11 @@ open SL.PGSQLConn
 open SL.ScriptMonad
 open SL.CsvOutput
 
+// PostgresSQL with PostGIS enabled.
+// Table Schema:
+// CREATE TABLE spt_outfalls (stc25_ref VARCHAR(12) PRIMARY KEY, function_node VARCHAR(30), osgb36_grid VARCHAR(16), point_loc geography (POINT));
+
+
 
 type GisOutfallData = 
     CsvProvider< @"G:\work\Projects\events2\db-import-tables\gis-outlets-wkt.csv",
@@ -57,9 +62,11 @@ let deleteAllData () : Script<int> =
     liftWithConnParams << runPGSQLConn <| deleteAllRows "spt_outfalls"
 
 let makeOutfallINSERT (row:GisOutfallRow) : string = 
-    let east    = 1.0<meter> * (float <| row.METREEASTING)
-    let north   = 1.0<meter> * (float <| row.METRENORTHING)
-    let wgs84Pt = osgb36PointToWGS84 <| { Easting = east; Northing = north }
+    let east        = 1.0<meter> * (float <| row.METREEASTING)
+    let north       = 1.0<meter> * (float <| row.METRENORTHING)
+    let osgb36Pt    =  { Easting = east; Northing = north }
+    let osgb36Grid  = osgb36PointToGrid osgb36Pt
+    let wgs84Pt     = osgb36PointToWGS84 osgb36Pt
     let pointLit = 
         sprintf "ST_GeogFromText('SRID=4326;POINT(%f %f)')"
                 wgs84Pt.Longitude wgs84Pt.Latitude
@@ -67,6 +74,7 @@ let makeOutfallINSERT (row:GisOutfallRow) : string =
     sqlINSERT "spt_outfalls" 
         <|  [ stringValue       "stc25_ref"         row.STC25_REF
             ; stringValue       "function_node"     row.FUNCTION_NODE
+            ; stringValue       "osgb36_grid"       (showOSGB36Grid osgb36Grid)
             ; literalValue      "point_loc"         pointLit
             ]
 
@@ -93,7 +101,7 @@ let SetupDB(password:string) : unit =
 let makeNearestNeighbourQUERY (limit:int) (point:WGS84Point) : string = 
     System.String.Format("""
         SELECT 
-            stc25_ref, function_node 
+            stc25_ref, function_node, osgb36_grid
         FROM 
             spt_outfalls 
         ORDER BY point_loc <-> ST_Point({0}, {1}) LIMIT {2} ;
@@ -101,44 +109,55 @@ let makeNearestNeighbourQUERY (limit:int) (point:WGS84Point) : string =
 
 type NeighbourRec = 
     { STC25Ref: string
-      FunctionNode: string }
+      FunctionNode: string 
+      Osgb36Grid: string } 
 
 let pgNearestNeighbourQuery (limit:int) (point:WGS84Point) : PGSQLConn<NeighbourRec list> = 
     let query = makeNearestNeighbourQUERY limit point
     let procM (reader:NpgsqlDataReader) : NeighbourRec = 
-        { STC25Ref  = reader.GetString(0)
-          FunctionNode  = reader.GetString(1) }
+        { STC25Ref      = reader.GetString(0)
+        ; FunctionNode  = reader.GetString(1)
+        ; Osgb36Grid    = reader.GetString(2) }
     execReaderList query procM   
 
 
 
 
 let printNeighbours (recs:NeighbourRec list) : string = 
-    String.concat " & " 
-        <| List.map (fun (x:NeighbourRec) -> x.STC25Ref) recs
+    let print1 (x:NeighbourRec) : string = 
+        sprintf "%s (stc25=%s)" x.Osgb36Grid x.STC25Ref
+    String.concat " & " <| List.map print1 recs
 
 type OutputRow = 
     { Sai: string
       Name: string
       CatsNGRs: string
+      OutfallBestGuessNgr: string
+      OutfallBestGuessStc25: string
       OutfallNNs: string }
 
 
 let genOutputRow (limit:int) (row:NeighboursRow) : Script<OutputRow> = 
-    let neighbours () = 
+    let neighbours () : Script<NeighbourRec list>= 
         match Option.map osgb36GridToWGS84 <| tryReadOSGB36Grid row.``Cats NGRs`` with
         | Some wgs84 -> 
-            scriptMonad { 
-                let! ansList = liftWithConnParams << runPGSQLConn <| pgNearestNeighbourQuery 5 wgs84
-                return (printNeighbours ansList)
-                }
-        | None -> scriptMonad.Return "??"
+            liftWithConnParams << runPGSQLConn <| pgNearestNeighbourQuery 5 wgs84
+        | None -> scriptMonad.Return []
+
+    let ngrAndStc25OfOne (xs:NeighbourRec list) : string*string = 
+        match xs with
+        | x :: _ -> x.Osgb36Grid, x.STC25Ref
+        | _ -> "??","??"
+
     scriptMonad { 
-        let! neighboursText = neighbours ()
+        let! nsList = neighbours ()
+        let (ngr1,stc1) = ngrAndStc25OfOne nsList
         return { Sai = row.``SAI Number``
                ; Name = row.``Asset Name``
                ; CatsNGRs = row.``Cats NGRs``
-               ; OutfallNNs = neighboursText }
+               ; OutfallBestGuessNgr = ngr1
+               ; OutfallBestGuessStc25 = stc1
+               ; OutfallNNs = printNeighbours nsList }
     }           
 
 
@@ -146,9 +165,14 @@ let tellOutputRow (row:OutputRow) : CellWriter list =
     [ tellString row.Sai
     ; tellString row.Name
     ; tellString row.CatsNGRs
+    ; tellString row.OutfallBestGuessNgr
+    ; tellString (sprintf "stc25=%s" row.OutfallBestGuessStc25)
     ; tellString row.OutfallNNs ]
 
-let csvHeaders =  [ "SAI Number"; "Asset Name"; "Cats NGRs"; "Outfall NNs"]
+let csvHeaders = 
+    [ "SAI Number"; "Asset Name"; "Cats NGRs"
+    ; "Best Match NGR"; "Best Match STC25Ref"
+    ; "Outfall NNs"]
 
 let OutputNN(password:string) : unit = 
     let conn = pgsqlConnParamsTesting "spt_geo" password
@@ -159,5 +183,5 @@ let OutputNN(password:string) : unit =
                 let (rows1:seq<NeighboursRow>) = getDataForNeighbours ()
                 let! (rows2:seq<OutputRow>) = SL.ScriptMonad.traverseM (genOutputRow 5) rows1
                 let csvProc = tellSheetWithHeaders csvHeaders rows2 tellOutputRow
-                ignore << liftAction <| outputToNew csvProc outFile
+                do! liftAction <| outputToNew {Separator=","} csvProc outFile
                 }

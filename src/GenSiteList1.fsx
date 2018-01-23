@@ -114,7 +114,7 @@ let writeRow (sai:string) : ClosedXMLOutput<unit> =
     match tryFindRow1 sai with
     | Some(dict) -> 
         tellRow <| makeOutputCells dict
-    | None -> tellRow [sai; "#N/A"]
+    | None -> tellRow [ tellString sai; tellString "#N/A"]
 
 
 let xlsOutputPath = @"G:\work\Projects\rtu\SiteList1.xlsx"
@@ -127,4 +127,4 @@ let main () : unit =
         do! tellHeaders headers
         do! mapMz (fun (row:WorkListRow) -> writeRow row.uid) rows }
 
-    ignore <| outputToNew writerProc xlsOutputPath "Site_List"
+    ignore <| outputToNew { SheetName = "Site_List"} writerProc xlsOutputPath 

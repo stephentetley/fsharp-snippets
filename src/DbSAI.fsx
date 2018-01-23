@@ -146,7 +146,9 @@ let exportSiteList (recs:ResultRec list) (xlsOutPath:string) : Script<unit> =
         ]
         
     liftAction <| 
-        outputToNew (tellSheetWithHeaders ["Name"; "Uid"; "NGR"] recs proc1) xlsOutPath "Sites"
+        outputToNew { SheetName = "Sites" } 
+                    (tellSheetWithHeaders ["Name"; "Uid"; "NGR"] recs proc1) 
+                    xlsOutPath
 
 let tempSiteList = 
     [ @"FOSTER ROAD/URS"
@@ -163,7 +165,3 @@ let genSiteList () : unit =
     }
 
 
-
-    
-    
-        

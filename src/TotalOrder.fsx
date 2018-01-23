@@ -166,7 +166,7 @@ let main () =
     let action : ClosedXMLOutput<unit> = 
         closedXMLOutput { do! tellHeaders
                           do! process1 (master.Data |> Seq.toList) (updates.Data |> Seq.toList) }
-    outputToNew action outpath "Ultrasonics"
+    outputToNew { SheetName = "Ultrasonics" } action outpath 
 
 
 

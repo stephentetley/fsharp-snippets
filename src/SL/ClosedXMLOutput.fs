@@ -114,9 +114,13 @@ let foriMz (xs: 'a list)  (fn:int -> 'a -> ClosedXMLOutput<'b>) : ClosedXMLOutpu
 
 // ClosedXMLOutput-specific operations
 
-let outputToNew (ma:ClosedXMLOutput<'a>) (fileName:string) (sheetName:string) : 'a =
+type ClosedXMLOptions = 
+    { SheetName: string }
+
+
+let outputToNew (options:ClosedXMLOptions) (ma:ClosedXMLOutput<'a>) (fileName:string) : 'a =
     let outputbook : ClosedXML.Excel.XLWorkbook = new ClosedXML.Excel.XLWorkbook()
-    let outputsheet : ClosedXML.Excel.IXLWorksheet = outputbook.Worksheets.Add(sheetName)
+    let outputsheet : ClosedXML.Excel.IXLWorksheet = outputbook.Worksheets.Add(options.SheetName)
     let ans = runClosedXMLOutput ma outputsheet
     outputbook.SaveAs(fileName)
     ans

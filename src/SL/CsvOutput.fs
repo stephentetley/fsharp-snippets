@@ -125,11 +125,13 @@ let mapiMz (fn: 'a -> int -> CsvOutput<'b>) (xs: 'a list) : CsvOutput<unit> =
 
 // CsvOutput-specific operations
 
+type CsvOptions = 
+    { Separator: string }
 
-// TODO - filename should be last arg, but should we wrap sep?
-let outputToNew (ma:CsvOutput<'a>) (fileName:string) (sep:Separator) : 'a =
+/// Should monadic function be first or second argument?
+let outputToNew (options:CsvOptions) (ma:CsvOutput<'a>) (fileName:string) : 'a =
     use sw = new System.IO.StreamWriter(fileName)
-    runCsvOutput ma sw sep
+    runCsvOutput ma sw options.Separator
 
 let askSep : CsvOutput<Separator> = 
     CsvOutput <| fun _ sep -> sep

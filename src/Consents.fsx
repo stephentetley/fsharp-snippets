@@ -50,5 +50,5 @@ let main () : unit =
             do! tellHeaders ["UID"; "Name" ; "Grid Ref"]
             do! mapMz tellConsentsRow rows }
                     
-    outputToNew procM outfile ","
+    outputToNew {Separator=","} procM outfile
     

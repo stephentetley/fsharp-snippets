@@ -229,7 +229,7 @@ let AssetCollectedData () =
         ]
     let csvProc = 
         tellSheetWithHeaders headers assetList rowProc
-    outputToNew csvProc outFile ","
+    outputToNew {Separator=","} csvProc outFile
 
 type GisOutfall = 
     { Stc25Ref: string
@@ -256,4 +256,4 @@ let GisOutfalls () =
         ]
     let csvProc = 
         tellSheetWithHeaders headers assetList rowProc
-    outputToNew csvProc outFile ","
+    outputToNew {Separator=","} csvProc outFile

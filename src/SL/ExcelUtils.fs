@@ -24,7 +24,7 @@ let trimCsvFile (inputFile:string) (outputFile:string) (csvHasHeaders:bool) (sep
     let procM : CsvOutput<unit> = 
         SL.CsvOutput.traverseMz (SL.CsvOutput.tellRow << truncRow) csvRows
         
-    SL.CsvOutput.outputToNew procM outputFile sep    
+    SL.CsvOutput.outputToNew {Separator=sep} procM outputFile    
 
 
 // Output from Excel uses double quote and comma
@@ -37,7 +37,7 @@ let private csvTrimToClosedXML (inputFile:string) (outputFile:string) (sheetName
     let procM : ClosedXMLOutput<unit> = 
         SL.ClosedXMLOutput.traverseMz (SL.ClosedXMLOutput.tellRow << truncRow) csvRows
         
-    SL.ClosedXMLOutput.outputToNew  procM outputFile sheetName
+    SL.ClosedXMLOutput.outputToNew { SheetName = sheetName } procM outputFile 
 
 
 type private ExcelScript<'a> = ScriptMonad<Excel.Application,'a>

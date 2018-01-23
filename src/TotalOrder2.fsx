@@ -80,4 +80,4 @@ let main () =
     let updates = buildListing ()
     let outFile = @"G:\work\Projects\rtu\manuals-TODO.csv"
     let proc = processLists (master |> Seq.toList) (updates |> Seq.toList)
-    outputToNew proc outFile ","
+    outputToNew {Separator=","} proc outFile

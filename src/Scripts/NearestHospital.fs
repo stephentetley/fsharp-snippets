@@ -80,6 +80,5 @@ let generateNearestHospitalsXls (dict:NearestHospitalAlgo<'asset>) (source:'asse
             do! headerProc
             do! mapMz rowProc source }
 
-    outputToNew procOutput outputFile "Hospitals" 
-        
+    outputToNew { SheetName = "Hospitals" } procOutput outputFile 
     ()

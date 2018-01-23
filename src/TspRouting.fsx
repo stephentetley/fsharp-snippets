@@ -170,7 +170,7 @@ let outputXslx (records:DbRecord list) (fileName:string) : unit =
         ; SL.ClosedXMLOutput.tellFloat     orec.Wgs84Lat
         ; SL.ClosedXMLOutput.tellFloat     orec.Wgs84Lon ]
     let procM = tellSheetWithHeadersi ["Order"; "Code"; "Name"; "Latitude"; "Longitude"] records proc1 
-    outputToNew procM fileName "Routes"
+    outputToNew { SheetName = "Routes" } procM fileName 
 
 let findStartAndEnd (findStart:DbRecord list -> DbRecord option) 
                     (findEnd:DbRecord list -> DbRecord option)
