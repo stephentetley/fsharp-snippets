@@ -53,7 +53,11 @@ module WellKnownText =
         { WtkLon = decimal point.Longitude     
           WtkLat = decimal point.Latitude }
 
-            
+    let osgb36PointAsWKT (point:OSGB36Point) : WtkPoint<OSGB36> = 
+        { WtkLon = decimal point.Easting    
+          WtkLat = decimal point.Northing }
+
+  
     // OLD CODE...
 
     let inline private parens (s:string) : string = sprintf "(%s)" s
