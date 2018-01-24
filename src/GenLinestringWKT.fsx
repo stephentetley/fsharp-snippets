@@ -83,5 +83,5 @@ let main () =
         System.IO.File.ReadLines(inputList)
             |> Seq.toList 
             |> partition
-    outputToNew (genWKT siteOrders db) outpath ";"
+    outputToNew {Separator=";"} (genWKT siteOrders db) outpath
 

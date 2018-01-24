@@ -16,7 +16,7 @@ type PGSQLConnParams =
 let paramsConnString (config:PGSQLConnParams) : string = 
     sprintf "Host=%s;Username=%s;Password=%s;Database=%s" config.Host config.Username config.Password config.Database
 
-// Host="localhost"; Username="postgres"
+/// Host="localhost"; Username="postgres"
 let pgsqlConnParamsTesting (dbName:string) (password:string) : PGSQLConnParams = 
     { Host = "localhost"; Username = "postgres"; Database = dbName; Password = password }
 

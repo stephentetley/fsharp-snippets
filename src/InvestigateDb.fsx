@@ -62,6 +62,7 @@ type Asset =
     { SaiNumber: string
       AssetName: string
       WorkPlan: string      // aka CatsConsent:WorkCategory
+      AssetOsgb36: string
       CatsConsents: CatsConsent list 
       LotusConsents: LotusConsent list
       StormDisPermits: StormDisPermit list
@@ -148,6 +149,14 @@ let getStormDisPermitsFor (assetName:String) : StormDisPermit list  =
             distinct }
         |> Seq.toList
 
+let getSiteNGRFor (assetName:String) : string option  = 
+    let finalize xs = match xs with | x :: _ -> x | _ -> None
+    query { for sai in ctx.Main.SaiSites do
+            where (sai.CommonName = assetName)
+            select (sai.SiteNgr: string option)
+            distinct }
+        |> Seq.toList |> finalize
+
 
 let makeAssets () : Asset list = 
     let catsAssets = getCatsAssets ()
@@ -156,6 +165,7 @@ let makeAssets () : Asset list =
                 { SaiNumber = ca.SaiNumber
                 ; AssetName = ca.AssetName
                 ; WorkPlan = ca.WorkCategory
+                ; AssetOsgb36 = stringFromOption <| getSiteNGRFor ca.AssetName
                 ; CatsConsents = getCatsConsentsFor ca.SaiNumber
                 ; LotusConsents = getLotusConsentsFor ca.SaiNumber
                 ; StormDisPermits = getStormDisPermitsFor ca.AssetName
@@ -205,11 +215,11 @@ let stormDischargeRefs (source:StormDisPermit list) : string =
         | None -> "??"
     String.concat " & " <| List.map proc1 source
 
-let main () = 
+let AssetCollectedData () = 
     let assetList = makeAssets ()
     let outFile = @"G:work\Projects\events2\Asset-collected-data.csv"
     let headers = 
-        [ "SAI Number"; "Asset Name"
+        [ "SAI Number"; "Asset Name"; "Asset OSGB36"
         ; "Cats Consent Count"; "Cats NGRs"; "Cats Consents"
         ; "Lotus Consent Count"; "Lotus NGRs"; "Lotus Consents"
         ; "Storm Permit Count"; "Permit NGRs"; "Permit Outfalls" 
@@ -217,6 +227,7 @@ let main () =
     let rowProc (a:Asset) : CellWriter list = 
         [ tellString        a.SaiNumber
         ; tellString        a.AssetName
+        ; tellString        a.AssetOsgb36
         ; tellInt           <| List.length a.CatsConsents
         ; tellString        <| catsConsentRefs a.CatsConsents
         ; tellString        <| catsConsentString a.CatsConsents
@@ -229,7 +240,7 @@ let main () =
         ]
     let csvProc = 
         tellSheetWithHeaders headers assetList rowProc
-    outputToNew csvProc outFile ","
+    outputToNew {Separator=","} csvProc outFile
 
 type GisOutfall = 
     { Stc25Ref: string
@@ -256,4 +267,4 @@ let GisOutfalls () =
         ]
     let csvProc = 
         tellSheetWithHeaders headers assetList rowProc
-    outputToNew csvProc outFile ","
+    outputToNew {Separator=","} csvProc outFile

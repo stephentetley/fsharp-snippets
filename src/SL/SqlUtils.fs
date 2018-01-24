@@ -56,6 +56,26 @@ let sqlINSERT (tableName:string) (values:InsertValues) : string =
             (columnsList <| List.map (fun v -> v.columnName) values)
             (valuesList values)
 
+
+let nullValue (column:string) () : InsertValue = 
+    let render (o:obj) = "NULL"
+    { columnName = column
+    ; renderFun = render
+    ; dynValue = () :> obj
+    }
+
+/// The value is transposed to SQL exactly as written (no quoting, no escaping).
+/// Use this to generate e.g function calls in insert statements.
+let literalValue (column:string) (value:string) : InsertValue = 
+    let render (o:obj) = 
+        let s = o :?> string in s
+    { columnName = column
+    ; renderFun = render
+    ; dynValue = value :> obj
+    }
+
+
+
 // Writes TRUE or FALSE
 let boolValue (column:string) (value:bool) : InsertValue = 
     let render (o:obj) = 

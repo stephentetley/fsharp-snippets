@@ -96,7 +96,7 @@ let main (pwd:string) =
         <| answerMonad { 
                 let! groups = getInputs () 
                 let! results1 = runPGSQLConn (pgConcaveHulls groups) conn
-                do! liftAction (outputToNew (csvProc results1) wktOutfile ",")
+                do! liftAction (outputToNew {Separator=","} (csvProc results1) wktOutfile)
             }
 
    

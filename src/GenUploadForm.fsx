@@ -106,4 +106,4 @@ let main () : unit =
         do! tellHeaders headers
         do! mapMz (fun a -> tellRow (makeOutputCells a)) rows }
 
-    ignore <| outputToNew writerProc xlsOutputPath "Sheet1"
+    ignore <| outputToNew { SheetName = "Sheet1"} writerProc xlsOutputPath

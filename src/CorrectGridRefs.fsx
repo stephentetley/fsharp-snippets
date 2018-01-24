@@ -64,6 +64,6 @@ let main () : unit =
     let proc = 
         closedXMLOutput { do! tellHeaders headers
                           do! mapMz tellRow1 input }
-    outputToNew proc outFile "Outfalls"         
+    outputToNew { SheetName = "Outfalls" } proc outFile        
         
 

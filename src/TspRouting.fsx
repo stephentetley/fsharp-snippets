@@ -39,11 +39,6 @@ open Newtonsoft.Json
 open SL.JsonOutput
 
 
-// Use PostGIS's pgr_tsp function
-// This was written to generate a sql file that could be 
-// loaded/run at PostgreSQL's command line.
-// It should be reworked to use Npgsql / PGSQLConn.
-
 // Implementation note:
 // PostGIS (pgr_tsp) seems to like (or need) a numeric
 // id on the coordinate table.
@@ -175,7 +170,7 @@ let outputXslx (records:DbRecord list) (fileName:string) : unit =
         ; SL.ClosedXMLOutput.tellFloat     orec.Wgs84Lat
         ; SL.ClosedXMLOutput.tellFloat     orec.Wgs84Lon ]
     let procM = tellSheetWithHeadersi ["Order"; "Code"; "Name"; "Latitude"; "Longitude"] records proc1 
-    outputToNew procM fileName "Routes"
+    outputToNew { SheetName = "Routes" } procM fileName 
 
 let findStartAndEnd (findStart:DbRecord list -> DbRecord option) 
                     (findEnd:DbRecord list -> DbRecord option)
