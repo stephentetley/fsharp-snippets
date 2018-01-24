@@ -6,11 +6,59 @@ open System.Text.RegularExpressions
 open Microsoft.FSharp.Core
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 
+open SL.Geo.Coord
 
 module WellKnownText = 
+  
+    // Note - Wtk should not favour WGS84 srids.
+    // Other spatial references with Lon & Lat are possible.
+
+    /// Encode SRID as a phantom type.
+    type WtkPoint<'a> = 
+        { WtkLon: decimal      
+          WtkLat: decimal }
+
+    type WGS84 = class end
+    type OSGB36 = class end
+
+    // TODO - wrap with a constructor or just an alias?
+    type WtkLineString<'a> = WtkPoint<'a> list 
     
+    type WtkPolygon<'a> = WtkPoint<'a> list 
+
+    /// Prints as 'POINT(14.12345, 15.12345)'
+    let inline showWtkPoint (point:WtkPoint<'a>) : string = 
+        sprintf "POINT(%.5f %.5f)" point.WtkLon point.WtkLat
+
+    let inline private showWtkPoint1 (point:WtkPoint<'a>) : string = 
+        sprintf "%.5f %.5f" point.WtkLon point.WtkLat
+
+    /// Prints as 'LINESTRING(-1.08066 53.93863,-1.43627 53.96907)'
+    let showWtkLineString (points:WtkLineString<'a>) : string =
+        match points with
+        | [] -> "LINESTRING EMPTY"
+        | _ -> sprintf "LINESTRING(%s)" (String.concat "," <| List.map showWtkPoint1 points)
+
+
+    /// This is a simple closed polygon without any interior polygons.
+    /// The user is responsible to ensure the polygon is closed before printing and
+    /// that points are in counter-clockwise direction.
+    let showWtkPolygon (points:WtkPolygon<'a>) : string =
+        match points with
+        | [] -> "POLYGON EMPTY"
+        | _ -> sprintf "POLYGON(%s)" (String.concat "," <| List.map showWtkPoint1 points)  
+
+
+    let wgs84PointAsWKT (point:WGS84Point) : WtkPoint<WGS84> = 
+        { WtkLon = decimal point.Longitude     
+          WtkLat = decimal point.Latitude }
+
+            
+    // OLD CODE...
+
     let inline private parens (s:string) : string = sprintf "(%s)" s
 
+    
     let inline private printPoint (coord:Coord.WGS84Point) : string = 
         sprintf "%.5f %.5f" coord.Longitude coord.Latitude
 
@@ -37,7 +85,7 @@ module WellKnownText =
                 | (y::ys) -> proc (y::ac) ys
             proc [hd] xs 
     
-    // Note - don't quote ouput, client code can do that if necessary
+    // Note - don't quote output, client code can do that if necessary
 
     let genPOINT (coord:Coord.WGS84Point) : string = 
         sprintf  "POINT(%f %f)" coord.Longitude coord.Latitude
@@ -74,3 +122,4 @@ module WellKnownText =
         | _ -> sprintf "MULTIPOINT(%s)" (printPointList coords)
 
     // TODO MULTILINESTRING MULTIPOLYGON and reading...
+
