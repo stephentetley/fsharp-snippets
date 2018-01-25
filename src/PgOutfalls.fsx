@@ -33,7 +33,7 @@ open SL.CsvOutput
 
 
 type GisOutfallData = 
-    CsvProvider< @"G:\work\Projects\events2\db-import-tables\gis-outlets-wkt.csv",
+    CsvProvider< @"G:\work\Projects\events2\db-import-tables\outlet-gridrefs.csv",
                  HasHeaders = true>
 
 type GisOutfallRow = GisOutfallData.Row
@@ -68,6 +68,7 @@ let makeOutfallINSERT (row:GisOutfallRow) : string =
     let osgb36Grid  = osgb36PointToGrid osgb36Pt
     let wgs84Pt     = osgb36PointToWGS84 osgb36Pt
     let pointLit = 
+        // SRID=4326 is WGS 84 coordinate reference system
         sprintf "ST_GeogFromText('SRID=4326;POINT(%f %f)')"
                 wgs84Pt.Longitude wgs84Pt.Latitude
 

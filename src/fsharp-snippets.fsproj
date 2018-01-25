@@ -134,6 +134,7 @@
     <None Include="TestFileStore.fsx" />
     <None Include="InvestigateDb.fsx" />
     <None Include="PgOutfalls.fsx" />
+    <None Include="PgPathplan.fsx" />
     <COMReference Include="Microsoft Excel 16.0 Object Library">
       <Guid>{00020813-0000-0000-c000-000000000046}</Guid>
       <VersionMajor>1</VersionMajor>

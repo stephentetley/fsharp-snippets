@@ -3,8 +3,12 @@
 open System
 open System.Text.RegularExpressions
 
-open Microsoft.FSharp.Core
-open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
+//open Microsoft.FSharp.Core
+//open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
+
+open FParsec
+//open FSharpx.Collections
+
 
 open SL.Tolerance
 open SL.Geo.Coord
@@ -13,58 +17,89 @@ open SL.Geo.Coord
 
 module WellKnownText = 
     
-    // Note - Wtk should not favour WGS84 srids.
+    // Note - Wkt should not favour WGS84 srids.
     // Other spatial references with Lon & Lat are possible.
 
-    /// Encode SRID as a phantom type.
+    /// Encode coordinate reference system as a phantom type.
     /// Values are represented as decimal
-    type WtkPoint<'a> = 
-        { WtkLon: decimal      
-          WtkLat: decimal }
+    type WktPoint<'a> = 
+        { WktLon: decimal      
+          WktLat: decimal }
 
+    
+    /// World Geodetic System 1984             
+    /// The SRID for this system is ESPG:4326
     type WGS84 = class end
+
+    /// Ordinance Survey Great Britain National Grid reference system 
+    /// The SRID for this system is ESPG:27700
     type OSGB36 = class end
 
-    let wtkPointsEqual (tx:Tolerance) (p1:WtkPoint<'a>) (p2:WtkPoint<'a>) : bool =
-        tEqual tx p1.WtkLon p2.WtkLon && tEqual tx p1.WtkLat p2.WtkLat
+    let wktPointsEqual (tx:Tolerance) (p1:WktPoint<'a>) (p2:WktPoint<'a>) : bool =
+        tEqual tx p1.WktLon p2.WktLon && tEqual tx p1.WktLat p2.WktLat
 
     // TODO - wrap with a constructor or just an alias?
-    type WtkLineString<'a> = WtkPoint<'a> list 
+    type WktLineString<'a> = WktPoint<'a> list 
     
-    type WtkPolygon<'a> = WtkPoint<'a> list 
+    type WktPolygon<'a> = WktPoint<'a> list 
 
     /// Prints as 'POINT(14.12345, 15.12345)'
-    let inline showWtkPoint (point:WtkPoint<'a>) : string = 
-        sprintf "POINT(%.5f %.5f)" point.WtkLon point.WtkLat
+    let inline showWktPoint (point:WktPoint<'a>) : string = 
+        sprintf "POINT(%.5f %.5f)" point.WktLon point.WktLat
 
-    let inline private showWtkPoint1 (point:WtkPoint<'a>) : string = 
-        sprintf "%.5f %.5f" point.WtkLon point.WtkLat
+    let inline private showWktPoint1 (point:WktPoint<'a>) : string = 
+        sprintf "%.5f %.5f" point.WktLon point.WktLat
 
     /// Prints as 'LINESTRING(-1.08066 53.93863,-1.43627 53.96907)'
-    let showWtkLineString (points:WtkLineString<'a>) : string =
+    let showWktLineString (points:WktLineString<'a>) : string =
         match points with
         | [] -> "LINESTRING EMPTY"
-        | _ -> sprintf "LINESTRING(%s)" (String.concat "," <| List.map showWtkPoint1 points)
+        | _ -> sprintf "LINESTRING(%s)" (String.concat "," <| List.map showWktPoint1 points)
 
 
     /// This is a simple closed polygon without any interior polygons.
     /// The user is responsible to ensure the polygon is closed before printing and
     /// that points are in counter-clockwise direction.
-    let showWtkPolygon (points:WtkPolygon<'a>) : string =
+    let showWktPolygon (points:WktPolygon<'a>) : string =
         match points with
         | [] -> "POLYGON EMPTY"
-        | _ -> sprintf "POLYGON(%s)" (String.concat "," <| List.map showWtkPoint1 points)  
+        | _ -> sprintf "POLYGON(%s)" (String.concat "," <| List.map showWktPoint1 points)  
 
 
-    let wgs84PointAsWKT (point:WGS84Point) : WtkPoint<WGS84> = 
-        { WtkLon = decimal point.Longitude     
-          WtkLat = decimal point.Latitude }
+    let wgs84PointAsWKT (point:WGS84Point) : WktPoint<WGS84> = 
+        { WktLon = decimal point.Longitude     
+          WktLat = decimal point.Latitude }
 
-    let osgb36PointAsWKT (point:OSGB36Point) : WtkPoint<OSGB36> = 
-        { WtkLon = decimal point.Easting    
-          WtkLat = decimal point.Northing }
+    let osgb36PointAsWKT (point:OSGB36Point) : WktPoint<OSGB36> = 
+        { WktLon = decimal point.Easting    
+          WktLat = decimal point.Northing }
 
   
+
+    // ***** PARSING *****
+
+    let private pSymbol (s:string) : Parser<string,'u> = 
+        pstring s .>> spaces
+
+    let private pParens (p:Parser<'a,'u>) : Parser<'a,'u> =
+        between (pSymbol "(") (pSymbol ")") p
+
+    // TODO - check FParsec source to see how spaces overcomes the value restriction
+    let pDecimal : Parser<decimal,unit> = pfloat |>> (fun a -> decimal a)
+
+    let pWktPoint1 () : Parser<WktPoint<'a>, unit> = 
+        pipe2 pDecimal pDecimal (fun lon lat -> { WktLon = lon; WktLat = lat })
+
+    // Utility combinators
+    let private parsePOINT () : Parser<WktPoint<'a>, unit> = 
+        pSymbol "POINT" >>. pParens (pWktPoint1 ())
+
+    let tryReadWktPoint (source:string) : WktPoint<'a> option = 
+        let ans1 = runParserOnString (parsePOINT ()) () "none" source
+        match ans1 with
+        | Success(a,_,_) -> Some a
+        | Failure(s,_,_) -> None
+
     // OLD CODE...
 
     let inline private parens (s:string) : string = sprintf "(%s)" s
