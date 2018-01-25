@@ -3,16 +3,10 @@
 open System
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 
-//open Microsoft.FSharp.Core
-//open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
-
 open FParsec
-//open FSharpx.Collections
-
 
 open SL.Tolerance
 open SL.Geo.Coord
-
 
 
 module WellKnownText = 
@@ -97,22 +91,30 @@ module WellKnownText =
     let private pParens (p:Parser<'a,'u>) : Parser<'a,'u> =
         between (pSymbol "(") (pSymbol ")") p
 
-    // TODO - check FParsec source to see how spaces overcomes the value restriction
-    let pDecimal : Parser<decimal,unit> = pfloat |>> (fun a -> decimal a)
+    // We have got over the value restriction by fixing the WktPoint phantom tag 
+    // to TEMP and parser state to unit.
+    // This is not a brilliant solution.
 
-    let pWktPoint1 () : Parser<WktPoint<'a>, unit> = 
+    let private pDecimal : Parser<decimal,unit> = pfloat |>> decimal
+
+    type private TEMP = class end
+
+    let private unTEMP (pt:WktPoint<TEMP>) :WktPoint<'a> = 
+        { WktLon = pt.WktLon; WktLat = pt.WktLat}:WktPoint<'a>
+
+    let private pWktPoint1 : Parser<WktPoint<TEMP>,unit> = 
         pipe2   (pDecimal .>> spaces)
                 (pDecimal .>> spaces) 
-                (fun lon lat -> { WktLon = lon; WktLat = lat })
+                (fun lon lat -> { WktLon = lon; WktLat = lat } :WktPoint<TEMP>)
 
     // Utility combinators
-    let private parsePOINT () : Parser<WktPoint<'a>, unit> = 
-        pSymbol "POINT" >>. pParens (pWktPoint1 ())
+    let private parsePOINT : Parser<WktPoint<TEMP>, unit> = 
+        pSymbol "POINT" >>. pParens pWktPoint1
 
     let tryReadWktPoint (source:string) : WktPoint<'a> option = 
-        let ans1 = runParserOnString (parsePOINT ()) () "none" source
+        let ans1 = runParserOnString parsePOINT () "none" source
         match ans1 with
-        | Success(a,_,_) -> Some a
+        | Success(a,_,_) -> Some <| unTEMP a
         | Failure(s,_,_) -> None
 
     // OLD CODE...
