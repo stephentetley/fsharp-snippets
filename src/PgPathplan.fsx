@@ -33,6 +33,9 @@ open SL.PGSQLConn
 open SL.ScriptMonad
 open SL.CsvOutput
 
+#load @"Scripts\PathFinder.fs"
+open Scripts.PathFinder
+
 // PostgresSQL with PostGIS enabled.
 // Table Schema:
 // CREATE TABLE spt_outfalls (stc25_ref VARCHAR(12) PRIMARY KEY, function_node VARCHAR(30), osgb36_grid VARCHAR(16), point_loc geography (POINT));
@@ -101,6 +104,15 @@ let SetupDB(password:string) : unit =
             ; insertOutfalls ()         |> logScript (sprintf "%i rows inserted") 
             ]
 
-let test01 () : WktPoint<OSGB36> option =
-    tryReadWktPoint "POINT  ( 400849.607 502150.696 ) " 
+let test01 () : unit =
+    match tryReadWktPoint "POINT  ( 389330.850 501189.852) " with
+    | Some (pt:WktPoint<OSGB36>) -> 
+        printfn "%s => %s" (showWktPoint pt) (showWktPoint <| wktOSGB36ToWGS84 pt) 
+    | None -> failwith "Grr!"
+
+let roseTree1 :PathTree<string> = 
+    PathTree("A",[PathTree("B",[PathTree("C",[PathTree("D",[]); PathTree("E",[])])])])
+
+let test02 () = 
+    allRoutes roseTree1
 

@@ -247,7 +247,8 @@ let deleteAllRows (tableName:string) : PGSQLConn<int> =
     let query = sprintf "TRUNCATE TABLE %s;" tableName
     execNonQuery query
 
-/// Run a ``TRUNCATE TABLE name RESTART IDENTITY;`` query
+/// Run a ``TRUNCATE TABLE name RESTART IDENTITY;`` query.
+/// Use this for tables with a SERIAL id.
 let deleteAllRowsRestartIdentity (tableName:string) : PGSQLConn<int> = 
     let query = sprintf "TRUNCATE TABLE %s RESTART IDENTITY;" tableName
     execNonQuery query
