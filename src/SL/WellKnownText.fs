@@ -6,20 +6,27 @@ open System.Text.RegularExpressions
 open Microsoft.FSharp.Core
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 
+open SL.Tolerance
 open SL.Geo.Coord
 
+
+
 module WellKnownText = 
-  
+    
     // Note - Wtk should not favour WGS84 srids.
     // Other spatial references with Lon & Lat are possible.
 
     /// Encode SRID as a phantom type.
+    /// Values are represented as decimal
     type WtkPoint<'a> = 
         { WtkLon: decimal      
           WtkLat: decimal }
 
     type WGS84 = class end
     type OSGB36 = class end
+
+    let wtkPointsEqual (tx:Tolerance) (p1:WtkPoint<'a>) (p2:WtkPoint<'a>) : bool =
+        tEqual tx p1.WtkLon p2.WtkLon && tEqual tx p1.WtkLat p2.WtkLat
 
     // TODO - wrap with a constructor or just an alias?
     type WtkLineString<'a> = WtkPoint<'a> list 

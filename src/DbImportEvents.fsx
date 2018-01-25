@@ -130,7 +130,7 @@ let getLotusContents () : LotusRow list = (new LotusData ()).Rows |> Seq.toList
 
 
 type GisOutfallData = 
-    CsvProvider< @"G:\work\Projects\events2\db-import-tables\gis-outlets-wkt.csv",
+    CsvProvider< @"G:\work\Projects\events2\db-import-tables\outlet-gridrefs.csv",
                  HasHeaders = true>
 
 type GisOutfallRow = GisOutfallData.Row

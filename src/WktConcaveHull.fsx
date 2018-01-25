@@ -20,6 +20,7 @@ open Npgsql
 open SL.AnswerMonad
 open SL.PGSQLConn
 
+#load @"SL\Tolerance.fs"
 #load @"SL\Coord.fs"
 #load @"SL\WellKnownText.fs"
 open SL.Geo
