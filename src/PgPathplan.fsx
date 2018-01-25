@@ -12,16 +12,23 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 #r "Npgsql"
 open Npgsql
 
+#I @"..\packages\FParsec.1.0.2\lib\net40-client"
+#r "FParsec"
+#r "FParsecCS"
+
 
 #load @"SL\AnswerMonad.fs"
+#load @"SL\Tolerance.fs"
 #load @"SL\SqlUtils.fs"
 #load @"SL\PGSQLConn.fs"
 #load @"SL\Coord.fs"
+#load @"SL\WellKnownText.fs"
 #load @"SL\ScriptMonad.fs"
 #load @"SL\CsvOutput.fs"
 open SL.AnswerMonad
 open SL.SqlUtils
 open SL.Geo.Coord
+open SL.Geo.WellKnownText
 open SL.PGSQLConn
 open SL.ScriptMonad
 open SL.CsvOutput
@@ -51,29 +58,35 @@ let liftWithConnParams (fn:PGSQLConnParams -> Answer<'a>) : Script<'a> =
     withConnParams <| (liftAnswer << fn)
 
 let deleteAllData () : Script<int> = 
-    liftWithConnParams << runPGSQLConn <| deleteAllRows "spt_pathfind"
+    liftWithConnParams << runPGSQLConn <| deleteAllRowsRestartIdentity "spt_pathfind"
 
-let makePathSectionINSERT (row:PathImportRow) : string = 
+let makePathSectionINSERT (row:PathImportRow) : string option = 
+    
+    match tryReadWktPoint row.StartPoint, tryReadWktPoint row.EndPoint with
+    | Some startPt, Some endPt -> 
+        let wgs84Start = wktOSGB36ToWGS84 startPt
+        let wgs84End = wktOSGB36ToWGS84 endPt 
+        let makePointLit (pt:WktPoint<WGS84>) : string = 
+            // SRID=4326 is WGS 84 coordinate reference system
+            sprintf "ST_GeogFromText('SRID=4326;%s')" (showWktPoint pt)
 
-    let makePointLit (pt:WGS84Point) : string = 
-        // SRID=4326 is WGS 84 coordinate reference system
-        sprintf "ST_GeogFromText('SRID=4326;POINT(%f %f)')"
-                pt.Longitude pt.Latitude
-
-    // Note the id column is PG's SERIAL type so it is inserted automatically
-    sqlINSERT "spt_pathfind" 
-        <|  [ stringValue       "basetype"          row.BASETYPE
-            ; stringValue       "function_node"     row.FUNCTION_Link
-            ; literalValue      "start_point"       "NULL"
-            ; literalValue      "end_point"         "NULL"
-            ]
+        // Note the id column is PG's SERIAL type so it is inserted automatically
+        Some << sqlINSERT "spt_pathfind" 
+                    <|  [ stringValue       "basetype"          row.BASETYPE
+                        ; stringValue       "function_node"     row.FUNCTION_Link
+                        ; literalValue      "start_point"       <| makePointLit wgs84Start
+                        ; literalValue      "end_point"         <| makePointLit wgs84End
+                        ]
+    | _,_ -> None
 
 
 
 let insertOutfalls () : Script<int> = 
     let rows = getPathImportRows ()
     let proc1 (row:PathImportRow) : PGSQLConn<int> = 
-        execNonQuery <| makePathSectionINSERT row
+        match makePathSectionINSERT row with
+        | None -> pgsqlConn.Return 0
+        | Some sql -> execNonQuery sql
     liftWithConnParams 
         << runPGSQLConn << withTransaction <| SL.PGSQLConn.sumTraverseM proc1 rows
 
@@ -87,3 +100,7 @@ let SetupDB(password:string) : unit =
             [ deleteAllData ()          |> logScript (sprintf "%i rows deleted")
             ; insertOutfalls ()         |> logScript (sprintf "%i rows inserted") 
             ]
+
+let test01 () : WktPoint<OSGB36> option =
+    tryReadWktPoint "POINT  ( 400849.607 502150.696 ) " 
+

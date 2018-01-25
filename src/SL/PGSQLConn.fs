@@ -242,7 +242,12 @@ let withTransactionSeq (values:seq<'a>) (proc1:'a -> PGSQLConn<'b>) : PGSQLConn<
 let withTransactionSeqSum (values:seq<'a>) (proc1:'a -> PGSQLConn<int>) : PGSQLConn<int> = 
     fmapM (Seq.sum) <| withTransactionSeq values proc1
 
-// Run a ``TRUNCATE TABLE`` query
+/// Run a ``TRUNCATE TABLE`` query
 let deleteAllRows (tableName:string) : PGSQLConn<int> = 
     let query = sprintf "TRUNCATE TABLE %s;" tableName
+    execNonQuery query
+
+/// Run a ``TRUNCATE TABLE name RESTART IDENTITY;`` query
+let deleteAllRowsRestartIdentity (tableName:string) : PGSQLConn<int> = 
+    let query = sprintf "TRUNCATE TABLE %s RESTART IDENTITY;" tableName
     execNonQuery query

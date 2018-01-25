@@ -1,7 +1,7 @@
 ﻿namespace SL.Geo
 
 open System
-open System.Text.RegularExpressions
+open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 
 //open Microsoft.FSharp.Core
 //open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
@@ -44,6 +44,7 @@ module WellKnownText =
     type WktPolygon<'a> = WktPoint<'a> list 
 
     /// Prints as 'POINT(14.12345, 15.12345)'
+    /// (Ideally we would print with user supplied precision)
     let inline showWktPoint (point:WktPoint<'a>) : string = 
         sprintf "POINT(%.5f %.5f)" point.WktLon point.WktLat
 
@@ -66,15 +67,27 @@ module WellKnownText =
         | _ -> sprintf "POLYGON(%s)" (String.concat "," <| List.map showWktPoint1 points)  
 
 
-    let wgs84PointAsWKT (point:WGS84Point) : WktPoint<WGS84> = 
+    let wgs84PointToWKT (point:WGS84Point) : WktPoint<WGS84> = 
         { WktLon = decimal point.Longitude     
           WktLat = decimal point.Latitude }
 
-    let osgb36PointAsWKT (point:OSGB36Point) : WktPoint<OSGB36> = 
+    let osgb36PointToWKT (point:OSGB36Point) : WktPoint<OSGB36> = 
         { WktLon = decimal point.Easting    
           WktLat = decimal point.Northing }
 
-  
+    let wktToWGS84Point (point:WktPoint<WGS84>) : WGS84Point = 
+        { Latitude = 1.0<degree> * float point.WktLat
+        ; Longitude = 1.0<degree> * float point.WktLon }
+
+    let wktToOSGB36Point (point:WktPoint<OSGB36>) : OSGB36Point = 
+        { Easting = 1.0<meter> * float point.WktLon
+        ; Northing = 1.0<meter> * float point.WktLat }
+
+    let wktOSGB36ToWGS84 (point:WktPoint<OSGB36>) : WktPoint<WGS84> = 
+        point |> wktToOSGB36Point |> osgb36PointToWGS84 |> wgs84PointToWKT
+
+    let wktWGS84ToOSGB36 (point:WktPoint<WGS84>) : WktPoint<OSGB36> = 
+        point |> wktToWGS84Point |> wgs84ToOSGB36Point |> osgb36PointToWKT
 
     // ***** PARSING *****
 
@@ -88,7 +101,9 @@ module WellKnownText =
     let pDecimal : Parser<decimal,unit> = pfloat |>> (fun a -> decimal a)
 
     let pWktPoint1 () : Parser<WktPoint<'a>, unit> = 
-        pipe2 pDecimal pDecimal (fun lon lat -> { WktLon = lon; WktLat = lat })
+        pipe2   (pDecimal .>> spaces)
+                (pDecimal .>> spaces) 
+                (fun lon lat -> { WktLon = lon; WktLat = lat })
 
     // Utility combinators
     let private parsePOINT () : Parser<WktPoint<'a>, unit> = 
