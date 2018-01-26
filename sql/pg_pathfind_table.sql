@@ -2,7 +2,7 @@
 -- At the prompt:
 -- some_db=# \i d:/path_to/sql/pg_pathfind_table.sql
 
--- DROP TABLE spt_pathfind;
+DROP TABLE spt_pathfind;
 
 
 -- Use PostgreSQL's SERIAL typer for an auto-incrementing id

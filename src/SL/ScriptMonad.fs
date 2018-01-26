@@ -79,7 +79,8 @@ let mapM (fn:'a -> ScriptMonad<'r,'b>) (xs:'a list) : ScriptMonad<'r,'b list> =
         AnswerMonad.mapM (fun x -> apply1 (fn x) sw env) xs
 
 
-let forM (xs:'a list) (fn:'a -> ScriptMonad<'r,'b>) : ScriptMonad<'r,'b list> = mapM fn xs
+let forM (xs:'a list) (fn:'a -> ScriptMonad<'r,'b>) : ScriptMonad<'r,'b list> = 
+    mapM fn xs
 
 let mapMz (fn:'a -> ScriptMonad<'r,'b>) (xs:'a list) : ScriptMonad<'r,unit> = 
     ScriptMonad <| fun sw env -> 

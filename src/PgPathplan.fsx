@@ -67,8 +67,8 @@ let makePathSectionINSERT (row:PathImportRow) : string option =
     
     match tryReadWktPoint row.StartPoint, tryReadWktPoint row.EndPoint with
     | Some startPt, Some endPt -> 
-        let wgs84Start = wktOSGB36ToWGS84 startPt
-        let wgs84End = wktOSGB36ToWGS84 endPt 
+        let wgs84Start = wktOSGB36ToWktWGS84 startPt
+        let wgs84End = wktOSGB36ToWktWGS84 endPt 
         let makePointLit (pt:WktPoint<WGS84>) : string = 
             // SRID=4326 is WGS 84 coordinate reference system
             sprintf "ST_GeogFromText('SRID=4326;%s')" (showWktPoint pt)
@@ -107,7 +107,7 @@ let SetupDB(password:string) : unit =
 let test01 () : unit =
     match tryReadWktPoint "POINT  ( 389330.850 501189.852) " with
     | Some (pt:WktPoint<OSGB36>) -> 
-        printfn "%s => %s" (showWktPoint pt) (showWktPoint <| wktOSGB36ToWGS84 pt) 
+        printfn "%s => %s" (showWktPoint pt) (showWktPoint <| wktOSGB36ToWktWGS84 pt) 
     | None -> failwith "Grr!"
 
 let roseTree1 :PathTree<string> = 
@@ -116,3 +116,26 @@ let roseTree1 :PathTree<string> =
 let test02 () = 
     allRoutes roseTree1
 
+let test03 (password:string) : unit = 
+    let conn = pgsqlConnParamsTesting "spt_geo" password
+    let startPt = 
+        osgb36PointToWGS84 { Easting = 389330.850<meter> ; Northing = 501189.852<meter> }
+
+    runScript (failwith) (printfn "Success: %A") (consoleLogger) conn 
+        <| scriptMonad { 
+            let! vs = findVertices startPt
+            do! liftAction (List.iter (printfn "Vertex: %A") vs)
+            }
+
+
+let test04 (password:string) : unit = 
+    let conn = pgsqlConnParamsTesting "spt_geo" password
+    let startPt = 
+        osgb36PointToWGS84 { Easting = 389330.850<meter> ; Northing = 501189.852<meter> }
+
+    runScript (failwith) (printfn "Success: %A") (consoleLogger) conn 
+        <| scriptMonad { 
+            let! trees = buildForest startPt
+            do! liftAction (List.iter (printfn "PathTree: %A") trees)
+            }
+                        
