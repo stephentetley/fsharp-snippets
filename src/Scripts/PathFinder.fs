@@ -38,7 +38,7 @@ let deleteAllData () : Script<int> =
 
 
 
-let private makePathSectionINSERT (vertex1:VertexInsert) : string = 
+let private makeVertexINSERT (vertex1:VertexInsert) : string = 
     let makePointLit (pt:WGS84Point) : string = 
         sprintf "ST_GeogFromText('SRID=4326;%s')" (showWktPoint <| wgs84PointToWKT pt)
     // Note the id column is PG's SERIAL type so it is inserted automatically
@@ -52,10 +52,17 @@ let private makePathSectionINSERT (vertex1:VertexInsert) : string =
 let insertOutfalls (dict:VertexInsertDict<'inputrow>) (outfalls:seq<'inputrow>) : Script<int> = 
     let proc1 (row:'inputrow) : PGSQLConn<int> = 
         match dict.tryMakeVertexInsert row with
-        | Some vertex -> execNonQuery <| makePathSectionINSERT vertex
+        | Some vertex -> execNonQuery <| makeVertexINSERT vertex
         | None -> pgsqlConn.Return 0
     liftWithConnParams 
         << runPGSQLConn << withTransaction <| SL.PGSQLConn.sumTraverseM proc1 outfalls
+
+let SetupVertexDB (dict:VertexInsertDict<'inputrow>) (outfalls:seq<'inputrow>) : Script<int> = 
+    scriptMonad { 
+        let! _ = deleteAllData () |> logScript (sprintf "%i rows deleted")
+        let! count = insertOutfalls dict outfalls  |> logScript (sprintf "%i rows inserted") 
+        return count
+     }
 
 
 // ***** Path finding

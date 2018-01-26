@@ -48,7 +48,8 @@ type PathImportTable =
 
 type PathImportRow = PathImportTable.Row
 
-let getPathImportRows () : PathImportRow seq = (new PathImportTable ()).Rows |> Seq.cast<PathImportRow>
+let getPathImportRows () : seq<PathImportRow> = 
+    (new PathImportTable ()).Rows |> Seq.cast<PathImportRow>
 
 
 let tryMakeVertex (row:PathImportRow) : VertexInsert option = 
@@ -60,7 +61,6 @@ let tryMakeVertex (row:PathImportRow) : VertexInsert option =
                 ; FunctionNode = row.FUNCTION_Link
                 ; StartPoint = osgb36PointToWGS84 <| wktToOSGB36Point startPt
                 ; EndPoint = osgb36PointToWGS84 <| wktToOSGB36Point endPt }
-        
     | _,_ -> None
 
 let MakeDict : VertexInsertDict<PathImportRow> = { tryMakeVertexInsert = tryMakeVertex }
@@ -69,10 +69,7 @@ let SetupDB(password:string) : unit =
     let conn = pgsqlConnParamsTesting "spt_geo" password
     let rows = getPathImportRows ()
     runScript (failwith) (printfn "Success: %i modifications") (consoleLogger) conn 
-        <| sumSequenceM 
-            [ deleteAllData ()              |> logScript (sprintf "%i rows deleted")
-            ; insertOutfalls MakeDict rows  |> logScript (sprintf "%i rows inserted") 
-            ]
+        <| SetupVertexDB MakeDict rows 
 
 // ***** Testing towards path finding...
 
@@ -110,4 +107,4 @@ let test04 (password:string) : unit =
             let! routes = getRoutesFrom startPt
             do! liftAction (List.iter (printfn "Route: %A") routes)
             }
-                        
+

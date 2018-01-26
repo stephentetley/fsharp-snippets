@@ -2,12 +2,29 @@
 #r @"FSharp.Data.dll"
 open FSharp.Data
 
+#I @"..\packages\Npgsql.3.2.6\lib\net451\"
+#I @"..\packages\System.Threading.Tasks.Extensions.4.3.0\lib\portable-net45+win8+wp8+wpa81"
+#r "Npgsql"
+open Npgsql
 
-#r "Microsoft.Office.Interop.Excel"
-open Microsoft.Office.Interop
+#I @"..\packages\FParsec.1.0.2\lib\net40-client"
+#r "FParsec"
+#r "FParsecCS"
 
+//#r "Microsoft.Office.Interop.Excel"
+//open Microsoft.Office.Interop
+
+#load @"SL\AnswerMonad.fs"
+#load @"SL\Tolerance.fs"
+#load @"SL\SQLUtils.fs"
+#load @"SL\PGSQLConn.fs"
+#load @"SL\ScriptMonad.fs"
 #load @"SL\Coord.fs"
-open SL.Geo
+#load @"SL\WellKnownText.fs"
+open SL.Geo.Coord
+open SL.Geo.WellKnownText
+open SL.PGSQLConn
+open SL.ScriptMonad
 
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
@@ -20,6 +37,15 @@ open SL.ClosedXMLOutput
 
 #load @"Scripts\NearestHospital.fs"
 open Scripts.NearestHospital
+
+
+
+let SetupDB(password:string) : unit = 
+    let conn = pgsqlConnParamsTesting "spt_geo" password
+    let rows = getHospitalImportRows ()
+    runScript (failwith) (printfn "Success: %i modifications") (consoleLogger) conn 
+        <| insertHospitals MakeDict rows 
+
 
 
 // Note - input file has bad initial rows stopping type interence
@@ -35,8 +61,8 @@ let readAssetRows () : AssetRow list =
 
 
 let nearestAlgo : NearestHospitalDict<AssetRow>  = 
-    let extractLocation (row:AssetRow) : Coord.WGS84Point option = 
-        Option.map Coord.osgb36GridToWGS84 <| Coord.tryReadOSGB36Grid row.``Grid Reference``
+    let extractLocation (row:AssetRow) : WGS84Point option = 
+        Option.map osgb36GridToWGS84 <| tryReadOSGB36Grid row.``Grid Reference``
 
     let outputRow (row:AssetRow) (obest : BestMatch option) : ClosedXMLOutput<unit> = 
         match obest with
