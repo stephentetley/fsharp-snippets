@@ -135,7 +135,7 @@ let test04 (password:string) : unit =
 
     runScript (failwith) (printfn "Success: %A") (consoleLogger) conn 
         <| scriptMonad { 
-            let! trees = buildForest startPt
-            do! liftAction (List.iter (printfn "PathTree: %A") trees)
+            let! routes = getRoutesFrom startPt
+            do! liftAction (List.iter (printfn "Route: %A") routes)
             }
                         

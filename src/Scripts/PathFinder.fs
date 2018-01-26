@@ -68,7 +68,10 @@ let findVertices (startPt:WGS84Point) : Script<Vertex list> =
 let notVisited (visited:Vertex list) (v1:Vertex) = 
     not <| List.exists (fun (v:Vertex) -> v.UID = v1.UID) visited
 
-
+/// A start my have many outward paths, hence we build a list of trees.
+/// Note - if we study the data we should be able to prune the searches 
+/// by looking at Function_link and only following paths that start with 
+/// a particular link type.
 let buildForest (startPt:WGS84Point) : Script<PathTree<Vertex> list> = 
     let rec recBuild (pt:WGS84Point) (visited:Vertex list) : Script<PathTree<Vertex> list> = 
         scriptMonad { 
@@ -93,5 +96,12 @@ let allRoutes (allPaths:PathTree<'a>) : Route<'a> list =
         | PathTree(label,paths) -> 
             List.collect (build (label::soFarRev)) paths
     List.map (fun xs -> Route <| List.rev xs) <| build [] allPaths
+
+// Note to self - be careful using <| in computation expressions
+
+let getRoutesFrom (startPt:WGS84Point) : Script<Route<Vertex> list> = 
+    fmapM (List.collect allRoutes) <| buildForest startPt
+
+
 
 
