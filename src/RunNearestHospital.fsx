@@ -24,42 +24,45 @@ open Scripts.NearestHospital
 
 // Note - input file has bad initial rows stopping type interence
 type AssetDataset = 
-    CsvProvider< @"G:\work\Projects\events2\site-list-for-hospitals.csv",
-                 Schema = "asset_sai_number=string, common_name=string, asset_type=string, work_category=string, toplevel_permit_ref=string, site_ngr=string, asset_status=string, site_address=string, site_postcode=string, operational_contact=string",
+    CsvProvider< @"G:\work\Projects\rtu\peer-to-peer.csv",
                  HasHeaders = true >
 
 type AssetRow = AssetDataset.Row
 
 
 let readAssetRows () : AssetRow list = 
-    let assetData = new AssetDataset()
-    assetData.Rows |> Seq.toList
+    (new AssetDataset()).Rows |> Seq.toList
 
 
-
-let nearestAlgo : NearestHospitalAlgo<AssetRow>  = 
+let nearestAlgo : NearestHospitalDict<AssetRow>  = 
     let extractLocation (row:AssetRow) : Coord.WGS84Point option = 
-        Option.map Coord.osgb36GridToWGS84 <| Coord.tryReadOSGB36Grid row.Site_ngr
+        Option.map Coord.osgb36GridToWGS84 <| Coord.tryReadOSGB36Grid row.``Grid Reference``
 
     let outputRow (row:AssetRow) (obest : BestMatch option) : ClosedXMLOutput<unit> = 
         match obest with
         | None -> 
-            tellRow [ tellString row.Asset_sai_number
-                    ; tellString row.Common_name ] 
+            tellRow [ tellString row.Reference
+                    ; tellString row.``Common Name`` ] 
         | Some bestMatch -> 
-            tellRow [ tellString row.Asset_sai_number
-                    ; tellString row.Common_name
+            let hospitalLine = 
+                sprintf "%s, %s, %s. Tel: %s" 
+                        bestMatch.NearestHospital.HospitalName
+                        bestMatch.NearestHospital.Address
+                        bestMatch.NearestHospital.Postcode
+                        bestMatch.NearestHospital.Phone
+            tellRow [ tellString row.Reference
+                    ; tellString row.``Common Name``
                     ; tellString bestMatch.NearestHospital.HospitalName
-                    ; tellString bestMatch.NearestHospital.Address
+                    ; tellString hospitalLine
                     ; tellFloat <| float bestMatch.DistanceToNearest  ] 
 
-    { TableHeaders = Some <| [ "SAI"; "Name"; "Hospital"; "Hospital Address"; "Distance" ]
+    { TableHeaders = Some <| [ "SAI"; "Name"; "Hospital"; "Hospital Details"; "Distance" ]
     ; ExtractLocation = extractLocation
     ; OutputRow = outputRow
     } 
 
 let main () = 
     let assetData = readAssetRows ()
-    generateNearestHospitalsXls nearestAlgo assetData @"G:\work\Projects\events2\sites-with-hospital.xlsx"
+    generateNearestHospitalsXls nearestAlgo assetData @"G:\work\Projects\rtu\p2p-sites-with-hospital.xlsx"
         
 

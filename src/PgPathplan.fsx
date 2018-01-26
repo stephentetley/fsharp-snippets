@@ -51,58 +51,30 @@ type PathImportRow = PathImportTable.Row
 let getPathImportRows () : PathImportRow seq = (new PathImportTable ()).Rows |> Seq.cast<PathImportRow>
 
 
-// ********** SCRIPT **********
-type Script<'a> = ScriptMonad<PGSQLConnParams,'a>
-
-let withConnParams (fn:PGSQLConnParams -> Script<'a>) : Script<'a> = 
-    scriptMonad.Bind (ask (), fn)
-
-let liftWithConnParams (fn:PGSQLConnParams -> Answer<'a>) : Script<'a> = 
-    withConnParams <| (liftAnswer << fn)
-
-let deleteAllData () : Script<int> = 
-    liftWithConnParams << runPGSQLConn <| deleteAllRowsRestartIdentity "spt_pathfind"
-
-let makePathSectionINSERT (row:PathImportRow) : string option = 
-    
+let tryMakeVertex (row:PathImportRow) : VertexInsert option = 
     match tryReadWktPoint row.StartPoint, tryReadWktPoint row.EndPoint with
     | Some startPt, Some endPt -> 
         let wgs84Start = wktOSGB36ToWktWGS84 startPt
         let wgs84End = wktOSGB36ToWktWGS84 endPt 
-        let makePointLit (pt:WktPoint<WGS84>) : string = 
-            // SRID=4326 is WGS 84 coordinate reference system
-            sprintf "ST_GeogFromText('SRID=4326;%s')" (showWktPoint pt)
-
-        // Note the id column is PG's SERIAL type so it is inserted automatically
-        Some << sqlINSERT "spt_pathfind" 
-                    <|  [ stringValue       "basetype"          row.BASETYPE
-                        ; stringValue       "function_node"     row.FUNCTION_Link
-                        ; literalValue      "start_point"       <| makePointLit wgs84Start
-                        ; literalValue      "end_point"         <| makePointLit wgs84End
-                        ]
+        Some <| { Basetype = row.BASETYPE
+                ; FunctionNode = row.FUNCTION_Link
+                ; StartPoint = osgb36PointToWGS84 <| wktToOSGB36Point startPt
+                ; EndPoint = osgb36PointToWGS84 <| wktToOSGB36Point endPt }
+        
     | _,_ -> None
 
-
-
-let insertOutfalls () : Script<int> = 
-    let rows = getPathImportRows ()
-    let proc1 (row:PathImportRow) : PGSQLConn<int> = 
-        match makePathSectionINSERT row with
-        | None -> pgsqlConn.Return 0
-        | Some sql -> execNonQuery sql
-    liftWithConnParams 
-        << runPGSQLConn << withTransaction <| SL.PGSQLConn.sumTraverseM proc1 rows
-
-
+let MakeDict : VertexInsertDict<PathImportRow> = { tryMakeVertexInsert = tryMakeVertex }
 
 let SetupDB(password:string) : unit = 
     let conn = pgsqlConnParamsTesting "spt_geo" password
-  
+    let rows = getPathImportRows ()
     runScript (failwith) (printfn "Success: %i modifications") (consoleLogger) conn 
         <| sumSequenceM 
-            [ deleteAllData ()          |> logScript (sprintf "%i rows deleted")
-            ; insertOutfalls ()         |> logScript (sprintf "%i rows inserted") 
+            [ deleteAllData ()              |> logScript (sprintf "%i rows deleted")
+            ; insertOutfalls MakeDict rows  |> logScript (sprintf "%i rows inserted") 
             ]
+
+// ***** Testing towards path finding...
 
 let test01 () : unit =
     match tryReadWktPoint "POINT  ( 389330.850 501189.852) " with

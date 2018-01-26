@@ -3,6 +3,7 @@
 open Npgsql
 
 open SL.AnswerMonad
+open SL.SqlUtils
 open SL.PGSQLConn
 open SL.ScriptMonad
 open SL.Geo.Coord
@@ -18,6 +19,45 @@ let withConnParams (fn:PGSQLConnParams -> Script<'a>) : Script<'a> =
 let liftWithConnParams (fn:PGSQLConnParams -> Answer<'a>) : Script<'a> = 
     withConnParams <| (liftAnswer << fn)
 
+
+// ***** Set up the database
+
+type VertexInsert =
+    { Basetype: string
+      FunctionNode: string
+      StartPoint: WGS84Point
+      EndPoint: WGS84Point }
+
+
+type VertexInsertDict<'inputrow> = 
+    { tryMakeVertexInsert : 'inputrow -> VertexInsert option }
+
+
+let deleteAllData () : Script<int> = 
+    liftWithConnParams << runPGSQLConn <| deleteAllRowsRestartIdentity "spt_pathfind"
+
+
+
+let private makePathSectionINSERT (vertex1:VertexInsert) : string = 
+    let makePointLit (pt:WGS84Point) : string = 
+        sprintf "ST_GeogFromText('SRID=4326;%s')" (showWktPoint <| wgs84PointToWKT pt)
+    // Note the id column is PG's SERIAL type so it is inserted automatically
+    sqlINSERT "spt_pathfind" 
+            <|  [ stringValue       "basetype"          vertex1.Basetype
+                ; stringValue       "function_node"     vertex1.FunctionNode
+                ; literalValue      "start_point"       <| makePointLit vertex1.StartPoint
+                ; literalValue      "end_point"         <| makePointLit vertex1.EndPoint
+                ]
+
+let insertOutfalls (dict:VertexInsertDict<'inputrow>) (outfalls:seq<'inputrow>) : Script<int> = 
+    let proc1 (row:'inputrow) : PGSQLConn<int> = 
+        match dict.tryMakeVertexInsert row with
+        | Some vertex -> execNonQuery <| makePathSectionINSERT vertex
+        | None -> pgsqlConn.Return 0
+    liftWithConnParams 
+        << runPGSQLConn << withTransaction <| SL.PGSQLConn.sumTraverseM proc1 outfalls
+
+
 // ***** Path finding
 
 type PathTree<'a> = 
@@ -28,7 +68,12 @@ type PathTree<'a> =
 type Route<'a> = Route of 'a list
 
 
-
+type Vertex =
+    { UID: int
+      Basetype: string
+      FunctionNode: string
+      StartPoint: WGS84Point
+      EndPoint: WGS84Point }
 
 // SELECT id, basetype, function_node, ST_AsText(end_point) 
 // FROM spt_pathfind 
@@ -43,12 +88,7 @@ let makeFindVerticesQUERY (startPt:WGS84Point) : string =
             start_point = ST_GeomFromText('{0}', 4326);
         """, showWktPoint <| wgs84PointToWKT startPt)
 
-type Vertex =
-    { UID: int
-      Basetype: string
-      FunctionNode: string
-      StartPoint: WGS84Point
-      EndPoint: WGS84Point }
+
 
 
 let findVertices (startPt:WGS84Point) : Script<Vertex list> = 
@@ -68,13 +108,14 @@ let findVertices (startPt:WGS84Point) : Script<Vertex list> =
 let notVisited (visited:Vertex list) (v1:Vertex) = 
     not <| List.exists (fun (v:Vertex) -> v.UID = v1.UID) visited
 
-/// A start my have many outward paths, hence we build a list of trees.
+/// A start-point may have many outward paths, hence we build a list of trees.
 /// Note - if we study the data we should be able to prune the searches 
 /// by looking at Function_link and only following paths that start with 
 /// a particular link type.
 let buildForest (startPt:WGS84Point) : Script<PathTree<Vertex> list> = 
     let rec recBuild (pt:WGS84Point) (visited:Vertex list) : Script<PathTree<Vertex> list> = 
         scriptMonad { 
+            // TO CHECK - Are we sure we are handling cyclic paths "wisely"?
             let! (vsNew:Vertex list) = fmapM (List.filter (notVisited visited)) <| findVertices pt
             let! branches = 
                 forM vsNew <| 

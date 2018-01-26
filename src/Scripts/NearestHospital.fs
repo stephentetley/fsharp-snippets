@@ -7,6 +7,8 @@ open Microsoft.Office.Interop
 open SL.Geo
 open SL.ClosedXMLOutput
 
+// TODO - move towards using PostGIS
+
 type HospitalsData = 
     CsvProvider< @"..\data\Accident-and-Emergency-Hospitals-Yorkshire.csv",
                  HasHeaders = true>
@@ -57,13 +59,14 @@ let private tryClosestHosiptal (hospitals:HospitalList) (pt:Coord.WGS84Point) : 
                         | None -> None
 
 
-type NearestHospitalAlgo<'asset> = 
+
+type NearestHospitalDict<'asset> = 
     { TableHeaders      : option<string list> 
       ExtractLocation   : 'asset -> Coord.WGS84Point option
       OutputRow         : 'asset -> BestMatch option -> ClosedXMLOutput<unit> }
         
 
-let generateNearestHospitalsXls (dict:NearestHospitalAlgo<'asset>) (source:'asset list) (outputFile:string) : unit =
+let generateNearestHospitalsXls (dict:NearestHospitalDict<'asset>) (source:'asset list) (outputFile:string) : unit =
     let hospitals = buildHospitalList ()
     
     let headerProc : ClosedXMLOutput<unit> = 
@@ -81,4 +84,3 @@ let generateNearestHospitalsXls (dict:NearestHospitalAlgo<'asset>) (source:'asse
             do! mapMz rowProc source }
 
     outputToNew { SheetName = "Hospitals" } procOutput outputFile 
-    ()
