@@ -49,54 +49,54 @@ module Coord =
         LanguagePrimitives.FloatWithMeasure (float d + float m / 60.0 + s / 3600.0)
 
     // ellipsoid constants for Airy 1830
-    let (private a : float) = 6377563.396
+    let private airyA:float = 6377563.396
 
-    let (private b : float) = 6356256.909
+    let private airyB:float = 6356256.909
 
     // National Grid coordinates of true origin (E0, N0) for Airy 1830 (National Grid)
 
-    let (private E0 : float) = 400000.0
+    let private airyE0:float = 400000.0
 
-    let (private N0 : float) = -100000.0
+    let private airyN0:float = -100000.0
 
     // Scale Factor on Central Meridian (F0) for Airy 1830 (National Grid)
 
 
-    let (private F0 : float) = 0.9996012717
+    let private airyF0:float = 0.9996012717
 
     // True origin (phi0, lam0)
     let private phi0 = deg2rad 49.0
 
 
     // 2deg West is (-2)
-    let private lam0 = deg2rad -2.0
+    let private lam0:float = deg2rad -2.0
 
     // Eccentricity
-    let (private e2 : float) = ((a*a) - (b*b)) / (a*a)
+    let private airyE2:float = ((airyA*airyA) - (airyB*airyB)) / (airyA*airyA)
 
     // Equation C1 to get n
     
-    let private n = (a-b) / (a+b)
+    let private airyN = (airyA-airyB) / (airyA+airyB)
 
-    let private n2 = n*n
+    let private airyN2 = airyN*airyN
 
-    let private n3 = n*n*n
+    let private airyN3 = airyN*airyN*airyN
 
     let private equationC2 (phi : double) = 
         let sin2Phi = sin phi * sin phi
-        let nu = a * F0 * (1.0 - e2 * sin2Phi) ** -0.5
-        let rho = a * F0 * (1.0 - e2) * (1.0 - e2 * sin2Phi) ** -1.5
+        let nu = airyA * airyF0 * (1.0 - airyE2 * sin2Phi) ** -0.5
+        let rho = airyA * airyF0 * (1.0 - airyE2) * (1.0 - airyE2 * sin2Phi) ** -1.5
         let eta2 = nu / rho - 1.0
         (nu, rho, eta2)
     
     let private equationC3 (phi : double) =  
         let phiPphi0  = phi + phi0
         let phiMphi0  = phi - phi0
-        let Ma = (1.0 + n + (5.0/4.0)*n2 + (5.0/4.0)*n3) * phiMphi0
-        let Mb = (3.0*n + 3.0*n2 + (21.0/8.0)*n3) * sin phiMphi0 * cos phiPphi0
-        let Mc = ((15.0/8.0)*n2 + (15.0/8.0)*n3) * sin (2.0*phiMphi0) * cos (2.0*(phiPphi0))
-        let Md = ((35.0/24.0)*n3) * sin (3.0*phiMphi0) * cos (3.0*phiPphi0)
-        b * F0 * (Ma - Mb + Mc - Md)
+        let Ma = (1.0 + airyN + (5.0/4.0)*airyN2 + (5.0/4.0)*airyN3) * phiMphi0
+        let Mb = (3.0*airyN + 3.0*airyN2 + (21.0/8.0)*airyN3) * sin phiMphi0 * cos phiPphi0
+        let Mc = ((15.0/8.0)*airyN2 + (15.0/8.0)*airyN3) * sin (2.0*phiMphi0) * cos (2.0*(phiPphi0))
+        let Md = ((35.0/24.0)*airyN3) * sin (3.0*phiMphi0) * cos (3.0*phiPphi0)
+        airyB * airyF0 * (Ma - Mb + Mc - Md)
 
     let wgs84ToOSGB36Point ({Latitude = phidd; Longitude = lamdd} : WGS84Point) : OSGB36Point = 
         let phi = deg2rad (float phidd)
@@ -112,7 +112,7 @@ module Coord =
         let (nu,rho,eta2) = equationC2 phi 
 
         let M = equationC3 phi
-        let I = M + N0
+        let I = M + airyN0
         let II = nu / 2.0 * sinPhi * cosPhi
         let III = nu / 24.0 * sinPhi * cos3Phi * (5.0 - tan2Phi + 9.0 * eta2)
         let IIIA = nu / 720.0 * sinPhi * cos5Phi * (61.0 - 58.0 * tan2Phi + tan4Phi)
@@ -120,21 +120,21 @@ module Coord =
         let V = nu / 6.0 * cos3Phi * (nu / rho - tan2Phi)
         let VI = nu / 120.0 * cos5Phi * (5.0 - 18.0 * tan2Phi + tan4Phi + 14.0 * eta2 - 58.0 * tan2Phi * eta2)
         let N = I + II * lamMlam0 ** 2.0 + III * lamMlam0 ** 4.0 + IIIA * lamMlam0 ** 6.0
-        let E = E0 + IV * lamMlam0 + V * lamMlam0 ** 3.0 + VI * lamMlam0 ** 5.0
+        let E = airyE0 + IV * lamMlam0 + V * lamMlam0 ** 3.0 + VI * lamMlam0 ** 5.0
         { Easting = E * 1.0<meter>; Northing = N * 1.0<meter> }
 
 
     let osgb36PointToWGS84 (osgb36:OSGB36Point) : WGS84Point =
-        let E               = osgb36.Easting
-        let N               = osgb36.Northing
+        let osgbE               = float osgb36.Easting
+        let osgbN               = float osgb36.Northing
         let rec makePhi p m = 
-            if abs (float N - N0 - m) < 0.01 then 
+            if abs (osgbN - airyN0 - m) < 0.01 then 
                 p 
             else
-                let phiNEW = (float N - N0 - m) / (a * F0) + p
+                let phiNEW = (osgbN - airyN0 - m) / (airyA * airyF0) + p
                 let Mnew   = equationC3 phiNEW
                 makePhi phiNEW Mnew
-        let phi1'           = (float N - N0) / (a * F0) + phi0
+        let phi1'           = (osgbN - airyN0) / (airyA * airyF0) + phi0
         let M1              = equationC3 phi1'
         let phi'            = makePhi phi1' M1
         let (nu,rho,eta2)   = equationC2 phi'
@@ -144,17 +144,17 @@ module Coord =
         let tan2Phi'        = tanPhi' * tanPhi'
         let tan4Phi'        = tanPhi' * tanPhi' * tanPhi' * tanPhi'
         let tan6Phi'        = tanPhi' * tanPhi' * tanPhi' * tanPhi' * tanPhi' * tanPhi'
-        let Em_E0          = float E - E0
+        let EmE0            = osgbE - airyE0
 
-        let VII        = tanPhi' / (2.0 * rho * nu)
-        let VIII       = tanPhi' / (24.0 * rho * nu ** 3.0) * (5.0 + 3.0 * tan2Phi' + eta2 - 9.0 * tan2Phi' * eta2)
-        let IX         = tanPhi' / (720.0 * rho * nu ** 5.0) * (61.0 + 90.0 * tan2Phi' + 45.0 * tan4Phi')
-        let X          = secPhi' / nu
-        let XI         = secPhi' / (6.0 * nu ** 3.0) * (nu / rho + 2.0 * tan2Phi')
-        let XII        = secPhi' / (120.0 * nu ** 5.0) * (5.0 + 28.0 * tan2Phi' + 24.0 * tan4Phi')
-        let XIIA       = secPhi' / (5040.0 * nu ** 7.0) * (61.0 + 662.0 * tan2Phi' + 1320.0 * tan4Phi' + 720.0 * tan6Phi')
-        let phi         = phi' - VII * (Em_E0 ** 2.0) + VIII * (Em_E0 ** 4.0) - IX * (Em_E0 ** 6.0)
-        let lam         = lam0 + X * Em_E0 - XI * (Em_E0 ** 3.0) + XII * (Em_E0 ** 5.0) - XIIA * (Em_E0 ** 7.0)
+        let VII         = tanPhi' / (2.0 * rho * nu)
+        let VIII        = tanPhi' / (24.0 * rho * nu ** 3.0) * (5.0 + 3.0 * tan2Phi' + eta2 - 9.0 * tan2Phi' * eta2)
+        let IX          = tanPhi' / (720.0 * rho * nu ** 5.0) * (61.0 + 90.0 * tan2Phi' + 45.0 * tan4Phi')
+        let X           = secPhi' / nu
+        let XI          = secPhi' / (6.0 * nu ** 3.0) * (nu / rho + 2.0 * tan2Phi')
+        let XII         = secPhi' / (120.0 * nu ** 5.0) * (5.0 + 28.0 * tan2Phi' + 24.0 * tan4Phi')
+        let XIIA        = secPhi' / (5040.0 * nu ** 7.0) * (61.0 + 662.0 * tan2Phi' + 1320.0 * tan4Phi' + 720.0 * tan6Phi')
+        let phi         = phi' - VII * (EmE0 ** 2.0) + VIII * (EmE0 ** 4.0) - IX * (EmE0 ** 6.0)
+        let lam         = lam0 + X * EmE0 - XI * (EmE0 ** 3.0) + XII * (EmE0 ** 5.0) - XIIA * (EmE0 ** 7.0)
         { Latitude = LanguagePrimitives.FloatWithMeasure (rad2deg phi)
         ; Longitude = LanguagePrimitives.FloatWithMeasure (rad2deg lam) } 
 
