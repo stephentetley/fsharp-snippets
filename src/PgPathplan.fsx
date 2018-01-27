@@ -59,8 +59,8 @@ let tryMakeVertex (row:PathImportRow) : VertexInsert option =
         let wgs84End = wktOSGB36ToWktWGS84 endPt 
         Some <| { Basetype = row.BASETYPE
                 ; FunctionNode = row.FUNCTION_Link
-                ; StartPoint = osgb36PointToWGS84 <| wktToOSGB36Point startPt
-                ; EndPoint = osgb36PointToWGS84 <| wktToOSGB36Point endPt }
+                ; StartPoint = osgb36ToWGS84 <| wktToOSGB36Point startPt
+                ; EndPoint = osgb36ToWGS84 <| wktToOSGB36Point endPt }
     | _,_ -> None
 
 let MakeDict : VertexInsertDict<PathImportRow> = { tryMakeVertexInsert = tryMakeVertex }
@@ -88,7 +88,7 @@ let test02 () =
 let test03 (password:string) : unit = 
     let conn = pgsqlConnParamsTesting "spt_geo" password
     let startPt = 
-        osgb36PointToWGS84 { Easting = 389330.850<meter> ; Northing = 501189.852<meter> }
+        osgb36ToWGS84 { Easting = 389330.850<meter> ; Northing = 501189.852<meter> }
 
     runScript (failwith) (printfn "Success: %A") (consoleLogger) conn 
         <| scriptMonad { 
@@ -100,7 +100,7 @@ let test03 (password:string) : unit =
 let test04 (password:string) : unit = 
     let conn = pgsqlConnParamsTesting "spt_geo" password
     let startPt = 
-        osgb36PointToWGS84 { Easting = 389330.850<meter> ; Northing = 501189.852<meter> }
+        osgb36ToWGS84 { Easting = 389330.850<meter> ; Northing = 501189.852<meter> }
 
     runScript (failwith) (printfn "Success: %A") (consoleLogger) conn 
         <| scriptMonad { 

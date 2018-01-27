@@ -12,6 +12,10 @@ open FSharp.Data.JsonExtensions
 #r "Npgsql"
 open Npgsql
 
+#I @"..\packages\FParsec.1.0.2\lib\net40-client"
+#r "FParsec"
+#r "FParsecCS"
+
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
 #load @"SL\AnswerMonad.fs"
@@ -64,7 +68,7 @@ let extractorM : JsonExtractor<Group<string> list> =
 
 
 let decodePoints (inputs:string list) : Coord.WGS84Point list = 
-    List.choose Coord.tryReadOSGB36Grid inputs |> List.map Coord.osgb36GridToWGS84
+    List.choose Coord.tryReadOSGB36Point inputs |> List.map Coord.osgb36ToWGS84
 
 
 

@@ -65,8 +65,7 @@ let makeOutfallINSERT (row:GisOutfallRow) : string =
     let east        = 1.0<meter> * (float <| row.METREEASTING)
     let north       = 1.0<meter> * (float <| row.METRENORTHING)
     let osgb36Pt    =  { Easting = east; Northing = north }
-    let osgb36Grid  = osgb36PointToGrid osgb36Pt
-    let wgs84Pt     = osgb36PointToWGS84 osgb36Pt
+    let wgs84Pt     = osgb36ToWGS84 osgb36Pt
     let pointLit = 
         // SRID=4326 is WGS 84 coordinate reference system
         sprintf "ST_GeogFromText('SRID=4326;POINT(%f %f)')"
@@ -75,7 +74,7 @@ let makeOutfallINSERT (row:GisOutfallRow) : string =
     sqlINSERT "spt_outfalls" 
         <|  [ stringValue       "stc25_ref"         row.STC25_REF
             ; stringValue       "function_node"     row.FUNCTION_NODE
-            ; stringValue       "osgb36_grid"       (showOSGB36Grid osgb36Grid)
+            ; stringValue       "osgb36_grid"       (showOSGB36Point osgb36Pt)
             ; literalValue      "point_loc"         pointLit
             ]
 
@@ -141,7 +140,7 @@ type OutputRow =
 
 let genOutputRow (limit:int) (row:NeighboursRow) : Script<OutputRow> = 
     let neighbours () : Script<NeighbourRec list>= 
-        match Option.map osgb36GridToWGS84 <| tryReadOSGB36Grid row.``Cats NGRs`` with
+        match Option.map osgb36ToWGS84 <| tryReadOSGB36Point row.``Cats NGRs`` with
         | Some wgs84 -> 
             liftWithConnParams << runPGSQLConn <| pgNearestNeighbourQuery 5 wgs84
         | None -> scriptMonad.Return []

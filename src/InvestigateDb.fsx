@@ -182,8 +182,8 @@ let catsConsentString (source:CatsConsent list) : string =
 
 let catsConsentRefs (source:CatsConsent list) : string = 
     let proc1 (cc:CatsConsent) : string = 
-        match tryReadOSGB36Grid cc.OutletGridRef with
-        | Some ngr -> showOSGB36Grid ngr
+        match tryReadOSGB36Point cc.OutletGridRef with
+        | Some ngr -> showOSGB36Point ngr
         | None -> "??"
     String.concat " & " <| List.map proc1 source
 
@@ -192,7 +192,7 @@ let lotusConsentString (source:LotusConsent list) : string =
         let gridref = 
             match lc.OutfallGridRef with 
             | None -> "??" 
-            | Some pt -> showOSGB36Grid <| osgb36PointToGrid pt
+            | Some pt -> showOSGB36Point pt
         sprintf "%s => %s" lc.FullConsentName gridref
     String.concat " & " <| List.map proc1 source
 
@@ -200,7 +200,7 @@ let lotusConsentRefs (source:LotusConsent list) : string =
     let proc1 (lc:LotusConsent) : string = 
         match lc.OutfallGridRef with 
         | None -> "??" 
-        | Some pt -> showOSGB36Grid <| osgb36PointToGrid pt
+        | Some pt -> showOSGB36Point pt
     String.concat " & " <| List.map proc1 source
 
 let stormDischargeString (source:StormDisPermit list) : string = 
@@ -210,8 +210,8 @@ let stormDischargeString (source:StormDisPermit list) : string =
 
 let stormDischargeRefs (source:StormDisPermit list) : string = 
     let proc1 (sdp:StormDisPermit) : string = 
-        match tryReadOSGB36Grid sdp.OutletGridRef with
-        | Some ngr -> showOSGB36Grid ngr
+        match tryReadOSGB36Point sdp.OutletGridRef with
+        | Some ngr -> showOSGB36Point ngr
         | None -> "??"
     String.concat " & " <| List.map proc1 source
 

@@ -43,8 +43,8 @@ let defaultIfNull (defaultValue:string) (check:string) =
 let correctGridRef (input:string) : string = 
     match input with 
     | null -> sprintf "Invalid: %s" input
-    | _ -> match Coord.tryReadOSGB36Grid input with
-            | Some(pt) -> Coord.showOSGB36Grid pt
+    | _ -> match Coord.tryReadOSGB36Point input with
+            | Some(pt) -> Coord.showOSGB36Point pt
             | None -> sprintf "Invalid: %s" input
 
         

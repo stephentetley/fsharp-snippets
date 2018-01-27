@@ -45,9 +45,9 @@ let getImportRows () : ImportRow list =
 
 
 
-let nearestAlgo : NearestHospitalAlgo<ImportRow>  = 
+let nearestAlgo : NearestHospitalDict<ImportRow>  = 
     let extractLocation (row:ImportRow) : Coord.WGS84Point option = 
-        Option.map Coord.osgb36GridToWGS84 <| Coord.tryReadOSGB36Grid row.NGR
+        Option.map Coord.osgb36ToWGS84 <| Coord.tryReadOSGB36Point row.NGR
 
     let outputRow (row:ImportRow) (obest : BestMatch option) : ClosedXMLOutput<unit> = 
         match obest with

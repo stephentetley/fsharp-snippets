@@ -27,18 +27,14 @@ module Coord =
     [<StructuredFormatDisplay("{Easting}E {Northing}E")>]
     type OSGB36Point = 
         { Easting : float<meter>
-        ; Northing : float<meter> }
+          Northing : float<meter> }
         
 
-    [<StructuredFormatDisplay("{MajorSquare}{MinorSquare} {MinorEasting} {MinorNorthing}")>]
-    type OSGB36Grid = 
-        { MajorSquare : char; 
-          MinorSquare : char; 
-          MinorEasting : float<meter>; 
-          MinorNorthing : float<meter> }
 
     [<StructuredFormatDisplay("{Latitude}Lat {Longitude}Lon")>]
-    type WGS84Point = { Latitude : float<degree>; Longitude : float<degree> }
+    type WGS84Point = 
+        { Latitude : float<degree>
+          Longitude : float<degree> }
 
     let inline private deg2rad (d : float) = (Math.PI/180.0) * d
 
@@ -98,7 +94,7 @@ module Coord =
         let Md = ((35.0/24.0)*airyN3) * sin (3.0*phiMphi0) * cos (3.0*phiPphi0)
         airyB * airyF0 * (Ma - Mb + Mc - Md)
 
-    let wgs84ToOSGB36Point ({Latitude = phidd; Longitude = lamdd} : WGS84Point) : OSGB36Point = 
+    let wgs84ToOSGB36 ({Latitude = phidd; Longitude = lamdd} : WGS84Point) : OSGB36Point = 
         let phi = deg2rad (float phidd)
         let lam = deg2rad (float lamdd)
         let sinPhi = sin phi
@@ -124,7 +120,7 @@ module Coord =
         { Easting = E * 1.0<meter>; Northing = N * 1.0<meter> }
 
 
-    let osgb36PointToWGS84 (osgb36:OSGB36Point) : WGS84Point =
+    let osgb36ToWGS84 (osgb36:OSGB36Point) : WGS84Point =
         let osgbE               = float osgb36.Easting
         let osgbN               = float osgb36.Northing
         let rec makePhi p m = 
@@ -163,6 +159,14 @@ module Coord =
 
     /// OS Grid refs, see
     /// https://en.wikipedia.org/wiki/Ordnance_Survey_National_Grid
+
+    
+    [<StructuredFormatDisplay("{MajorSquare}{MinorSquare} {MinorEasting} {MinorNorthing}")>]
+    type private OSGB36GridRef = 
+        { MajorSquare : char
+          MinorSquare : char 
+          MinorEasting : float<meter>
+          MinorNorthing : float<meter> }
 
    
     let private decodeMajor (ch : char) : (float*float) = 
@@ -228,10 +232,10 @@ module Coord =
             minorGrid.[divE,divN]
         else 'X'
 
-    let private makeOSGB36Grid (c1:char) (c2:char) (east:int) (north:int) : OSGB36Grid =  
-        { MajorSquare = c1
-        ; MinorSquare = c2
-        ; MinorEasting = 1.0<meter> *float east
+    let private makeOSGB36GridRef (m:char) (mm:char) (east:int) (north:int) : OSGB36GridRef =  
+        { MajorSquare = m
+        ; MinorSquare = mm
+        ; MinorEasting = 1.0<meter> * float east
         ; MinorNorthing = 1.0<meter> * float north }
 
         
@@ -241,30 +245,33 @@ module Coord =
         ; Northing = north + LanguagePrimitives.FloatWithMeasure majN }
     
 
-    let osgb36PointToGrid ({Easting = easting; Northing = northing} : OSGB36Point) : OSGB36Grid =  
+    let private osgb36ToGridRef ({Easting = easting; Northing = northing} : OSGB36Point) : OSGB36GridRef =  
         let major = findMajor (float easting) (float northing)
         let minor = findMinor (float easting) (float northing)
         let smallE = easting % 100000.0<meter>
         let smallN = northing % 100000.0<meter>
         { MajorSquare = major; MinorSquare = minor; MinorEasting = smallE; MinorNorthing = smallN }
     
-    let osgb36GridToPoint (gridRef:OSGB36Grid) : OSGB36Point =
+    let private gridRefToOSGB36(gridRef:OSGB36GridRef) : OSGB36Point =
         makeOSGB36Point gridRef.MajorSquare gridRef.MinorSquare gridRef.MinorEasting gridRef.MinorNorthing
 
 
-    let osgb36GridToWGS84 (gridRef : OSGB36Grid) : WGS84Point =
-        osgb36PointToWGS84 <| osgb36GridToPoint gridRef
+    let private gridRefToWGS84 (gridRef : OSGB36GridRef) : WGS84Point =
+        osgb36ToWGS84 <| gridRefToOSGB36 gridRef
 
-    let wgs84ToOSGB36Grid (latLon : WGS84Point) : OSGB36Grid = 
-        osgb36PointToGrid <| wgs84ToOSGB36Point latLon
+    let private wgs84ToGridRef (latLon : WGS84Point) : OSGB36GridRef = 
+        osgb36ToGridRef <| wgs84ToOSGB36 latLon
 
     /// Print in the form 'SE9055679132' 
-    let showOSGB36Grid (gridRef:OSGB36Grid) : string = 
+    let private showOSGB36GridReference (gridRef:OSGB36GridRef) : string = 
         sprintf "%c%c%05i%05i" 
                 gridRef.MajorSquare 
                 gridRef.MinorSquare 
                 (int gridRef.MinorEasting) 
                 (int gridRef.MinorNorthing)
+    
+    let showOSGB36Point (point:OSGB36Point) : string = 
+        showOSGB36GridReference <| osgb36ToGridRef point
 
     let private (|OSGB36Regex|_|) (pattern:string) (input:string) : option<GroupCollection> =
         let m = Regex.Match(input.Trim(), pattern)
@@ -290,21 +297,21 @@ module Coord =
         | 10 -> (a,b)
         | _ -> (0,0)
 
-    let tryReadOSGB36Grid (input:string) : OSGB36Grid option = 
+    let tryReadOSGB36Point (input:string) : OSGB36Point option = 
         let getChar1 (groups:GroupCollection) = groups.[1].Value.[0]
         let getChar2 (groups:GroupCollection) = groups.[2].Value.[0]
         match input with
         | OSGB36Regex @"^([A-Za-z])([A-Za-z])\s*([0-9]+)$" groups -> 
             let (e,n) = decodeOSGBNumber2 (groups.[3].Value)
-            Some <| makeOSGB36Grid (getChar1 groups) (getChar2 groups) e n
+            Some << gridRefToOSGB36 <| makeOSGB36GridRef (getChar1 groups) (getChar2 groups) e n
         | OSGB36Regex @"^([A-Za-z])([A-Za-z])\s*([0-9]+)\s+([0-9]+)$" groups -> 
             let e = decodeOSGBNumber1 <| groups.[3].Value
             let n = decodeOSGBNumber1 <| groups.[4].Value
-            Some <| makeOSGB36Grid (getChar1 groups) (getChar2 groups) e n
+            Some << gridRefToOSGB36 <| makeOSGB36GridRef (getChar1 groups) (getChar2 groups) e n
         | _ -> None
 
-    let readOSGB36Grid (input:string) : OSGB36Grid = 
-        match tryReadOSGB36Grid input with
+    let readOSGB36Point (input:string) : OSGB36Point = 
+        match tryReadOSGB36Point input with
         | Some(x) -> x
         | None -> failwith <| sprintf "readOSGB36Grid - could not read '%s'" input
 
@@ -327,8 +334,7 @@ module Coord =
         ans
 
     let haversineDistanceOGSB36Point (p1:OSGB36Point) (p2:OSGB36Point) : float<kilometer> = 
-        haversineDistance (osgb36PointToWGS84 p1) (osgb36PointToWGS84 p2) 
+        haversineDistance (osgb36ToWGS84 p1) (osgb36ToWGS84 p2) 
 
-    let haversineDistanceOGSB36Grid (g1:OSGB36Grid) (g2:OSGB36Grid) : float<kilometer> = 
-        haversineDistance (osgb36GridToWGS84 g1) (osgb36GridToWGS84 g2) 
+
 

@@ -51,13 +51,13 @@ type HospitalInsertDict<'inputrow> =
     { tryMakeHospitalRecord : 'inputrow -> HospitalRecord option }
 
 let tryMakeRecord (row:HospitalsRow) : HospitalRecord option = 
-    match tryReadOSGB36Grid row.``Grid Reference`` with
+    match tryReadOSGB36Point row.``Grid Reference`` with
     | Some osgb36 -> 
         Some <| { HospitalName = row.Name
                 ; Address = row.Address
                 ; Phone = row.Telephone
                 ; Postcode = row.Postcode
-                ; LatLon = osgb36GridToWGS84 osgb36 }
+                ; LatLon = osgb36ToWGS84 osgb36 }
     | _ -> None
 
 let MakeDict : HospitalInsertDict<HospitalsRow> = { tryMakeHospitalRecord = tryMakeRecord }
@@ -101,8 +101,7 @@ let private buildHospitalList () =
     let make1 (rowi : HospitalsRow) : HospitalRecord option = 
         match rowi.Name with 
         | null -> None
-        | _ -> let optPt = Option.map osgb36GridToWGS84
-                                <| tryReadOSGB36Grid rowi.``Grid Reference``
+        | _ -> let optPt = Option.map osgb36ToWGS84 <| tryReadOSGB36Point rowi.``Grid Reference``
                match optPt with
                | Some pt -> Some <| { HospitalName = rowi.Name
                                     ; Address = rowi.Address 

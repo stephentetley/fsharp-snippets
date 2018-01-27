@@ -30,19 +30,19 @@ let test02 = Coord.osgb36PointToWGS84 {Easting = 651409.903<meter>; Northing = 3
 
 /// SW - Easting : 135247    Northing : 026365
 let coveHill = 
-    Coord.osgb36GridToPoint <|  Coord.readOSGB36Grid "SW3524726365"
+    Coord.readOSGB36Point "SW3524726365"
 
 /// NE - Easting :  335676   Northing : 970738
 let wick = 
-    Coord.osgb36GridToPoint <|  Coord.readOSGB36Grid "ND3567670738"
+    Coord.readOSGB36Point "ND3567670738"
 
 /// NW - Easting : 106697    Northing : 937542
 let isleOfLewis = 
-    Coord.osgb36GridToPoint <|  Coord.readOSGB36Grid "NB0669737542"
+    Coord.readOSGB36Point "NB0669737542"
 
 /// SE - Easting : 628458    Northing : 141168
 let dover : Coord.OSGB36Point = 
-    Coord.osgb36GridToPoint <|  Coord.readOSGB36Grid "TR2845841168"
+    Coord.readOSGB36Point "TR2845841168"
 
 let dover2 = {Coord.Easting = 628458.0<meter>; Coord.Northing =  141168.0<meter>}
 
@@ -52,10 +52,10 @@ let testD1 () =
 
 
 let read01 () = 
-    Coord.readOSGB36Grid "ND3567670738"
+    Coord.readOSGB36Point "ND3567670738"
 
 let read02 () = 
-    Coord.readOSGB36Grid "ND35676 70738"
+    Coord.readOSGB36Point "ND35676 70738"
 
 let read03 () = 
-    Coord.readOSGB36Grid "ND 3567 7073"
+    Coord.readOSGB36Point "ND 3567 7073"

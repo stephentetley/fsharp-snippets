@@ -6,6 +6,12 @@ open FSharp.ExcelProvider
 #r "Microsoft.Office.Interop.Excel"
 open Microsoft.Office.Interop
 
+#I @"..\packages\FParsec.1.0.2\lib\net40-client"
+#r "FParsec"
+#r "FParsecCS"
+
+
+#load @"SL\Tolerance.fs"
 #load @"SL\Coord.fs"
 #load @"SL\WellKnownText.fs"
 open SL.Geo
@@ -29,8 +35,7 @@ let buildCoordDatabase () : CoordDB =
     let addLine (db:CoordDB) (rowi:InputRow) = 
         match rowi.``Site Name`` with
         | null -> db
-        | _ ->  let opt = Option.map Coord.osgb36GridToWGS84
-                            <| Coord.tryReadOSGB36Grid  rowi.``Grid Ref``
+        | _ ->  let opt = Option.map Coord.osgb36ToWGS84 <| Coord.tryReadOSGB36Point  rowi.``Grid Ref``
                 match opt with
                 | Some(pt:Coord.WGS84Point) -> Map.add rowi.``Site Name`` pt db
                 | None -> db

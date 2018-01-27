@@ -27,7 +27,7 @@ let main () =
     for (rowi:InputRow) in inputData.Data do
         match rowi.``Site Name`` with
         | null -> printfn "<finished>"
-        | _ ->  let opt = Option.map osgb36GridToWGS84 <| tryReadOSGB36Grid rowi.``Grid Ref``
+        | _ ->  let opt = Option.map osgb36ToWGS84 <| tryReadOSGB36Point rowi.``Grid Ref``
                 match opt with
                 | Some(pt:WGS84Point) ->  printfn "%s,%s,%s,%f,%f" rowi.``Site Name`` rowi.``Grid Ref`` rowi.``Operational Responsibility`` pt.Latitude pt.Longitude
                 | None -> printfn "%s,%s,%s,0.0,0.0" rowi.``Site Name`` rowi.``Grid Ref`` rowi.``Operational Responsibility``

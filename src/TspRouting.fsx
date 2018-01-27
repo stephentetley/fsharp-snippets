@@ -82,12 +82,12 @@ let readInputJson (fileName:string) : JsonRecord list =
 // let testSOFAR () = readInputJson @"G:\work\Projects\pgrouting\routing_data1.json"
 
 let tryMakeDbRecord (ix:int) (input:JsonRecord) : DbRecord option = 
-    let proc (ngr:OSGB36Grid) : DbRecord =  
-        let wgs84 = osgb36GridToWGS84 ngr
+    let proc (ngr:OSGB36Point) : DbRecord =  
+        let wgs84 = osgb36ToWGS84 ngr
         { Index= ix; SiteCode = input.Uid; LongName = input.Name; 
           Wgs84Lat = float wgs84.Latitude; 
           Wgs84Lon = float wgs84.Longitude }
-    Option.map proc (tryReadOSGB36Grid <| input.Osgb36NGR) 
+    Option.map proc (tryReadOSGB36Point <| input.Osgb36NGR) 
 
 
 let makeDBRecords (inputs:JsonRecord list) : DbRecord list = 

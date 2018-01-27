@@ -78,10 +78,10 @@ module WellKnownText =
         ; Northing = 1.0<meter> * float point.WktLat }
 
     let wktOSGB36ToWktWGS84 (point:WktPoint<OSGB36>) : WktPoint<WGS84> = 
-        point |> wktToOSGB36Point |> osgb36PointToWGS84 |> wgs84PointToWKT
+        point |> wktToOSGB36Point |> osgb36ToWGS84 |> wgs84PointToWKT
 
     let wktWGS84ToWktOSGB36 (point:WktPoint<WGS84>) : WktPoint<OSGB36> = 
-        point |> wktToWGS84Point |> wgs84ToOSGB36Point |> osgb36PointToWKT
+        point |> wktToWGS84Point |> wgs84ToOSGB36 |> osgb36PointToWKT
 
     // ***** PARSING *****
 

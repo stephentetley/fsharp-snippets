@@ -62,7 +62,7 @@ let readAssetRows () : AssetRow list =
 
 let nearestAlgo : NearestHospitalDict<AssetRow>  = 
     let extractLocation (row:AssetRow) : WGS84Point option = 
-        Option.map osgb36GridToWGS84 <| tryReadOSGB36Grid row.``Grid Reference``
+        Option.map osgb36ToWGS84 <| tryReadOSGB36Point row.``Grid Reference``
 
     let outputRow (row:AssetRow) (obest : BestMatch option) : ClosedXMLOutput<unit> = 
         match obest with

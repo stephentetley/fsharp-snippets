@@ -31,14 +31,13 @@ let getConsentsRows () : ConsentsRow list = excelTableGetRows consentsTableDict 
 let tellConsentsRow (row:ConsentsRow) : CsvOutput<unit> = 
     match row.``Common Name`` with
     | null -> csvOutput.Return ()
-    | _ -> let pt : Coord.OSGB36Point = 
+    | _ -> let point : Coord.OSGB36Point = 
                 let east = row.``Outfall NGRE`` * 1.0<meter>
                 let north = row.``Outfall NGRN`` * 1.0<meter>
                 { Coord.Easting = east; Coord.Northing = north }
-           let gridref = Coord.osgb36PointToGrid pt
            tellRow [ tellString row.``AIB Reference``
                    ; tellString row.``Common Name`` 
-                   ; tellString (Coord.showOSGB36Grid gridref) ]
+                   ; tellString (Coord.showOSGB36Point point) ]
 
 
 
