@@ -7,9 +7,10 @@ open SL.AnswerMonad
 open SL.Geo.Coord
 open SL.Geo.WellKnownText
 open SL.SqlUtils
+open SL.ClosedXMLOutput
 open SL.PGSQLConn
 open SL.ScriptMonad
-open SL.ClosedXMLOutput
+
 
 // TODO - move towards using PostGIS
 
@@ -91,6 +92,44 @@ let SetupHospitalDB (dict:HospitalInsertDict<'inputrow>) (hospitals:seq<'inputro
         return count
      }
 
+
+/// Limit is closest N neighbours, probably should be fixed to 1
+/// for this use-case.
+let makeNearestNeighbourQUERY (limit:int) (point:WGS84Point) : string = 
+    System.String.Format("""
+        SELECT 
+            name, telephone, address, postcode
+        FROM 
+            spt_hospitals 
+        ORDER BY grid_ref <-> ST_Point({0}, {1}) LIMIT {2} ;
+        """, point.Longitude, point.Latitude, limit)
+
+type NeighbourRec = 
+    { Name: string
+      Telephone: string 
+      Address: string
+      Postcode: string } 
+
+let nearestHospitalQuery (point:WGS84Point) : Script<NeighbourRec list> = 
+    let query = makeNearestNeighbourQUERY 1 point
+    let procM (reader:NpgsqlDataReader) : NeighbourRec = 
+        { Name          = reader.GetString(0)
+        ; Telephone     = reader.GetString(1)
+        ; Address       = reader.GetString(2) 
+        ; Postcode      = reader.GetString(3) }
+    liftWithConnParams << runPGSQLConn <| execReaderList query procM  
+
+let nearestHospital (point:WGS84Point) : Script<NeighbourRec option> = 
+    let first xs = match xs with | x :: _ -> Some x; | [] -> None
+    fmapM first <| nearestHospitalQuery point
+
+
+
+// TODO - note it was quite nice having distance.
+// Use ST_Distance to recover it.
+
+
+
 // OLD ******************
 
 type HospitalList = HospitalRecord list
@@ -149,6 +188,6 @@ let generateNearestHospitalsXls (dict:NearestHospitalDict<'asset>) (source:'asse
     let procOutput : ClosedXMLOutput<unit> = 
         closedXMLOutput { 
             do! headerProc
-            do! mapMz rowProc source }
+            do! SL.ClosedXMLOutput.mapMz rowProc source }
 
     outputToNew { SheetName = "Hospitals" } procOutput outputFile 

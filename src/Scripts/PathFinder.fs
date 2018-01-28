@@ -143,7 +143,7 @@ let allRoutes (allPaths:PathTree<'a>) : Route<'a> list =
         | PathTree(label,[]) -> [label :: soFarRev]
         | PathTree(label,paths) -> 
             List.collect (build (label::soFarRev)) paths
-    List.map (fun xs -> Route <| List.rev xs) <| build [] allPaths
+    List.map (Route << List.rev) <| build [] allPaths
 
 // Note to self - be careful using <| in computation expressions
 
