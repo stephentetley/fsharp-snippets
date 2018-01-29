@@ -23,6 +23,7 @@ open Npgsql
 #load @"SL\PGSQLConn.fs"
 #load @"SL\Coord.fs"
 #load @"SL\WellKnownText.fs"
+#load @"SL\JsonExtractor.fs"
 #load @"SL\ScriptMonad.fs"
 #load @"SL\CsvOutput.fs"
 open SL.AnswerMonad
@@ -33,6 +34,7 @@ open SL.PGSQLConn
 open SL.ScriptMonad
 open SL.CsvOutput
 
+#load @"Scripts\PostGIS.fs"
 #load @"Scripts\PathFinder.fs"
 open Scripts.PathFinder
 

@@ -18,35 +18,34 @@ open Npgsql
 
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
-#load @"SL\AnswerMonad.fs"
-#load @"SL\SqlUtils.fs"
-#load @"SL\PGSQLConn.fs"
-open SL.AnswerMonad
-open SL.PGSQLConn
-
-#load @"SL\Tolerance.fs"
-#load @"SL\Coord.fs"
-#load @"SL\WellKnownText.fs"
-open SL.Geo
-
-#load @"SL\JsonExtractor.fs"
-open SL.JsonExtractor
-
-
 
 #I @"..\packages\Newtonsoft.Json.10.0.3\lib\net45"
 #r "Newtonsoft.Json"
 open Newtonsoft.Json
+
+#load @"SL\AnswerMonad.fs"
+#load @"SL\Tolerance.fs"
+#load @"SL\Coord.fs"
+#load @"SL\WellKnownText.fs"
+#load @"SL\JsonExtractor.fs"
+#load @"SL\SqlUtils.fs"
+#load @"SL\PGSQLConn.fs"
 #load @"SL\JsonOutput.fs"
-open SL.JsonOutput
-
-
 #load @"SL\CsvOutput.fs"
+#load @"SL\ScriptMonad.fs"
+open SL.AnswerMonad
+open SL.PGSQLConn
+open SL.Geo
+open SL.JsonExtractor
+open SL.JsonOutput
 open SL.CsvOutput
+open SL.ScriptMonad
 
 #load @"Scripts\PostGIS.fs"
 open Scripts.PostGIS
 
+
+// TODO - move to Scriptmonad.
 
 let jsonInput = @"G:\work\Projects\events2\concave_hull_data1.json"
 
@@ -87,21 +86,23 @@ let pgConcaveHulls (groups:(Group<Coord.WGS84Point> list)) : PGSQLConn<(int*stri
                     SL.PGSQLConn.fmapM (fun ans -> (ix+1,ans)) <| pgConcaveHull group1.Points 0.9) groups 
 
 
-let wktOutfile = @"G:\work\Projects\events2\wkt_concave_hulls1.csv"
+
 
 
 // TODO - change to Script monad...
 let main (pwd:string) = 
+    let wktOutfile = @"G:\work\Projects\events2\wkt_concave_hulls1.csv"
     let conn = pgsqlConnParamsTesting "spt_geo" pwd 
     let csvProc (oidtexts:(int*string) list) : CsvOutput<unit> = 
-        tellSheetWithHeaders ["oid"; "wkt"] 
-                            oidtexts
-                            (fun (a,b) -> [ tellInteger a; tellQuotedString b ])
-    runAnswerWithError
+        writeRecordsWithHeaders ["oid"; "wkt"] 
+                                oidtexts
+                                (fun (a,b) -> [ tellInteger a; tellQuotedString b ])
+
+    SL.AnswerMonad.runAnswerWithError
         <| answerMonad { 
                 let! groups = getInputs () 
                 let! results1 = runPGSQLConn (pgConcaveHulls groups) conn
-                do! liftAction (outputToNew {Separator=","} (csvProc results1) wktOutfile)
+                do! SL.AnswerMonad.liftAction (outputToNew {Separator=","} (csvProc results1) wktOutfile)
             }
 
    

@@ -134,6 +134,8 @@ let tryFindFurthestNorth (nodes: DbRecord list) : DbRecord option =
 let tryFindFurthestSouth (nodes: DbRecord list) : DbRecord option = 
     tryFindFindNode (fun elem ac ->  elem.Wgs84Lat < ac.Wgs84Lat) nodes
 
+// TODO - better to pass in (startId:int) & (endId:int) rather than DbRecords
+// Also we would be more generic if we didn't have the join here.
 let genTSPQuery (startPt:DbRecord) (endPt:DbRecord) : string = 
     System.String.Format("""
         SELECT seq, t.id1, p.id, p.point_code, p.point_name, p.wgs84lat, p.wgs84lon

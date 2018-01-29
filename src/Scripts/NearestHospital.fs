@@ -10,10 +10,10 @@ open SL.Geo.Coord
 open SL.Geo.WellKnownText
 open SL.SqlUtils
 open SL.CsvOutput
-open SL.ClosedXMLOutput
 open SL.PGSQLConn
 open SL.ScriptMonad
 
+open Scripts.PostGIS
 
 // Use PostGIS for nearest neighour and distance.
 
@@ -27,15 +27,6 @@ type HospitalsRow = HospitalsData.Row
 let getHospitalImportRows () : seq<HospitalsRow> = 
     (new HospitalsData ()).Rows |> Seq.cast<HospitalsRow>
 
-
-// ********** SCRIPT **********
-type Script<'a> = ScriptMonad<PGSQLConnParams,'a>
-
-let withConnParams (fn:PGSQLConnParams -> Script<'a>) : Script<'a> = 
-    scriptMonad.Bind (ask (), fn)
-
-let liftWithConnParams (fn:PGSQLConnParams -> Answer<'a>) : Script<'a> = 
-    withConnParams <| (liftAnswer << fn)
 
 
 let deleteAllData () : Script<int> = 

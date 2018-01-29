@@ -5,19 +5,11 @@ open Npgsql
 open SL.AnswerMonad
 open SL.SqlUtils
 open SL.PGSQLConn
-open SL.ScriptMonad
 open SL.Geo.Coord
 open SL.Geo.WellKnownText
+open SL.ScriptMonad
 
-
-// ********** SCRIPT **********
-type Script<'a> = ScriptMonad<PGSQLConnParams,'a>
-
-let withConnParams (fn:PGSQLConnParams -> Script<'a>) : Script<'a> = 
-    scriptMonad.Bind (ask (), fn)
-
-let liftWithConnParams (fn:PGSQLConnParams -> Answer<'a>) : Script<'a> = 
-    withConnParams <| (liftAnswer << fn)
+open Scripts.PostGIS
 
 
 // ***** Set up the database

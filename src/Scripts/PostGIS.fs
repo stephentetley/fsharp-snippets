@@ -2,8 +2,24 @@
 
 open Npgsql
 
+open SL.AnswerMonad
+open SL.ScriptMonad
 open SL.Geo
 open SL.PGSQLConn
+
+
+// Common Script type for working with PGSQL connections
+type Script<'a> = ScriptMonad<PGSQLConnParams,'a>
+
+let withConnParams (fn:PGSQLConnParams -> Script<'a>) : Script<'a> = 
+    scriptMonad.Bind (ask (), fn)
+
+let liftWithConnParams (fn:PGSQLConnParams -> Answer<'a>) : Script<'a> = 
+    withConnParams <| (liftAnswer << fn)
+
+
+
+
 
 // TODO - do we actually want a library of "common" queries?
 

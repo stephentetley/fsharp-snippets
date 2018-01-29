@@ -22,6 +22,7 @@ open Npgsql
 #load @"SL\SQLUtils.fs"
 #load @"SL\PGSQLConn.fs"
 #load @"SL\CsvOutput.fs"
+#load @"SL\JsonExtractor.fs"
 #load @"SL\ScriptMonad.fs"
 #load @"SL\Coord.fs"
 #load @"SL\WellKnownText.fs"
@@ -31,15 +32,7 @@ open SL.PGSQLConn
 open SL.CsvOutput
 open SL.ScriptMonad
 
-#I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
-#r "FSharpx.Collections"
-#I @"..\packages\DocumentFormat.OpenXml.2.7.2\lib\net46\"
-#I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
-#I @"..\packages\ClosedXML.0.90.0\lib\net452\"
-#r "ClosedXML"
-#load @"SL\ClosedXMLOutput.fs"
-open SL.ClosedXMLOutput
-
+#load @"Scripts\PostGIS.fs"
 #load @"Scripts\NearestHospital.fs"
 open Scripts.NearestHospital
 

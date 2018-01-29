@@ -17,6 +17,7 @@ open Npgsql
 #load @"SL\SqlUtils.fs"
 #load @"SL\PGSQLConn.fs"
 #load @"SL\Coord.fs"
+#load @"SL\JsonExtractor.fs"
 #load @"SL\ScriptMonad.fs"
 #load @"SL\CsvOutput.fs"
 open SL.AnswerMonad

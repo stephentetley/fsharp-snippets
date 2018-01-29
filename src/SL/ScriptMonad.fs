@@ -3,7 +3,7 @@
 open System.IO
 
 open SL.AnswerMonad
-
+open SL.JsonExtractor
 
 // Design Note:
 // Ideally we would like an iterative way of outputting Csv but as we don't
@@ -249,4 +249,8 @@ let optionalz (ma:ScriptMonad<'r,'a>) : ScriptMonad<'r,unit> =
     ScriptMonad <| fun sw env -> 
         AnswerMonad.optionalz (apply1 ma sw env)
 
-
+/// Are specific lifters worth the dependency?
+let liftJsonExtract (ma:JsonExtractor<'a>) (fileName:string) : ScriptMonad<'r,'a> = 
+    match extractFromFile ma fileName with
+    | Ok a -> unitM a
+    | Err msg -> throwError msg
