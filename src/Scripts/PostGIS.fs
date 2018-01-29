@@ -30,7 +30,7 @@ let liftWithConnParams (fn:PGSQLConnParams -> Answer<'a>) : Script<'a> =
 
 // files with WKT for QGIS can have any number of fields
 
-let genConvexHullQuery (points:Coord.WGS84Point list) : string = 
+let private makeConvexHullQUERY (points:Coord.WGS84Point list) : string = 
     System.String.Format("""
         SELECT ST_AsText(ST_ConvexHull(
 	        ST_Collect(
@@ -38,14 +38,19 @@ let genConvexHullQuery (points:Coord.WGS84Point list) : string =
                 )) );
     """, (WellKnownText.genMULTIPOINT points) )
 
-
-let pgConvexHull (points:Coord.WGS84Point list) : PGSQLConn<string> = 
-    let query = genConvexHullQuery points
-    execReaderSingleton query <| fun reader -> reader.GetString(0)
+/// Returns WellKnownText.
+/// May return different geometry types depending on number of points in the result set.
+/// One point - POINT
+/// Two points - LINESTRING
+/// Three or more points - POLYGON
+let pgConvexHull (points:Coord.WGS84Point list) : Script<string> = 
+    let query = makeConvexHullQUERY points
+    liftWithConnParams 
+        << runPGSQLConn << execReaderSingleton query <| fun reader -> reader.GetString(0)
 
 
 // Note TargetPercent of 1.0 gives a convex hull (0.9 seems okay)
-let genConcaveHullQuery (points:Coord.WGS84Point list) (targetPercent:float) : string = 
+let private makeConcaveHullQUERY (points:Coord.WGS84Point list) (targetPercent:float) : string = 
     System.String.Format("""
         SELECT ST_AsText(ST_ConcaveHull(
 	        ST_Collect(
@@ -53,7 +58,12 @@ let genConcaveHullQuery (points:Coord.WGS84Point list) (targetPercent:float) : s
                 ), {1}) );
     """, (WellKnownText.genMULTIPOINT points), targetPercent)
 
-
-let pgConcaveHull (points:Coord.WGS84Point list) (targetPercent:float) : PGSQLConn<string> = 
-    let query = genConcaveHullQuery points targetPercent
-    execReaderSingleton query <| fun reader -> reader.GetString(0)
+/// Returns WellKnownText.
+/// May return different geometry types depending on number of points in the result set.
+/// One point - POINT
+/// Two points - LINESTRING
+/// Three or more points - POLYGON
+let pgConcaveHull (points:Coord.WGS84Point list) (targetPercent:float) : Script<string> = 
+    let query = makeConcaveHullQUERY points targetPercent
+    liftWithConnParams 
+        << runPGSQLConn << execReaderSingleton query <| fun reader -> reader.GetString(0)

@@ -1,4 +1,8 @@
-﻿#I @"..\packages\System.Data.SQLite.Core.1.0.105.0\lib\net451"
+﻿#I @"..\packages\FSharp.Data.2.3.3\lib\net40"
+#r @"FSharp.Data.dll"
+open FSharp.Data
+
+#I @"..\packages\System.Data.SQLite.Core.1.0.105.0\lib\net451"
 #r "System.Data.SQLite"
 open System.Data.SQLite
 
@@ -23,6 +27,7 @@ open FSharp.ExcelProvider
 #load @"SL\SqlUtils.fs"
 #load @"SL\SQLiteConn.fs"
 #load @"SL\ClosedXMLOutput.fs"
+#load @"SL\JsonExtractor.fs"
 #load @"SL\ScriptMonad.fs"
 open SL.AnswerMonad
 open SL.StringUtils

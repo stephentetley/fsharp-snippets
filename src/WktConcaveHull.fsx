@@ -45,14 +45,14 @@ open SL.ScriptMonad
 open Scripts.PostGIS
 
 
-// TODO - move to Scriptmonad.
-
-let jsonInput = @"G:\work\Projects\events2\concave_hull_data1.json"
+// TODO - we have moved to script monad but we really want to
+// better identify the data we are working with.
+// We could still use a method dictionary to be generic.
 
 
 type Group<'a> = 
-    { Name : string
-      Points : 'a list }
+    { GroupName: string
+      Points: 'a list }
 
 
 // Structure is known!
@@ -61,7 +61,7 @@ type Group<'a> =
 
 let extractorM : JsonExtractor<Group<string> list> = 
     askArrayAsList 
-        <| SL.JsonExtractor.liftM2 (fun name pts ->  { Name = name; Points = pts})
+        <| SL.JsonExtractor.liftM2 (fun name pts ->  { GroupName = name; Points = pts})
                                     (field "Responsibility" askString)
                                     (field "Outfalls" (askArrayAsList (field "OSGB36NGR" askString)))
 
@@ -71,9 +71,9 @@ let decodePoints (inputs:string list) : Coord.WGS84Point list =
 
 
 
-let getInputs () : Answer<Group<Coord.WGS84Point> list> = 
-    SL.AnswerMonad.fmapM (List.map (fun group -> { Name=group.Name; Points = decodePoints group.Points}))
-                      (extractFromFile extractorM jsonInput)
+let getInputs (jsonInputFile:string) : Script<Group<Coord.WGS84Point> list> = 
+    fmapM (List.map (fun group -> { GroupName=group.GroupName; Points = decodePoints group.Points}))
+          (liftJsonExtract extractorM jsonInputFile)
 
 
 
@@ -81,28 +81,28 @@ let getInputs () : Answer<Group<Coord.WGS84Point> list> =
 // i.e only POLYGONs, only MULTIPOINTs.
 
 
-let pgConcaveHulls (groups:(Group<Coord.WGS84Point> list)) : PGSQLConn<(int*string) list> = 
-    SL.PGSQLConn.mapiM (fun ix group1 -> 
-                    SL.PGSQLConn.fmapM (fun ans -> (ix+1,ans)) <| pgConcaveHull group1.Points 0.9) groups 
+let pgConcaveHulls (groups:(Group<Coord.WGS84Point> list)) : Script<(int*string) list> = 
+    mapiM (fun ix group1 -> 
+                    fmapM (fun ans -> (ix+1,ans)) <| pgConcaveHull group1.Points 0.9) groups 
 
 
 
 
 
-// TODO - change to Script monad...
 let main (pwd:string) = 
+    let jsonInput = @"G:\work\Projects\events2\concave_hull_data1.json"
     let wktOutfile = @"G:\work\Projects\events2\wkt_concave_hulls1.csv"
     let conn = pgsqlConnParamsTesting "spt_geo" pwd 
-    let csvProc (oidtexts:(int*string) list) : CsvOutput<unit> = 
+    let csvProc (oidTexts:(int*string) list) : CsvOutput<unit> = 
         writeRecordsWithHeaders ["oid"; "wkt"] 
-                                oidtexts
+                                oidTexts
                                 (fun (a,b) -> [ tellInteger a; tellQuotedString b ])
 
-    SL.AnswerMonad.runAnswerWithError
-        <| answerMonad { 
-                let! groups = getInputs () 
-                let! results1 = runPGSQLConn (pgConcaveHulls groups) conn
-                do! SL.AnswerMonad.liftAction (outputToNew {Separator=","} (csvProc results1) wktOutfile)
+    runScript (failwith) (printfn "Success: %A") (consoleLogger) conn
+        <| scriptMonad { 
+                let! groups = getInputs jsonInput
+                let! results1 = pgConcaveHulls groups
+                do! liftAction <| SL.CsvOutput.outputToNew {Separator=","} (csvProc results1) wktOutfile
             }
 
    

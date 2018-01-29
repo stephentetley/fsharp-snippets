@@ -21,6 +21,7 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 #load @"SL\AnswerMonad.fs"
 #load @"SL\SqlUtils.fs"
 #load @"SL\SQLiteConn.fs"
+#load @"SL\JsonExtractor.fs"
 #load @"SL\ScriptMonad.fs"
 #load @"SL\Coord.fs"
 open SL.AnswerMonad
@@ -236,7 +237,7 @@ let makeLotusConsentINSERT (row:LotusRow) : string =
         | true,true -> 
             let east    = 1.0<meter> * (float <| row.``Outfall NGRE``.Value)
             let north   = 1.0<meter> * (float <| row.``Outfall NGRN``.Value)
-            osgb36PointToGrid { Easting = east; Northing = north } |> showOSGB36Grid
+            showOSGB36Point <| { Easting = east; Northing = north }
         | _ ,_ -> null
 
     sqlINSERT "lotus_consents" 
@@ -253,7 +254,7 @@ let makeGisOutfallINSERT (row:GisOutfallRow) : string =
     let gridref : string  = 
         let east    = 1.0<meter> * (float <| row.METREEASTING)
         let north   = 1.0<meter> * (float <| row.METRENORTHING)
-        osgb36PointToGrid { Easting = east; Northing = north} |> showOSGB36Grid
+        showOSGB36Point <| { Easting = east; Northing = north}
 
     sqlINSERT "gis_outfalls" 
         <|  [ stringValue       "stc25_ref"             row.STC25_REF
