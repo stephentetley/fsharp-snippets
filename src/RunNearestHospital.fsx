@@ -66,28 +66,29 @@ let readAssetRows () : AssetRow list =
 
 
 
-let nearestAlgo0 : NearestHospitalDict2<AssetRow>  = 
+let nearestAlgo : NearestHospitalDict2<AssetRow>  = 
     let extractLocation (row:AssetRow) : WGS84Point option = 
         Option.map osgb36ToWGS84 <| tryReadOSGB36Point row.``Grid Reference``
 
-    let outputRow (row:AssetRow) (optNeighbour : NeighbourRec option) : SL.CsvOutput.RowWriter = 
-        match optNeighbour with
+    let outputRow (row:AssetRow) (optBest : BestMatch2 option) : SL.CsvOutput.RowWriter = 
+        match optBest with
         | None -> 
             [ SL.CsvOutput.tellString row.Reference
             ; SL.CsvOutput.tellString row.``Common Name`` ] 
         | Some bestMatch -> 
             let hospitalLine = 
                 sprintf "%s, %s, %s. Tel: %s" 
-                        bestMatch.Name
-                        bestMatch.Address
-                        bestMatch.Postcode
-                        bestMatch.Telephone
+                        bestMatch.HospitalIs.Name
+                        bestMatch.HospitalIs.Address
+                        bestMatch.HospitalIs.Postcode
+                        bestMatch.HospitalIs.Telephone
             [ SL.CsvOutput.tellString row.Reference
             ; SL.CsvOutput.tellString row.``Common Name``
-            ; SL.CsvOutput.tellString bestMatch.Name
-            ; SL.CsvOutput.tellString hospitalLine ]
+            ; SL.CsvOutput.tellString bestMatch.HospitalIs.Name
+            ; SL.CsvOutput.tellString hospitalLine
+            ; SL.CsvOutput.tellFloat  <| float bestMatch.DistanceIs]
 
-    { CsvHeaders = [ "SAI"; "Name"; "Hospital"; "Hospital Details" ]
+    { CsvHeaders = [ "SAI"; "Name"; "Hospital"; "Hospital Details"; "Distance" ]
     ; ExtractLocation = extractLocation
     ; OutputCsvRow = outputRow
     } 
@@ -97,12 +98,12 @@ let main (password:string) : unit =
     let outputFile = @"G:\work\Projects\rtu\p2p-sites-with-hospital2.csv"
     let conn = pgsqlConnParamsTesting "spt_geo" password
     runScript (failwith) (printfn "Success: %A") (consoleLogger) conn 
-        <| generateNearestHospitalsCsv nearestAlgo0 assetData outputFile
+        <| generateNearestHospitalsCsv nearestAlgo assetData outputFile
         
 
 
 // OLD 
-let nearestAlgo : NearestHospitalDict<AssetRow>  = 
+let nearestAlgoOLD : NearestHospitalDict<AssetRow>  = 
     let extractLocation (row:AssetRow) : WGS84Point option = 
         Option.map osgb36ToWGS84 <| tryReadOSGB36Point row.``Grid Reference``
 
@@ -129,8 +130,8 @@ let nearestAlgo : NearestHospitalDict<AssetRow>  =
     ; OutputRow = outputRow
     } 
 
-let main2 () = 
+let mainOLD () = 
     let assetData = readAssetRows ()
-    generateNearestHospitalsXls nearestAlgo assetData @"G:\work\Projects\rtu\p2p-sites-with-hospital.xlsx"
+    generateNearestHospitalsXls nearestAlgoOLD assetData @"G:\work\Projects\rtu\p2p-sites-with-hospital.xlsx"
         
 

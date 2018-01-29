@@ -1,5 +1,7 @@
 ﻿module Scripts.NearestHospital
 
+open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
+
 open FSharp.Data
 open Npgsql
 
@@ -99,25 +101,47 @@ let SetupHospitalDB (dict:HospitalInsertDict<'inputrow>) (hospitals:seq<'inputro
 let makeNearestNeighbourQUERY (limit:int) (point:WGS84Point) : string = 
     System.String.Format("""
         SELECT 
-            name, telephone, address, postcode
+            name, telephone, address, postcode, ST_AsText(grid_ref)
         FROM 
             spt_hospitals 
         ORDER BY grid_ref <-> ST_Point({0}, {1}) LIMIT {2} ;
         """, point.Longitude, point.Latitude, limit)
 
+// Absolutely must use ST_DistanceSpheroid!
+let makeDistanceQUERY (point1:WGS84Point) (point2:WGS84Point) : string = 
+    System.String.Format("""
+        SELECT ST_DistanceSpheroid(
+            ST_GeomFromText('{0}', 4326),
+            ST_GeomFromText('{1}', 4326),
+            'SPHEROID["WGS 84",6378137, 298.257223563]');
+        """, showWktPoint <| wgs84PointToWKT point1
+           , showWktPoint <| wgs84PointToWKT point2 )
+
+
 type NeighbourRec = 
     { Name: string
       Telephone: string 
       Address: string
-      Postcode: string } 
+      Postcode: string
+      GridRef: WGS84Point } 
+
+type BestMatch2 = 
+    { HospitalIs: NeighbourRec
+      DistanceIs: float<kilometer> }
+
 
 let nearestHospitalQuery (point:WGS84Point) : Script<NeighbourRec list> = 
     let query = makeNearestNeighbourQUERY 1 point
     let procM (reader:NpgsqlDataReader) : NeighbourRec = 
+        let gridRef = 
+            match tryReadWktPoint (reader.GetString(4)) with
+            | Some pt -> wktToWGS84Point pt
+            | None -> failwith "findVertices ..."
         { Name          = reader.GetString(0)
         ; Telephone     = reader.GetString(1)
         ; Address       = reader.GetString(2) 
-        ; Postcode      = reader.GetString(3) }
+        ; Postcode      = reader.GetString(3)
+        ; GridRef       = gridRef }
     liftWithConnParams << runPGSQLConn <| execReaderList query procM  
 
 let nearestHospital (point:WGS84Point) : Script<NeighbourRec option> = 
@@ -125,6 +149,11 @@ let nearestHospital (point:WGS84Point) : Script<NeighbourRec option> =
     fmapM first <| nearestHospitalQuery point
 
 
+let findDistance (point1:WGS84Point) (point2:WGS84Point) : Script<float<kilometer>> = 
+    let query = makeDistanceQUERY point1 point2
+    let procM (reader:NpgsqlDataReader) : float<kilometer> = 
+        0.001<kilometer> * (float <| reader.GetDouble(0))
+    liftWithConnParams << runPGSQLConn <| execReaderSingleton query procM  
 
 // TODO - note it was quite nice having distance.
 // Use ST_Distance to recover it.
@@ -133,17 +162,25 @@ let nearestHospital (point:WGS84Point) : Script<NeighbourRec option> =
 type NearestHospitalDict2<'asset> = 
     { CsvHeaders        : string list
       ExtractLocation   : 'asset -> WGS84Point option
-      OutputCsvRow      : 'asset -> NeighbourRec option -> SL.CsvOutput.RowWriter }
+      OutputCsvRow      : 'asset -> BestMatch2 option -> SL.CsvOutput.RowWriter }
 
 
 let generateNearestHospitalsCsv (dict:NearestHospitalDict2<'asset>) (source:'asset list) (outputFile:string) : Script<unit> =
     let rowProc (asset1:'asset) : Script<SL.CsvOutput.CellWriter list> =
         scriptMonad { 
-            let! optNeighbour = 
+            let! optBest = 
                 match dict.ExtractLocation asset1 with
-                | Some wgs84 -> nearestHospital wgs84
+                | Some assetLoc -> 
+                    scriptMonad { 
+                        let! optHospital = nearestHospital assetLoc
+                        match optHospital with
+                        | None -> return None
+                        | Some hospital1 -> 
+                            let! distance = findDistance assetLoc hospital1.GridRef
+                            return (Some { HospitalIs = hospital1; DistanceIs=distance })
+                        }
                 | None -> scriptMonad.Return None
-            return (dict.OutputCsvRow asset1 optNeighbour)
+            return (dict.OutputCsvRow asset1 optBest)
         }
     
     scriptMonad { 
