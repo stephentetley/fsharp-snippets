@@ -157,24 +157,36 @@ let private getWrapped (sep:Separator) (cellWriter:CellWriter) : string =
     | Wrapped(fn) -> match fn sep with | null -> "" | s -> s
 
 
-let tellRow (valueProcs:CellWriter list) : CsvOutput<unit> =
-    bindM askSep (fun sep -> List.map (getWrapped sep) valueProcs |> tellRowStrings )
+let tellRow (rowWriter:RowWriter) : CsvOutput<unit> =
+    bindM askSep (fun sep -> List.map (getWrapped sep) rowWriter |> tellRowStrings )
+
+    
+let tellRows (rowWriters:RowWriter list) : CsvOutput<unit> =
+    mapMz tellRow rowWriters
 
 
-let tellRows (records:seq<'a>) (writeRow:'a -> CellWriter list) : CsvOutput<unit> = 
-    traverseMz (tellRow << writeRow) records
+let tellRecord (a:'a) (writeProc:'a -> RowWriter) : CsvOutput<unit> =
+    bindM askSep (fun sep -> List.map (getWrapped sep) (writeProc a) |> tellRowStrings )
 
-let tellRowsi (records:seq<'a>) (writeRow:int -> 'a -> CellWriter list) : CsvOutput<unit> = 
-    traverseiMz (fun a ix -> tellRow <| writeRow a ix) records
 
-let tellSheetWithHeaders (headers:string list) (records:seq<'a>) (writeRow:'a -> CellWriter list) : CsvOutput<unit> = 
+let tellRecords (records:seq<'a>) (writeProc:'a -> RowWriter) : CsvOutput<unit> = 
+    traverseMz (tellRow << writeProc) records
+
+let tellRecordsi (records:seq<'a>) (writeProc:int -> 'a -> RowWriter) : CsvOutput<unit> = 
+    traverseiMz (fun a ix -> tellRow <| writeProc a ix) records
+
+let writeRowsWithHeaders (headers:string list) (rows:seq<RowWriter>) : CsvOutput<unit> = 
     csvOutput { do! tellHeaders headers
-                do! tellRows records writeRow }
+                do! traverseMz tellRow rows }
 
-
-let tellSheetWithHeadersi (headers:string list) (records:seq<'a>) (writeRow:int -> 'a -> CellWriter list) : CsvOutput<unit> = 
+let writeRecordsWithHeaders (headers:string list) (records:seq<'a>) (writeRow:'a -> RowWriter) : CsvOutput<unit> = 
     csvOutput { do! tellHeaders headers
-                do! tellRowsi records writeRow }
+                do! tellRecords records writeRow }
+
+
+let writeRecordstWithHeadersi (headers:string list) (records:seq<'a>) (writeRow:int -> 'a -> RowWriter) : CsvOutput<unit> = 
+    csvOutput { do! tellHeaders headers
+                do! tellRecordsi records writeRow }
 
 
 // Should testQuotedString be the default?

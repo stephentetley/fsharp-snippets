@@ -7,6 +7,7 @@ open SL.AnswerMonad
 open SL.Geo.Coord
 open SL.Geo.WellKnownText
 open SL.SqlUtils
+open SL.CsvOutput
 open SL.ClosedXMLOutput
 open SL.PGSQLConn
 open SL.ScriptMonad
@@ -128,6 +129,31 @@ let nearestHospital (point:WGS84Point) : Script<NeighbourRec option> =
 // TODO - note it was quite nice having distance.
 // Use ST_Distance to recover it.
 
+
+type NearestHospitalDict2<'asset> = 
+    { CsvHeaders        : string list
+      ExtractLocation   : 'asset -> WGS84Point option
+      OutputCsvRow      : 'asset -> NeighbourRec option -> SL.CsvOutput.RowWriter }
+
+
+let generateNearestHospitalsCsv (dict:NearestHospitalDict2<'asset>) (source:'asset list) (outputFile:string) : Script<unit> =
+    let rowProc (asset1:'asset) : Script<SL.CsvOutput.CellWriter list> =
+        scriptMonad { 
+            let! optNeighbour = 
+                match dict.ExtractLocation asset1 with
+                | Some wgs84 -> nearestHospital wgs84
+                | None -> scriptMonad.Return None
+            return (dict.OutputCsvRow asset1 optNeighbour)
+        }
+    
+    scriptMonad { 
+        let! (rowWriters:seq<SL.CsvOutput.RowWriter>) = SL.ScriptMonad.traverseM rowProc source
+        let csvProc:CsvOutput<unit> = 
+            SL.CsvOutput.writeRowsWithHeaders dict.CsvHeaders rowWriters
+        do! liftAction <| SL.CsvOutput.outputToNew {Separator=","} csvProc outputFile
+        }          
+
+        
 
 
 // OLD ******************

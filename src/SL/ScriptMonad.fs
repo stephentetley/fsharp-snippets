@@ -4,6 +4,13 @@ open System.IO
 
 open SL.AnswerMonad
 
+
+// Design Note:
+// Ideally we would like an iterative way of outputting Csv but as we don't
+// have monad transformers at our disposal I'm not sure how to do this...
+
+
+
 type LogAction = StringWriter -> unit
 
 
@@ -239,4 +246,5 @@ let optional (ma:ScriptMonad<'r,'a>) : ScriptMonad<'r,'a option> =
 let optionalz (ma:ScriptMonad<'r,'a>) : ScriptMonad<'r,unit> = 
     ScriptMonad <| fun sw env -> 
         AnswerMonad.optionalz (apply1 ma sw env)
+
 

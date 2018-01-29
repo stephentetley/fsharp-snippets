@@ -183,8 +183,8 @@ let OutputNN(password:string) : unit =
     // Ideally CsvOutput should have the same extent as ScriptMonad... 
     runScript (failwith) (printfn "Success: %A") (consoleLogger) conn 
         <| scriptMonad { 
-                let (rows1:seq<NeighboursRow>) = getDataForNeighbours ()
+                let rows1:seq<NeighboursRow> = getDataForNeighbours ()
                 let! (rows2:seq<OutputRow>) = SL.ScriptMonad.traverseM (genOutputRow 5) rows1
-                let csvProc = tellSheetWithHeaders csvHeaders rows2 tellOutputRow
+                let csvProc:CsvOutput<unit> = writeRecordsWithHeaders csvHeaders rows2 tellOutputRow
                 do! liftAction <| outputToNew {Separator=","} csvProc outFile
                 }
