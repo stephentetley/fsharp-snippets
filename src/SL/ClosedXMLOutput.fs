@@ -158,23 +158,42 @@ let private getWrapped (cellWriter:CellWriter) : obj =
     match cellWriter with | Wrapped o -> o
 
 
-let tellRow (valueProcs:CellWriter list) : ClosedXMLOutput<unit> =
-    tellRowObjs <| List.map getWrapped valueProcs
+let tellRow (rowWriter:RowWriter) : ClosedXMLOutput<unit> =
+    tellRowObjs <| List.map getWrapped rowWriter
+    
+let tellRows (rowWriters:seq<RowWriter>) : ClosedXMLOutput<unit> =
+    traverseMz tellRow rowWriters
 
-let tellRows (records:seq<'a>) (writeRow:'a -> CellWriter list) : ClosedXMLOutput<unit> = 
-    traverseMz (tellRow << writeRow) records
+let tellRecord (a:'record) (writeProc:'record -> RowWriter) : ClosedXMLOutput<unit> =
+    tellRow <| writeProc a
 
-let tellRowsi (records:seq<'a>) (writeRow:int -> 'a -> CellWriter list) : ClosedXMLOutput<unit> = 
-    traverseiMz (fun a ix -> tellRow <| writeRow a ix) records
+let tellRecords (records:seq<'a>) (writeProc:'a -> RowWriter) : ClosedXMLOutput<unit> = 
+    traverseMz (tellRow << writeProc) records
 
-let tellSheetWithHeaders (headers:string list) (records:seq<'a>) (writeRow:'a -> CellWriter list) : ClosedXMLOutput<unit> = 
-    closedXMLOutput { do! tellHeaders headers
-                      do! tellRows records writeRow }
+let tellRecordsi (records:seq<'a>) (writeProc:int -> 'a -> RowWriter) : ClosedXMLOutput<unit> = 
+    traverseiMz (fun a ix -> tellRow <| writeProc a ix) records
 
 
-let tellSheetWithHeadersi (headers:string list) (records:seq<'a>) (writeRow:int -> 'a -> CellWriter list) : ClosedXMLOutput<unit> = 
-    closedXMLOutput { do! tellHeaders headers
-                      do! tellRowsi records writeRow }
+// Procedures prefixed write_ rather than tell_ are expected to be used to generate
+// all the output in a file.
+
+
+let writeRowsWithHeaders (headers:string list) (rows:seq<RowWriter>) : ClosedXMLOutput<unit> = 
+    closedXMLOutput { 
+        do! tellHeaders headers
+        do! traverseMz tellRow rows }
+
+let writeRecordsWithHeaders (headers:string list) (records:seq<'a>) (writeRow:'a -> RowWriter) : ClosedXMLOutput<unit> = 
+    closedXMLOutput { 
+        do! tellHeaders headers
+        do! tellRecords records writeRow }
+
+
+let writeRecordsWithHeadersi (headers:string list) (records:seq<'a>) (writeRow:int -> 'a -> RowWriter) : ClosedXMLOutput<unit> = 
+    closedXMLOutput { 
+        do! tellHeaders headers
+        do! tellRecordsi records writeRow }
+
 
 let tellObj (value:obj) : CellWriter = 
     Wrapped <| value

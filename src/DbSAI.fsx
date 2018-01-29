@@ -147,7 +147,7 @@ let exportSiteList (recs:ResultRec list) (xlsOutPath:string) : Script<unit> =
         
     liftAction <| 
         outputToNew { SheetName = "Sites" } 
-                    (tellSheetWithHeaders ["Name"; "Uid"; "NGR"] recs proc1) 
+                    (writeRecordsWithHeaders ["Name"; "Uid"; "NGR"] recs proc1) 
                     xlsOutPath
 
 let tempSiteList = 

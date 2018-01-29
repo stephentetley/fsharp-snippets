@@ -56,11 +56,11 @@ let findPoints (sites:string list)  (db:CoordDB) : Coord.WGS84Point list =
 
 let genWKT (orders:OrderGroups) (db:CoordDB) : CsvOutput<unit> =
     let pointGroups = List.map (fun ss -> findPoints ss db) orders
-    tellSheetWithHeadersi   ["oid"; "wkt"] 
-                            pointGroups
-                            (fun ix pts -> 
-                                [ tellInteger <| ix+1
-                                ; tellQuotedString <| WellKnownText.genLINESTRING pts ])
+    writeRecordsWithHeadersi    ["oid"; "wkt"] 
+                                pointGroups
+                                (fun ix pts -> 
+                                    [ tellInteger <| ix+1
+                                    ; tellQuotedString <| WellKnownText.genLINESTRING pts ])
 
 
 let partition (lines:string list) : OrderGroups = 

@@ -7,7 +7,9 @@ open SL.AnswerMonad
 
 // Design Note:
 // Ideally we would like an iterative way of outputting Csv but as we don't
-// have monad transformers at our disposal I'm not sure how to do this...
+// have monad transformers at our disposal I'm not sure how to do this.
+// At the moment the solution seems to be generate a seq<RowWriter> and
+// output it by lifting outputToNew and tellRows or writeRowsWithHeaders.
 
 
 

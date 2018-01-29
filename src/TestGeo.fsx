@@ -17,8 +17,8 @@ let testZ2 = Char.GetNumericValue '6'
 let phi1 : float<Coord.degree> = Coord.makeDegree 52 39 27.2531
 let lam1 : float<Coord.degree> = Coord.makeDegree 1 43 4.5177
 
-let test01 = Coord.wgs84ToOSGB36Point {Latitude = phi1; Longitude = lam1}
-let test02 = Coord.osgb36PointToWGS84 {Easting = 651409.903<meter>; Northing = 313177.270<meter>}
+let test01 = Coord.wgs84ToOSGB36 {Latitude = phi1; Longitude = lam1}
+let test02 = Coord.osgb36ToWGS84 {Easting = 651409.903<meter>; Northing = 313177.270<meter>}
 
 //let test03 = Coord.decodeMinor 'c' ;;
 //let testit c = Coord.decodeAlpha c

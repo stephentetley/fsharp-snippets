@@ -239,7 +239,7 @@ let AssetCollectedData () =
         ; tellString        <| stormDischargeString a.StormDisPermits
         ]
     let csvProc = 
-        tellSheetWithHeaders headers assetList rowProc
+        writeRecordsWithHeaders headers assetList rowProc
     outputToNew {Separator=","} csvProc outFile
 
 type GisOutfall = 
@@ -266,5 +266,5 @@ let GisOutfalls () =
         ; tellString        a.Osgb36GridRef
         ]
     let csvProc = 
-        tellSheetWithHeaders headers assetList rowProc
+        writeRecordsWithHeaders headers assetList rowProc
     outputToNew {Separator=","} csvProc outFile

@@ -71,7 +71,6 @@
     <Compile Include="SL\StringUtils.fs" />
     <Compile Include="SL\Tolerance.fs" />
     <Compile Include="SL\AnswerMonad.fs" />
-    <Compile Include="SL\ScriptMonad.fs" />
     <Compile Include="SL\Coord.fs" />
     <Compile Include="SL\WellKnownText.fs" />
     <Compile Include="SL\ExcelProviderHelper.fs" />
@@ -80,6 +79,7 @@
     <Compile Include="SL\SqlUtils.fs" />
     <Compile Include="SL\PGSQLConn.fs" />
     <Compile Include="SL\SQLiteConn.fs" />
+    <Compile Include="SL\ScriptMonad.fs" />
     <Compile Include="SL\ClosedXMLOutput.fs" />
     <Compile Include="SL\CsvOutput.fs" />
     <Compile Include="SL\DocOutput.fs" />

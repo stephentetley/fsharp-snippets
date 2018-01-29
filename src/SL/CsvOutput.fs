@@ -161,11 +161,11 @@ let tellRow (rowWriter:RowWriter) : CsvOutput<unit> =
     bindM askSep (fun sep -> List.map (getWrapped sep) rowWriter |> tellRowStrings )
 
     
-let tellRows (rowWriters:RowWriter list) : CsvOutput<unit> =
-    mapMz tellRow rowWriters
+let tellRows (rowWriters:seq<RowWriter>) : CsvOutput<unit> =
+    traverseMz tellRow rowWriters
 
 
-let tellRecord (a:'a) (writeProc:'a -> RowWriter) : CsvOutput<unit> =
+let tellRecord (a:'record) (writeProc:'record -> RowWriter) : CsvOutput<unit> =
     bindM askSep (fun sep -> List.map (getWrapped sep) (writeProc a) |> tellRowStrings )
 
 
@@ -175,18 +175,26 @@ let tellRecords (records:seq<'a>) (writeProc:'a -> RowWriter) : CsvOutput<unit> 
 let tellRecordsi (records:seq<'a>) (writeProc:int -> 'a -> RowWriter) : CsvOutput<unit> = 
     traverseiMz (fun a ix -> tellRow <| writeProc a ix) records
 
+
+// Procedures prefixed write_ rather than tell_ are expected to be used to generate
+// all the output in a file.
+
+
 let writeRowsWithHeaders (headers:string list) (rows:seq<RowWriter>) : CsvOutput<unit> = 
-    csvOutput { do! tellHeaders headers
-                do! traverseMz tellRow rows }
+    csvOutput { 
+        do! tellHeaders headers
+        do! traverseMz tellRow rows }
 
 let writeRecordsWithHeaders (headers:string list) (records:seq<'a>) (writeRow:'a -> RowWriter) : CsvOutput<unit> = 
-    csvOutput { do! tellHeaders headers
-                do! tellRecords records writeRow }
+    csvOutput { 
+        do! tellHeaders headers
+        do! tellRecords records writeRow }
 
 
-let writeRecordstWithHeadersi (headers:string list) (records:seq<'a>) (writeRow:int -> 'a -> RowWriter) : CsvOutput<unit> = 
-    csvOutput { do! tellHeaders headers
-                do! tellRecordsi records writeRow }
+let writeRecordsWithHeadersi (headers:string list) (records:seq<'a>) (writeRow:int -> 'a -> RowWriter) : CsvOutput<unit> = 
+    csvOutput { 
+        do! tellHeaders headers
+        do! tellRecordsi records writeRow }
 
 
 // Should testQuotedString be the default?
