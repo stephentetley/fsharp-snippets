@@ -317,7 +317,10 @@ module Coord =
 
 
 
-    // Operates on WGS84Points i.e. Lat-Lon
+    /// Operates on WGS84Points i.e. Lat-Lon
+    /// Note - there is an obvious discrepancy with the distance calculated by 
+    /// ST_DistanceSpheroid. If you are already using a script that talks to PostGIS
+    /// then use ST_DistanceSpheroid.
     let haversineDistance (p1 : WGS84Point) (p2 : WGS84Point) : float<kilometer> = 
         let radius = 6371.000<kilometer>
         let lat1R = deg2rad (float p1.Latitude)
@@ -338,3 +341,7 @@ module Coord =
 
 
 
+    /// The WGS84 spheroid string for use in PostGIS queries (e.g ST_DistanceSpheroid).
+    /// Note the value is not quoted, you will likely have to enclose it in single quotes
+    /// when using it in a query.
+    let wgs84Spheroid:string = "SPHEROID[\"WGS 84\", 6378137, 298.257223563]"

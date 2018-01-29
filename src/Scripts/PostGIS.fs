@@ -5,6 +5,8 @@ open Npgsql
 open SL.Geo
 open SL.PGSQLConn
 
+// TODO - do we actually want a library of "common" queries?
+
 // TODO - invoke PostGIS, send WKT (and WKB?) in and out... 
 
 // e.g ST_Centroid, ST_AsGeoJSON, ST_GeomFromText

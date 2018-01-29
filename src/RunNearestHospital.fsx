@@ -66,11 +66,11 @@ let readAssetRows () : AssetRow list =
 
 
 
-let nearestAlgo : NearestHospitalDict2<AssetRow>  = 
+let nearestAlgo : NearestHospitalDict<AssetRow>  = 
     let extractLocation (row:AssetRow) : WGS84Point option = 
         Option.map osgb36ToWGS84 <| tryReadOSGB36Point row.``Grid Reference``
 
-    let outputRow (row:AssetRow) (optBest : BestMatch2 option) : SL.CsvOutput.RowWriter = 
+    let outputRow (row:AssetRow) (optBest : BestMatch option) : SL.CsvOutput.RowWriter = 
         match optBest with
         | None -> 
             [ SL.CsvOutput.tellString row.Reference
@@ -78,15 +78,15 @@ let nearestAlgo : NearestHospitalDict2<AssetRow>  =
         | Some bestMatch -> 
             let hospitalLine = 
                 sprintf "%s, %s, %s. Tel: %s" 
-                        bestMatch.HospitalIs.Name
-                        bestMatch.HospitalIs.Address
-                        bestMatch.HospitalIs.Postcode
-                        bestMatch.HospitalIs.Telephone
+                        bestMatch.NearestHospital.Name
+                        bestMatch.NearestHospital.Address
+                        bestMatch.NearestHospital.Postcode
+                        bestMatch.NearestHospital.Telephone
             [ SL.CsvOutput.tellString row.Reference
             ; SL.CsvOutput.tellString row.``Common Name``
-            ; SL.CsvOutput.tellString bestMatch.HospitalIs.Name
+            ; SL.CsvOutput.tellString bestMatch.NearestHospital.Name
             ; SL.CsvOutput.tellString hospitalLine
-            ; SL.CsvOutput.tellFloat  <| float bestMatch.DistanceIs]
+            ; SL.CsvOutput.tellFloat  <| float bestMatch.Distance]
 
     { CsvHeaders = [ "SAI"; "Name"; "Hospital"; "Hospital Details"; "Distance" ]
     ; ExtractLocation = extractLocation
@@ -99,39 +99,5 @@ let main (password:string) : unit =
     let conn = pgsqlConnParamsTesting "spt_geo" password
     runScript (failwith) (printfn "Success: %A") (consoleLogger) conn 
         <| generateNearestHospitalsCsv nearestAlgo assetData outputFile
-        
-
-
-// OLD 
-let nearestAlgoOLD : NearestHospitalDict<AssetRow>  = 
-    let extractLocation (row:AssetRow) : WGS84Point option = 
-        Option.map osgb36ToWGS84 <| tryReadOSGB36Point row.``Grid Reference``
-
-    let outputRow (row:AssetRow) (obest : BestMatch option) : ClosedXMLOutput<unit> = 
-        match obest with
-        | None -> 
-            tellRow [ tellString row.Reference
-                    ; tellString row.``Common Name`` ] 
-        | Some bestMatch -> 
-            let hospitalLine = 
-                sprintf "%s, %s, %s. Tel: %s" 
-                        bestMatch.NearestHospital.HospitalName
-                        bestMatch.NearestHospital.Address
-                        bestMatch.NearestHospital.Postcode
-                        bestMatch.NearestHospital.Phone
-            tellRow [ tellString row.Reference
-                    ; tellString row.``Common Name``
-                    ; tellString bestMatch.NearestHospital.HospitalName
-                    ; tellString hospitalLine
-                    ; tellFloat <| float bestMatch.DistanceToNearest  ] 
-
-    { TableHeaders = Some <| [ "SAI"; "Name"; "Hospital"; "Hospital Details"; "Distance" ]
-    ; ExtractLocation = extractLocation
-    ; OutputRow = outputRow
-    } 
-
-let mainOLD () = 
-    let assetData = readAssetRows ()
-    generateNearestHospitalsXls nearestAlgoOLD assetData @"G:\work\Projects\rtu\p2p-sites-with-hospital.xlsx"
         
 

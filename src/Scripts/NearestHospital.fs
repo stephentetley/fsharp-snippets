@@ -15,7 +15,7 @@ open SL.PGSQLConn
 open SL.ScriptMonad
 
 
-// TODO - move towards using PostGIS
+// Use PostGIS for nearest neighour and distance.
 
 type HospitalsData = 
     CsvProvider< @"..\data\Accident-and-Emergency-Hospitals-Yorkshire.csv",
@@ -113,9 +113,10 @@ let makeDistanceQUERY (point1:WGS84Point) (point2:WGS84Point) : string =
         SELECT ST_DistanceSpheroid(
             ST_GeomFromText('{0}', 4326),
             ST_GeomFromText('{1}', 4326),
-            'SPHEROID["WGS 84",6378137, 298.257223563]');
+            '{2}');
         """, showWktPoint <| wgs84PointToWKT point1
-           , showWktPoint <| wgs84PointToWKT point2 )
+           , showWktPoint <| wgs84PointToWKT point2
+           , wgs84Spheroid)
 
 
 type NeighbourRec = 
@@ -125,9 +126,9 @@ type NeighbourRec =
       Postcode: string
       GridRef: WGS84Point } 
 
-type BestMatch2 = 
-    { HospitalIs: NeighbourRec
-      DistanceIs: float<kilometer> }
+type BestMatch = 
+    { NearestHospital: NeighbourRec
+      Distance: float<kilometer> }
 
 
 let nearestHospitalQuery (point:WGS84Point) : Script<NeighbourRec list> = 
@@ -155,17 +156,13 @@ let findDistance (point1:WGS84Point) (point2:WGS84Point) : Script<float<kilomete
         0.001<kilometer> * (float <| reader.GetDouble(0))
     liftWithConnParams << runPGSQLConn <| execReaderSingleton query procM  
 
-// TODO - note it was quite nice having distance.
-// Use ST_Distance to recover it.
-
-
-type NearestHospitalDict2<'asset> = 
+type NearestHospitalDict<'asset> = 
     { CsvHeaders        : string list
       ExtractLocation   : 'asset -> WGS84Point option
-      OutputCsvRow      : 'asset -> BestMatch2 option -> SL.CsvOutput.RowWriter }
+      OutputCsvRow      : 'asset -> BestMatch option -> SL.CsvOutput.RowWriter }
 
 
-let generateNearestHospitalsCsv (dict:NearestHospitalDict2<'asset>) (source:'asset list) (outputFile:string) : Script<unit> =
+let generateNearestHospitalsCsv (dict:NearestHospitalDict<'asset>) (source:'asset list) (outputFile:string) : Script<unit> =
     let rowProc (asset1:'asset) : Script<SL.CsvOutput.CellWriter list> =
         scriptMonad { 
             let! optBest = 
@@ -177,7 +174,7 @@ let generateNearestHospitalsCsv (dict:NearestHospitalDict2<'asset>) (source:'ass
                         | None -> return None
                         | Some hospital1 -> 
                             let! distance = findDistance assetLoc hospital1.GridRef
-                            return (Some { HospitalIs = hospital1; DistanceIs=distance })
+                            return (Some { NearestHospital = hospital1; Distance=distance })
                         }
                 | None -> scriptMonad.Return None
             return (dict.OutputCsvRow asset1 optBest)
@@ -192,65 +189,3 @@ let generateNearestHospitalsCsv (dict:NearestHospitalDict2<'asset>) (source:'ass
 
         
 
-
-// OLD ******************
-
-type HospitalList = HospitalRecord list
-
-
-let private buildHospitalList () = 
-    let hospitalData = new HospitalsData()
-    let make1 (rowi : HospitalsRow) : HospitalRecord option = 
-        match rowi.Name with 
-        | null -> None
-        | _ -> let optPt = Option.map osgb36ToWGS84 <| tryReadOSGB36Point rowi.``Grid Reference``
-               match optPt with
-               | Some pt -> Some <| { HospitalName = rowi.Name
-                                    ; Address = rowi.Address 
-                                    ; Postcode = rowi.Postcode
-                                    ; Phone = rowi.Telephone
-                                    ; LatLon = pt }
-               | None -> None
-    hospitalData.Rows |> Seq.map make1
-                      |> Seq.toList
-                      |> List.choose id
-
-type BestMatch = { NearestHospital : HospitalRecord; DistanceToNearest: float<kilometer> }
-
-let private tryClosestHosiptal (hospitals:HospitalList) (pt:WGS84Point) : BestMatch option =
-    let find1 (dist,best) (hospital:HospitalRecord) = 
-        let dist1 = haversineDistance pt hospital.LatLon
-        if dist1 <= dist then
-            (dist1, Some hospital)
-        else (dist,best)
-    List.fold find1 (50000.0<kilometer>, None) hospitals 
-        |> fun (d,o) -> match o with 
-                        | Some hosp -> Some { NearestHospital = hosp; DistanceToNearest = d }
-                        | None -> None
-
-
-
-type NearestHospitalDict<'asset> = 
-    { TableHeaders      : option<string list> 
-      ExtractLocation   : 'asset -> WGS84Point option
-      OutputRow         : 'asset -> BestMatch option -> ClosedXMLOutput<unit> }
-        
-// TODO - change to Csv...
-let generateNearestHospitalsXls (dict:NearestHospitalDict<'asset>) (source:'asset list) (outputFile:string) : unit =
-    let hospitals = buildHospitalList ()
-    
-    let headerProc : ClosedXMLOutput<unit> = 
-        match dict.TableHeaders with
-        | None -> closedXMLOutput.Return ()
-        | Some headers -> tellHeaders headers
-    
-    let rowProc (asset1:'asset) : ClosedXMLOutput<unit> = 
-        let closest : BestMatch option = Option.bind (tryClosestHosiptal hospitals) (dict.ExtractLocation asset1) 
-        dict.OutputRow asset1 closest
-    
-    let procOutput : ClosedXMLOutput<unit> = 
-        closedXMLOutput { 
-            do! headerProc
-            do! SL.ClosedXMLOutput.mapMz rowProc source }
-
-    outputToNew { SheetName = "Hospitals" } procOutput outputFile 
