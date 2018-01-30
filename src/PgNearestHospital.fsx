@@ -53,13 +53,11 @@ type AssetDataset =
 
 type AssetRow = AssetDataset.Row
 
-
-let readAssetRows () : AssetRow list = 
-    (new AssetDataset()).Rows |> Seq.toList
+let readAssetRows () : AssetRow list = (new AssetDataset()).Rows |> Seq.toList
 
 
 
-let nearestAlgo : NearestHospitalDict<AssetRow>  = 
+let nearestMethodDict : NearestHospitalDict<AssetRow>  = 
     let extractLocation (row:AssetRow) : WGS84Point option = 
         Option.map osgb36ToWGS84 <| tryReadOSGB36Point row.``Grid Reference``
 
@@ -90,7 +88,7 @@ let main (password:string) : unit =
     let assetData = readAssetRows ()
     let outputFile = @"G:\work\Projects\rtu\p2p-sites-with-hospital2.csv"
     let conn = pgsqlConnParamsTesting "spt_geo" password
-    runScript (failwith) (printfn "Success: %A") (consoleLogger) conn 
-        <| generateNearestHospitalsCsv nearestAlgo assetData outputFile
+    runConsoleScript (printfn "Success: %A") conn 
+        <| generateNearestHospitalsCsv nearestMethodDict assetData outputFile
         
 

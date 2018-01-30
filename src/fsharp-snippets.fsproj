@@ -113,12 +113,10 @@
     <None Include="CsvTrim.fsx" />
     <None Include="TestGeo.fsx" />
     <None Include="TspRouting.fsx" />
-    <None Include="RunNearestHospital.fsx" />
     <None Include="NearestNeighbour.fsx" />
     <None Include="GenLinestringWKT.fsx" />
     <None Include="TotalOrder.fsx" />
     <None Include="TotalOrder2.fsx" />
-    <None Include="PgGroupings.fsx" />
     <None Include="WGS84ExcelCoord.fsx" />
     <None Include="GenFindReplaceInput.fsx" />
     <None Include="WordFindReplace.fsx" />
@@ -132,9 +130,10 @@
     <None Include="TestMagick.fsx" />
     <None Include="TestDocOutput.fsx" />
     <None Include="DbSAI.fsx" />
-    <None Include="RunNearestHospital2.fsx" />
     <None Include="TestFileStore.fsx" />
     <None Include="InvestigateDb.fsx" />
+    <None Include="PgNearestHospital.fsx" />
+    <None Include="PgGroupings.fsx" />
     <None Include="PgOutfalls.fsx" />
     <None Include="PgPathplan.fsx" />
     <COMReference Include="Microsoft Excel 16.0 Object Library">
