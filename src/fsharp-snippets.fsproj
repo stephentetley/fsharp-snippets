@@ -109,6 +109,7 @@
     <Compile Include="Scripts\PostGIS.fs" />
     <Compile Include="Scripts\PathFinder.fs" />
     <Compile Include="Scripts\NearestHospital.fs" />
+    <Compile Include="Scripts\Grouping.fs" />
     <None Include="CsvTrim.fsx" />
     <None Include="TestGeo.fsx" />
     <None Include="TspRouting.fsx" />

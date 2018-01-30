@@ -297,10 +297,15 @@ module Coord =
         | 10 -> (a,b)
         | _ -> (0,0)
 
+    /// Try to read an OSGB 36 grid reference.
+    /// The format is [Char][Char][Number1][Number2], spacing between the numbers is optional.
+    /// Numbers can either be 3,4, or 5 digits long.
+    /// Note null string is handled (returns None).
     let tryReadOSGB36Point (input:string) : OSGB36Point option = 
         let getChar1 (groups:GroupCollection) = groups.[1].Value.[0]
         let getChar2 (groups:GroupCollection) = groups.[2].Value.[0]
         match input with
+        | null -> None
         | OSGB36Regex @"^([A-Za-z])([A-Za-z])\s*([0-9]+)$" groups -> 
             let (e,n) = decodeOSGBNumber2 (groups.[3].Value)
             Some << gridRefToOSGB36 <| makeOSGB36GridRef (getChar1 groups) (getChar2 groups) e n

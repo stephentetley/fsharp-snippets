@@ -17,6 +17,8 @@ open Scripts.PostGIS
 
 // Use PostGIS for nearest neighour and distance.
 
+
+// Hard dependency on input data (though this file is in the project and Git)
 type HospitalsData = 
     CsvProvider< @"..\data\Accident-and-Emergency-Hospitals-Yorkshire.csv",
                  HasHeaders = true>

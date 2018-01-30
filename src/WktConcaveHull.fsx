@@ -33,46 +33,96 @@ open Newtonsoft.Json
 #load @"SL\JsonOutput.fs"
 #load @"SL\CsvOutput.fs"
 #load @"SL\ScriptMonad.fs"
+#load @"SL\ExcelProviderHelper.fs"
 open SL.AnswerMonad
 open SL.PGSQLConn
-open SL.Geo
+open SL.Geo.Coord
 open SL.JsonExtractor
 open SL.JsonOutput
 open SL.CsvOutput
 open SL.ScriptMonad
+open SL.ExcelProviderHelper
 
 #load @"Scripts\PostGIS.fs"
+#load @"Scripts\Grouping.fs"
 open Scripts.PostGIS
+open Scripts.Grouping
 
 
-// TODO - we have moved to script monad but we really want to
-// better identify the data we are working with.
-// We could still use a method dictionary to be generic.
+type ImportTable = 
+    ExcelFile< @"G:\work\Projects\events2\site-list-for-hospitals.xlsx",
+               SheetName = "Site_List",
+               ForceString = true >
+
+type ImportRow = ImportTable.Row
 
 
+let getImportRows () : seq<ImportRow> = 
+    let dict : GetRowsDict<ImportTable, ImportRow> = 
+        { GetRows     = fun imports -> imports.Data 
+          NotNullProc = fun row -> match row.GetValue(0) with null -> false | _ -> true }
+    excelTableGetRowsSeq dict (new ImportTable())
+
+let test01 () = 
+    groupingBy (fun (x:ImportRow) -> x.operational_contact ) <| getImportRows ()
+
+let concaveHullOutput (ix:int) (key:string) (wtk:WKText) : RowWriter = 
+    [ tellQuotedString key
+    ; tellQuotedString wtk
+    ]
+
+let test02 (pwd:string) = 
+    let outputFile = @"G:\work\Projects\events2\wkt_concave_hulls_sitelist.csv"
+    let conn = pgsqlConnParamsTesting "spt_geo" pwd 
+    let importRows = getImportRows ()
+
+    let methodDict = 
+        { GroupByOperation = fun (x:ImportRow) -> x.operational_contact 
+          GetElementLoc = 
+                fun (x:ImportRow) -> Option.map osgb36ToWGS84 <| tryReadOSGB36Point x.site_ngr
+          CsvHeaders = [ "operations"; "well_known_text" ]
+          MakeCsvRow = concaveHullOutput
+        }
+    runScript (failwith) (printfn "Success: %A") (consoleLogger) conn 
+        <| generateConcaveHullsCsv { TargetPercentage = 0.9 }
+                                    methodDict
+                                    importRows
+                                    outputFile
+
+
+
+// ***** OLD 
 type Group<'a> = 
     { GroupName: string
-      Points: 'a list }
+      Records: 'a list }
 
+
+// Generally we want the output from this script to be used by QGIS.
+// Import into QGIS needs a sequential ID and a WKT column but it can have
+// other columns that can provide e.g. Label
+
+
+
+// Note - we dont really need intermediate Json.
+// We just need a grouping procedure for the original tabular input, that can
+// be supplied as a method dictionary.
 
 // Structure is known!
 // We have a JsonValue object which we can "tree parse".
-
-
 let extractorM : JsonExtractor<Group<string> list> = 
     askArrayAsList 
-        <| SL.JsonExtractor.liftM2 (fun name pts ->  { GroupName = name; Points = pts})
+        <| SL.JsonExtractor.liftM2 (fun name pts ->  { GroupName = name; Records = pts})
                                     (field "Responsibility" askString)
                                     (field "Outfalls" (askArrayAsList (field "OSGB36NGR" askString)))
 
 
-let decodePoints (inputs:string list) : Coord.WGS84Point list = 
-    List.choose Coord.tryReadOSGB36Point inputs |> List.map Coord.osgb36ToWGS84
+let decodePoints (inputs:string list) : WGS84Point list = 
+    List.choose tryReadOSGB36Point inputs |> List.map osgb36ToWGS84
 
 
 
-let getInputs (jsonInputFile:string) : Script<Group<Coord.WGS84Point> list> = 
-    fmapM (List.map (fun group -> { GroupName=group.GroupName; Points = decodePoints group.Points}))
+let getInputs (jsonInputFile:string) : Script<Group<WGS84Point> list> = 
+    fmapM (List.map (fun group -> { GroupName=group.GroupName; Records = decodePoints group.Records}))
           (liftJsonExtract extractorM jsonInputFile)
 
 
@@ -81,12 +131,9 @@ let getInputs (jsonInputFile:string) : Script<Group<Coord.WGS84Point> list> =
 // i.e only POLYGONs, only MULTIPOINTs.
 
 
-let pgConcaveHulls (groups:(Group<Coord.WGS84Point> list)) : Script<(int*string) list> = 
+let pgConcaveHulls (groups:(Group<WGS84Point> list)) : Script<(int*string) list> = 
     mapiM (fun ix group1 -> 
-                    fmapM (fun ans -> (ix+1,ans)) <| pgConcaveHull group1.Points 0.9) groups 
-
-
-
+                    fmapM (fun ans -> (ix+1,ans)) <| pgConcaveHull group1.Records 0.9) groups 
 
 
 let main (pwd:string) = 
@@ -114,12 +161,6 @@ let main (pwd:string) =
 
 // Make input Json...
 
-type ImportTable = 
-    ExcelFile< @"G:\work\Projects\events2\site-list-for-hospitals.xlsx",
-               SheetName = "Site_List",
-               ForceString = true >
-
-type ImportRow = ImportTable.Row
 
 let buildImports () : (string * ImportRow list) list  =
     let importData = new ImportTable()
