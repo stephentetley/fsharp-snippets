@@ -189,6 +189,9 @@ let runScript (failure: string -> 'b) (success: 'a -> 'b) (logger:LogAction) (en
 
 let runAnswerWithError (logger:LogAction) (env:'r) (ma:ScriptMonad<'r,'a>) : 'a = 
     runScript failwith id logger env ma
+
+let runConsoleScript (success:'a -> unit) (env:'r) (ma:ScriptMonad<'r,'a>) : unit = 
+    runScript failwith id (consoleLogger) env ma |> success
     
 
 let throwError (msg:string) : ScriptMonad<'r,'a> =     

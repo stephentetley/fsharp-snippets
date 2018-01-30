@@ -118,7 +118,7 @@
     <None Include="GenLinestringWKT.fsx" />
     <None Include="TotalOrder.fsx" />
     <None Include="TotalOrder2.fsx" />
-    <None Include="WktConcaveHull.fsx" />
+    <None Include="PgGroupings.fsx" />
     <None Include="WGS84ExcelCoord.fsx" />
     <None Include="GenFindReplaceInput.fsx" />
     <None Include="WordFindReplace.fsx" />
