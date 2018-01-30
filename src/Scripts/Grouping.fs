@@ -41,13 +41,18 @@ type GroupingMakeHullsDict<'Key,'a> =
       MakeCsvRow: int -> 'Key -> WKText -> RowWriter
     }
 
-let extractPoints (dict:GroupingMakeHullsDict<'Key,'a>) (source:Grouping<'Key,'a>) : seq<WGS84Point> = 
+let private extractPoints (dict:GroupingMakeHullsDict<'Key,'a>) (source:Grouping<'Key,'a>) : seq<WGS84Point> = 
     Seq.choose id <| Seq.map (dict.GetElementLoc) source.Elements
 
-let concaveHull1 (dict:GroupingMakeHullsDict<'Key,'a>) (source:Grouping<'Key,'a>) (targetPercent:float) : Script<string> = 
+let private concaveHull1 (dict:GroupingMakeHullsDict<'Key,'a>) (source:Grouping<'Key,'a>) (targetPercent:float) : Script<string> = 
     pgConcaveHull (Seq.toList <| extractPoints dict source) targetPercent
 
-let filterPOLYGONs (source:seq<'Key * WKText>) : seq<'Key * WKText> = 
+let private convexHull1 (dict:GroupingMakeHullsDict<'Key,'a>) (source:Grouping<'Key,'a>) : Script<string> = 
+    pgConvexHull (Seq.toList <| extractPoints dict source)
+
+
+
+let private filterPOLYGONs (source:seq<'Key * WKText>) : seq<'Key * WKText> = 
     Seq.filter (fun (a,b:WKText) -> b.Contains "POLYGON") source
 
 type ConcaveHullOptions = 
@@ -55,9 +60,7 @@ type ConcaveHullOptions =
 
 
     // (projection:'a -> 'Key)
-let generateConcaveHullsCsv (options:ConcaveHullOptions) (dict:GroupingMakeHullsDict<'Key,'a>) (source:seq<'a>) (outputFile:string) : Script<unit> =
-    let make1 (group1:Grouping<'Key,'a>) : Script<'Key * WKText> = 
-        fmapM (fun x -> (group1.GroupingKey, x)) <| concaveHull1 dict group1 options.TargetPercentage
+let private genHullsCsv (make1:Grouping<'Key,'a> -> Script<'Key * WKText>) (dict:GroupingMakeHullsDict<'Key,'a>) (source:seq<'a>) (outputFile:string) : Script<unit> =
     scriptMonad { 
         let groups = groupingBy dict.GroupByOperation source
         let! hulls = traverseM make1 groups
@@ -66,3 +69,14 @@ let generateConcaveHullsCsv (options:ConcaveHullOptions) (dict:GroupingMakeHulls
         let csvProc:CsvOutput<unit> = writeRowsWithHeaders dict.CsvHeaders rows
         do! liftAction <| outputToNew {Separator=","} csvProc outputFile
         }
+
+
+let generateConcaveHullsCsv (options:ConcaveHullOptions) (dict:GroupingMakeHullsDict<'Key,'a>) (source:seq<'a>) (outputFile:string) : Script<unit> =
+    let make1 (group1:Grouping<'Key,'a>) : Script<'Key * WKText> = 
+        fmapM (fun x -> (group1.GroupingKey, x)) <| concaveHull1 dict group1 options.TargetPercentage
+    genHullsCsv make1 dict source outputFile
+
+let generateConvexHullsCsv (dict:GroupingMakeHullsDict<'Key,'a>) (source:seq<'a>) (outputFile:string) : Script<unit> =
+    let make1 (group1:Grouping<'Key,'a>) : Script<'Key * WKText> = 
+        fmapM (fun x -> (group1.GroupingKey, x)) <| convexHull1 dict group1
+    genHullsCsv make1 dict source outputFile

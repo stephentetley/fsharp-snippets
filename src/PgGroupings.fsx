@@ -71,23 +71,33 @@ let concaveHullOutput (ix:int) (key:string) (wtk:WKText) : RowWriter =
     ; tellQuotedString wtk
     ]
 
+
+let hullsMethodDict:GroupingMakeHullsDict<string,ImportRow> = 
+    { GroupByOperation = fun (x:ImportRow) -> x.operational_contact 
+      GetElementLoc = 
+            fun (x:ImportRow) -> Option.map osgb36ToWGS84 <| tryReadOSGB36Point x.site_ngr
+      CsvHeaders = [ "operations"; "well_known_text" ]
+      MakeCsvRow = concaveHullOutput
+    }
+
 let WktConcaveHulls (pwd:string) = 
     let outputFile = @"G:\work\Projects\events2\wkt_concave_hulls_sitelist.csv"
     let conn = pgsqlConnParamsTesting "spt_geo" pwd 
     let importRows = getImportRows ()
 
-    let methodDict = 
-        { GroupByOperation = fun (x:ImportRow) -> x.operational_contact 
-          GetElementLoc = 
-                fun (x:ImportRow) -> Option.map osgb36ToWGS84 <| tryReadOSGB36Point x.site_ngr
-          CsvHeaders = [ "operations"; "well_known_text" ]
-          MakeCsvRow = concaveHullOutput
-        }
     runConsoleScript (printfn "Success: %A") conn 
         <| generateConcaveHullsCsv { TargetPercentage = 0.9 }
-                                    methodDict
+                                    hullsMethodDict
                                     importRows
                                     outputFile
+
+let WktConvexHulls (pwd:string) = 
+    let outputFile = @"G:\work\Projects\events2\wkt_convex_hulls_sitelist.csv"
+    let conn = pgsqlConnParamsTesting "spt_geo" pwd 
+    let importRows = getImportRows ()
+
+    runConsoleScript (printfn "Success: %A") conn 
+        <| generateConvexHullsCsv hullsMethodDict importRows outputFile
 
 
 
