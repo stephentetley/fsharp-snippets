@@ -16,27 +16,51 @@ open FSharp.ExcelProvider
 #load @"SL\ClosedXMLOutput.fs"
 open SL.ClosedXMLOutput
 
-
 #I @"..\packages\Npgsql.3.2.6\lib\net451\"
 #I @"..\packages\System.Threading.Tasks.Extensions.4.3.0\lib\portable-net45+win8+wp8+wpa81"
 #r "Npgsql"
 open Npgsql
 
-#load @"SL\Coord.fs"
-#load @"SL\AnswerMonad.fs"
-#load @"SL\SqlUtils.fs"
-#load @"SL\PGSQLConn.fs"
-open SL.Geo.Coord
-open SL.AnswerMonad
-open SL.SqlUtils
-open SL.PGSQLConn
-
+#I @"..\packages\FParsec.1.0.2\lib\net40-client"
+#r "FParsec"
+#r "FParsecCS"
 
 #I @"..\packages\Newtonsoft.Json.10.0.3\lib\net45"
 #r "Newtonsoft.Json"
 open Newtonsoft.Json
+
+
+#load @"SL\AnswerMonad.fs"
+#load @"SL\Coord.fs"
+#load @"SL\Tolerance.fs"
+#load @"SL\SqlUtils.fs"
+#load @"SL\PGSQLConn.fs"
 #load @"SL\JsonOutput.fs"
+#load @"SL\JsonExtractor.fs"
+#load @"SL\CsvOutput.fs"
+#load @"SL\WellKnownText.fs"
+#load @"SL\ScriptMonad.fs"
+open SL.Geo.Coord
+open SL.AnswerMonad
+open SL.SqlUtils
+open SL.PGSQLConn
 open SL.JsonOutput
+open SL.ScriptMonad
+
+#load @"Scripts\PostGIS.fs"
+#load @"Scripts\RoutingTsp.fs"
+open Scripts.RoutingTsp
+
+
+let [<Literal>] StationsCsv  = __SOURCE_DIRECTORY__ + @"\..\data\stations.csv"
+type StationData = 
+    CsvProvider< StationsCsv,
+                 HasHeaders = true>
+
+type StationRow = StationData.Row
+
+let getStations () : StationRow list = (new StationData ()).Rows |> Seq.toList
+
 
 
 // Implementation note:
@@ -192,12 +216,12 @@ let main (pwd:string) : unit =
                     let! ans = pgInsertRecords records 
                     return ans }
     let ans = 
-        runAnswerWithError 
+        SL.AnswerMonad.runAnswerWithError 
             <| answerMonad { 
-                let! count1        = runPGSQLConn procSetup conn
+                let! count1        = SL.PGSQLConn.runPGSQLConn procSetup conn
                 let! (start1,end1) = findStartAndEnd tryFindFurthestNorth tryFindFurthestSouth records
-                let! results       = runPGSQLConn (pgTSPQuery start1 end1) conn
-                do! liftAction (outputXslx results outputPath)  }
+                let! results       = SL.PGSQLConn.runPGSQLConn (pgTSPQuery start1 end1) conn
+                do! SL.AnswerMonad.liftAction (outputXslx results outputPath)  }
     printfn "%A" ans
 
 

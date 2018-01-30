@@ -66,8 +66,9 @@ let getImportRows () : seq<ImportRow> =
 let test01 () = 
     groupingBy (fun (x:ImportRow) -> x.operational_contact ) <| getImportRows ()
 
-let concaveHullOutput (ix:int) (key:string) (wtk:WKText) : RowWriter = 
+let concaveHullOutput (ix:int) (key:string) (wtk:WKText) (elts:seq<ImportRow>) : RowWriter = 
     [ tellQuotedString key
+    ; tellInt <| Seq.length elts
     ; tellQuotedString wtk
     ]
 
@@ -76,7 +77,7 @@ let hullsMethodDict:GroupingMakeHullsDict<string,ImportRow> =
     { GroupByOperation = fun (x:ImportRow) -> x.operational_contact 
       GetElementLoc = 
             fun (x:ImportRow) -> Option.map osgb36ToWGS84 <| tryReadOSGB36Point x.site_ngr
-      CsvHeaders = [ "operations"; "well_known_text" ]
+      CsvHeaders = [ "operations"; "asset count"; "well_known_text" ]
       MakeCsvRow = concaveHullOutput
     }
 
