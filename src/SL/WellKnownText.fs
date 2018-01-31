@@ -69,6 +69,8 @@ module WellKnownText =
     let inline unwrapWktPolygon (source:WktPolygon<'a>) : WktCoord list = 
         match source with | WktPolygon xs -> xs
 
+    // ***** PRINTING *****
+    
     let inline showWktCoord (coord:WktCoord) : string = 
         sprintf "%.5f %.5f" coord.WktLon coord.WktLat
 
@@ -95,6 +97,7 @@ module WellKnownText =
         | xs -> sprintf "POLYGON(%s)" (String.concat "," <| List.map showWktCoord xs)  
 
 
+    // ***** Conversion *****
     let wgs84PointToWKT (point:WGS84Point) : WktPoint<WGS84> =
         WktPoint <| { WktLon = decimal point.Longitude; WktLat = decimal point.Latitude }
 
@@ -138,17 +141,31 @@ module WellKnownText =
                 (pDecimal .>> spaces) 
                 (fun lon lat -> { WktLon = lon; WktLat = lat })
 
-    // Utility combinators
+    let private pWktCoords : Parser<WktCoord list, unit> = 
+        sepBy pWktCoord (pSymbol ",")
+
+   
     let private parsePOINT : Parser<WktPoint<NoSRID>, unit> = 
         let p1 = pWktCoord |>> WktPoint
         pSymbol "POINT" >>. pParens p1
 
-    let private unTEMP (pt:WktPoint<NoSRID>) : WktPoint<'a> = 
-        match pt with
-        | WktPoint a -> (WktPoint a):WktPoint<'a>
 
     let tryReadWktPoint (source:string) : WktPoint<'a> option = 
+        let unTEMP (pt:WktPoint<NoSRID>) : WktPoint<'a> = 
+            match pt with | WktPoint a -> (WktPoint a):WktPoint<'a>
         let ans1 = runParserOnString parsePOINT () "none" source
+        match ans1 with
+        | Success(a,_,_) -> Some <| unTEMP a
+        | Failure(s,_,_) -> None
+    
+    let private parseLINESTRING : Parser<WktLineString<NoSRID>, unit> = 
+        let p1 = pWktCoords |>> WktLineString
+        pSymbol "LINESTRING" >>. pParens p1
+
+    let tryReadWktLineString (source:string) : WktLineString<'a> option = 
+        let unTEMP (pt:WktLineString<NoSRID>) : WktLineString<'a> = 
+            match pt with | WktLineString a -> (WktLineString a):WktLineString<'a>
+        let ans1 = runParserOnString parseLINESTRING () "none" source
         match ans1 with
         | Success(a,_,_) -> Some <| unTEMP a
         | Failure(s,_,_) -> None

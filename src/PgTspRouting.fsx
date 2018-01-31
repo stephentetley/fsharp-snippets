@@ -3,9 +3,6 @@
 open FSharp.Data
 open FSharp.Data.JsonExtensions
 
-#I @"..\packages\ExcelProvider.0.8.2\lib"
-#r "ExcelProvider.dll"
-open FSharp.ExcelProvider
 
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
@@ -42,10 +39,11 @@ open SL.ScriptMonad
 open Scripts.TspRouting
 
 
-let [<Literal>] StationsCsv  =  @"..\data\stations.csv"
+// let [<Literal>] StationsCsv  =  @"..\data\stations.csv"
 type StationData = 
-    CsvProvider< StationsCsv,
-                 HasHeaders = true>
+    CsvProvider< @"..\data\stations.csv",
+                 HasHeaders = true,
+                 Schema = "Name(string),Grid_Ref(string)" >
 
 type StationRow = StationData.Row
 

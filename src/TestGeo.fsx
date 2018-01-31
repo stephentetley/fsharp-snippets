@@ -59,3 +59,10 @@ let read02 () =
 
 let read03 () = 
     Coord.readOSGB36Point "ND 3567 7073"
+
+
+let wktRead01 () = 
+    printfn "%A" <| WellKnownText.tryReadWktPoint "POINT(-1.98073 53.72879)"
+
+let wktRead02 () =
+    printfn "%A" <| WellKnownText.tryReadWktLineString "LINESTRING(-1.98073 53.72879, -1.90546 53.70771, -1.85249 53.72091, -1.75227 53.74991, -1.74833 53.79111)" 
