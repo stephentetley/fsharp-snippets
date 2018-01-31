@@ -26,6 +26,9 @@ let groupingBy (projection:'a -> 'Key) (source:seq<'a>) : seq<Grouping<'Key,'a>>
 
 type WKText = string 
 
+
+// ***** Concave and convex hulls
+
 // MakeCsvRow - the int parameter is a incrementing serial number, users can ignore it
 // if the wish.
 type GroupingMakeHullsDict<'Key,'a> = 
@@ -68,6 +71,9 @@ let private genHullsCsv (make1:Grouping<'Key,'a> -> Script<'Key * WKText * seq<'
         do! liftAction <| outputToNew {Separator=","} csvProc outputFile
         }
 
+// Note - This API is making Hulls (plural) as it was our original use case.
+// Making a single hull is done by functions in Scripts.PostGIS.
+// Maybe splitting between two modules is a bad API decision.
 
 let generateConcaveHullsCsv (options:ConcaveHullOptions) (dict:GroupingMakeHullsDict<'Key,'a>) (source:seq<'a>) (outputFile:string) : Script<unit> =
     let make1 (group1:Grouping<'Key,'a>) : Script<'Key * WKText * seq<'a>> = 
@@ -80,3 +86,7 @@ let generateConvexHullsCsv (dict:GroupingMakeHullsDict<'Key,'a>) (source:seq<'a>
         fmapM (fun x -> (group1.GroupingKey, x, group1.Elements)) 
             <| convexHull1 dict group1
     genHullsCsv make1 dict source outputFile
+
+
+// ***** Centroid
+

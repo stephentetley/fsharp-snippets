@@ -73,11 +73,11 @@ let nearestMethodDict : NearestHospitalDict<AssetRow>  =
                         bestMatch.NearestHospital.Address
                         bestMatch.NearestHospital.Postcode
                         bestMatch.NearestHospital.Telephone
-            [ SL.CsvOutput.tellString row.Reference
-            ; SL.CsvOutput.tellString row.``Common Name``
-            ; SL.CsvOutput.tellString bestMatch.NearestHospital.Name
-            ; SL.CsvOutput.tellString hospitalLine
-            ; SL.CsvOutput.tellFloat  <| float bestMatch.Distance]
+            [ tellQuotedString      row.Reference
+            ; tellQuotedString      row.``Common Name``
+            ; tellQuotedString      bestMatch.NearestHospital.Name
+            ; tellQuotedString      hospitalLine
+            ; tellFloat             <| float bestMatch.Distance]
 
     { CsvHeaders = [ "SAI"; "Name"; "Hospital"; "Hospital Details"; "Distance" ]
     ; ExtractLocation = extractLocation

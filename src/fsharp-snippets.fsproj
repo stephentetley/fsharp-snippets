@@ -110,7 +110,7 @@
     <Compile Include="Scripts\PathFinder.fs" />
     <Compile Include="Scripts\NearestHospital.fs" />
     <Compile Include="Scripts\Grouping.fs" />
-    <Compile Include="Scripts\RoutingTsp.fs" />
+    <Compile Include="Scripts\TspRouting.fs" />
     <None Include="CsvTrim.fsx" />
     <None Include="TestGeo.fsx" />
     <None Include="NearestNeighbour.fsx" />

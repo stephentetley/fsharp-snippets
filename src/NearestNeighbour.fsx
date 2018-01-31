@@ -29,7 +29,7 @@ open SL.Geo
 #load @"SL\ExcelUtils.fs"
 open SL.ExcelUtils
 
-
+// THIS IS OBSOLETE!
 
 type InputTable = 
     ExcelFile< @"G:\work\Projects\pgrouting\IS Barriers RTU & Enhancements.xlsx",

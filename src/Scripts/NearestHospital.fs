@@ -100,16 +100,7 @@ let makeNearestNeighbourQUERY (limit:int) (point:WGS84Point) : string =
         ORDER BY grid_ref <-> ST_Point({0}, {1}) LIMIT {2} ;
         """, point.Longitude, point.Latitude, limit)
 
-// Absolutely must use ST_DistanceSpheroid!
-let makeDistanceQUERY (point1:WGS84Point) (point2:WGS84Point) : string = 
-    System.String.Format("""
-        SELECT ST_DistanceSpheroid(
-            ST_GeomFromText('{0}', 4326),
-            ST_GeomFromText('{1}', 4326),
-            '{2}');
-        """, showWktPoint <| wgs84PointToWKT point1
-           , showWktPoint <| wgs84PointToWKT point2
-           , wgs84Spheroid)
+
 
 
 type NeighbourRec = 
@@ -143,11 +134,6 @@ let nearestHospital (point:WGS84Point) : Script<NeighbourRec option> =
     fmapM first <| nearestHospitalQuery point
 
 
-let findDistance (point1:WGS84Point) (point2:WGS84Point) : Script<float<kilometer>> = 
-    let query = makeDistanceQUERY point1 point2
-    let procM (reader:NpgsqlDataReader) : float<kilometer> = 
-        0.001<kilometer> * (float <| reader.GetDouble(0))
-    liftWithConnParams << runPGSQLConn <| execReaderSingleton query procM  
 
 type NearestHospitalDict<'asset> = 
     { CsvHeaders        : string list
@@ -166,7 +152,7 @@ let generateNearestHospitalsCsv (dict:NearestHospitalDict<'asset>) (source:'asse
                         match optHospital with
                         | None -> return None
                         | Some hospital1 -> 
-                            let! distance = findDistance assetLoc hospital1.GridRef
+                            let! distance = pgDistanceSpheroid assetLoc hospital1.GridRef
                             return (Some { NearestHospital = hospital1; Distance=distance })
                         }
                 | None -> scriptMonad.Return None

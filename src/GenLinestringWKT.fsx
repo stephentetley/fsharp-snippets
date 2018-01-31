@@ -19,6 +19,8 @@ open SL.Geo
 open SL.CsvOutput
 
 
+// THIS IS OBSOLETE!
+
 type InputTable = 
     ExcelFile< @"G:\work\Projects\rtu\IS_barriers\IS_Barriers.xlsx",
                SheetName = "RTU AR",
