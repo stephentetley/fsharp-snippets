@@ -13,25 +13,11 @@ module WellKnownText =
     
     // Note - Wkt should not favour the WGS84 reference system.
     // Other spatial references with "Lon" & "Lat" are possible.
-
-    // Probably need: 
-    // type WellKnownText<'a> = WKT of string
-    // ... to represent answers from PostGIS
-
-
-    // TODO - potentially we should have a point type without a phantom
-    // and a wrapper over point with a phantom.
-    // This means we can the result the point type for linestring etc.
-    // with a lot less wrapping.
-
-
-    /// Encode coordinate reference system as a phantom type.
-    /// Values are represented as decimal
-    type WktPoint<'a> = 
-        { WktLon: decimal      
-          WktLat: decimal }
-
     
+    
+    // ** SRIDs for Phantom types
+
+
     /// World Geodetic System 1984             
     /// The SRID for this system is ESPG:4326
     type WGS84 = class end
@@ -40,53 +26,92 @@ module WellKnownText =
     /// The SRID for this system is ESPG:27700
     type OSGB36 = class end
 
-    let wktPointsEqual (tx:Tolerance) (p1:WktPoint<'a>) (p2:WktPoint<'a>) : bool =
+
+    /// The undefined SRID.
+    type private NoSRID = class end
+
+
+    // Probably need: 
+    // type WellKnownText<'a> = WKT of string
+    // ... to represent answers from PostGIS
+
+
+    // The base point type does not have a phantom type wrapper.
+    // This means the phantom param is only wrapped once for LINESTRING etc.
+
+    type WktCoord = 
+        { WktLon: decimal      
+          WktLat: decimal }
+
+
+    /// Encode coordinate reference system as a phantom type.
+    /// Values are represented as decimal
+    type WktPoint<'a> = WktPoint of WktCoord
+
+    let inline unwrapWktPoint (pt:WktPoint<'a>) : WktCoord = 
+        match pt with | WktPoint pt -> pt
+    
+    let wktCoordsEqual (tx:Tolerance) (p1:WktCoord) (p2:WktCoord) : bool =
         tEqual tx p1.WktLon p2.WktLon && tEqual tx p1.WktLat p2.WktLat
 
-    // TODO - wrap with a constructor or just an alias?
-    type WktLineString<'a> = WktPoint<'a> list 
-    
-    type WktPolygon<'a> = WktPoint<'a> list 
+    let wktPointsEqual (tx:Tolerance) (p1:WktPoint<'a>) (p2:WktPoint<'a>) : bool =
+        wktCoordsEqual tx (unwrapWktPoint p1) (unwrapWktPoint p2)
+
+
+    type WktLineString<'a> = WktLineString of WktCoord list 
+
+    let inline unwrapWktLineString (source:WktLineString<'a>) : WktCoord list = 
+        match source with | WktLineString xs -> xs
+        
+
+    type WktPolygon<'a> = WktPolygon of WktCoord list 
+
+    let inline unwrapWktPolygon (source:WktPolygon<'a>) : WktCoord list = 
+        match source with | WktPolygon xs -> xs
+
+    let inline showWktCoord (coord:WktCoord) : string = 
+        sprintf "%.5f %.5f" coord.WktLon coord.WktLat
+
 
     /// Prints as 'POINT(14.12345, 15.12345)'
     /// (Ideally we would print with user supplied precision)
     let inline showWktPoint (point:WktPoint<'a>) : string = 
-        sprintf "POINT(%.5f %.5f)" point.WktLon point.WktLat
+        sprintf "POINT(%s)" (showWktCoord <| unwrapWktPoint point)
 
-    let inline private showWktPoint1 (point:WktPoint<'a>) : string = 
-        sprintf "%.5f %.5f" point.WktLon point.WktLat
 
     /// Prints as 'LINESTRING(-1.08066 53.93863,-1.43627 53.96907)'
-    let showWktLineString (points:WktLineString<'a>) : string =
-        match points with
+    let showWktLineString (source:WktLineString<'a>) : string =
+        match unwrapWktLineString source with
         | [] -> "LINESTRING EMPTY"
-        | _ -> sprintf "LINESTRING(%s)" (String.concat "," <| List.map showWktPoint1 points)
+        | xs -> sprintf "LINESTRING(%s)" (String.concat "," <| List.map showWktCoord xs)
 
 
     /// This is a simple closed polygon without any interior polygons.
     /// The user is responsible to ensure the polygon is closed before printing and
     /// that points are in counter-clockwise direction.
-    let showWktPolygon (points:WktPolygon<'a>) : string =
-        match points with
+    let showWktPolygon (source:WktPolygon<'a>) : string =
+        match unwrapWktPolygon source with
         | [] -> "POLYGON EMPTY"
-        | _ -> sprintf "POLYGON(%s)" (String.concat "," <| List.map showWktPoint1 points)  
+        | xs -> sprintf "POLYGON(%s)" (String.concat "," <| List.map showWktCoord xs)  
 
 
-    let wgs84PointToWKT (point:WGS84Point) : WktPoint<WGS84> = 
-        { WktLon = decimal point.Longitude     
-          WktLat = decimal point.Latitude }
+    let wgs84PointToWKT (point:WGS84Point) : WktPoint<WGS84> =
+        WktPoint <| { WktLon = decimal point.Longitude; WktLat = decimal point.Latitude }
 
     let osgb36PointToWKT (point:OSGB36Point) : WktPoint<OSGB36> = 
-        { WktLon = decimal point.Easting    
-          WktLat = decimal point.Northing }
+        WktPoint <| { WktLon = decimal point.Easting; WktLat = decimal point.Northing }
 
     let wktToWGS84Point (point:WktPoint<WGS84>) : WGS84Point = 
-        { Latitude = 1.0<degree> * float point.WktLat
-        ; Longitude = 1.0<degree> * float point.WktLon }
+        match unwrapWktPoint point with
+        | coord -> 
+            { Latitude = 1.0<degree> * float coord.WktLat
+            ; Longitude = 1.0<degree> * float coord.WktLon }
 
     let wktToOSGB36Point (point:WktPoint<OSGB36>) : OSGB36Point = 
-        { Easting = 1.0<meter> * float point.WktLon
-        ; Northing = 1.0<meter> * float point.WktLat }
+        match unwrapWktPoint point with
+        | coord -> 
+            { Easting = 1.0<meter> * float coord.WktLon
+            ; Northing = 1.0<meter> * float coord.WktLat }
 
     let wktOSGB36ToWktWGS84 (point:WktPoint<OSGB36>) : WktPoint<WGS84> = 
         point |> wktToOSGB36Point |> osgb36ToWGS84 |> wgs84PointToWKT
@@ -108,19 +133,19 @@ module WellKnownText =
 
     let private pDecimal : Parser<decimal,unit> = pfloat |>> decimal
 
-    type private TEMP = class end
-
-    let private unTEMP (pt:WktPoint<TEMP>) :WktPoint<'a> = 
-        { WktLon = pt.WktLon; WktLat = pt.WktLat}:WktPoint<'a>
-
-    let private pWktPoint1 : Parser<WktPoint<TEMP>,unit> = 
+    let private pWktCoord : Parser<WktCoord, unit> = 
         pipe2   (pDecimal .>> spaces)
                 (pDecimal .>> spaces) 
-                (fun lon lat -> { WktLon = lon; WktLat = lat } :WktPoint<TEMP>)
+                (fun lon lat -> { WktLon = lon; WktLat = lat })
 
     // Utility combinators
-    let private parsePOINT : Parser<WktPoint<TEMP>, unit> = 
-        pSymbol "POINT" >>. pParens pWktPoint1
+    let private parsePOINT : Parser<WktPoint<NoSRID>, unit> = 
+        let p1 = pWktCoord |>> WktPoint
+        pSymbol "POINT" >>. pParens p1
+
+    let private unTEMP (pt:WktPoint<NoSRID>) : WktPoint<'a> = 
+        match pt with
+        | WktPoint a -> (WktPoint a):WktPoint<'a>
 
     let tryReadWktPoint (source:string) : WktPoint<'a> option = 
         let ans1 = runParserOnString parsePOINT () "none" source

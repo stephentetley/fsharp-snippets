@@ -70,7 +70,7 @@ let edgeInsertDict : EdgeInsertDict<PathImportRow> = { tryMakeEdgeInsert = tryMa
 let SetupDB(password:string) : unit = 
     let conn = pgsqlConnParamsTesting "spt_geo" password
     let rows = getPathImportRows ()
-    runScript (failwith) (printfn "Success: %i modifications") (consoleLogger) conn 
+    runConsoleScript (printfn "Success: %i modifications") conn 
         <| SetupEdgesDB edgeInsertDict rows 
 
 // ***** Testing towards path finding...
@@ -92,7 +92,7 @@ let test03 (password:string) : unit =
     let startPt = 
         osgb36ToWGS84 { Easting = 389330.850<meter> ; Northing = 501189.852<meter> }
 
-    runScript (failwith) (printfn "Success: %A") (consoleLogger) conn 
+    runConsoleScript (printfn "Success: %A") conn 
         <| scriptMonad { 
             let! vs = findEdges startPt
             do! liftAction (List.iter (printfn "Edge: %A") vs)
@@ -104,7 +104,7 @@ let test04 (password:string) : unit =
     let startPt = 
         osgb36ToWGS84 { Easting = 389330.850<meter> ; Northing = 501189.852<meter> }
 
-    runScript (failwith) (printfn "Success: %A") (consoleLogger) conn 
+    runConsoleScript (printfn "Success: %A") conn 
         <| scriptMonad { 
             let! routes = getRoutesFrom startPt
             do! liftAction (List.iter (printfn "Route: %A") routes)
