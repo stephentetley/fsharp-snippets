@@ -13,16 +13,15 @@ open Scripts.PostGIS
 
 
 // ***** Set up the database
-// TODO - This is and edge not a vertex!
-type VertexInsert =
+type EdgeInsert =
     { Basetype: string
       FunctionNode: string
       StartPoint: WGS84Point
       EndPoint: WGS84Point }
 
 
-type VertexInsertDict<'inputrow> = 
-    { tryMakeVertexInsert : 'inputrow -> VertexInsert option }
+type EdgeInsertDict<'inputrow> = 
+    { tryMakeEdgeInsert : 'inputrow -> EdgeInsert option }
 
 
 let deleteAllData () : Script<int> = 
@@ -30,29 +29,29 @@ let deleteAllData () : Script<int> =
 
 
 
-let private makeVertexINSERT (vertex1:VertexInsert) : string = 
+let private makeEdgeInsert (edge1:EdgeInsert) : string = 
     let makePointLit (pt:WGS84Point) : string = 
         sprintf "ST_GeogFromText('SRID=4326;%s')" (showWktPoint <| wgs84PointToWKT pt)
     // Note the id column is PG's SERIAL type so it is inserted automatically
     sqlINSERT "spt_pathfind" 
-            <|  [ stringValue       "basetype"          vertex1.Basetype
-                ; stringValue       "function_node"     vertex1.FunctionNode
-                ; literalValue      "start_point"       <| makePointLit vertex1.StartPoint
-                ; literalValue      "end_point"         <| makePointLit vertex1.EndPoint
+            <|  [ stringValue       "basetype"          edge1.Basetype
+                ; stringValue       "function_node"     edge1.FunctionNode
+                ; literalValue      "start_point"       <| makePointLit edge1.StartPoint
+                ; literalValue      "end_point"         <| makePointLit edge1.EndPoint
                 ]
 
-let insertOutfalls (dict:VertexInsertDict<'inputrow>) (outfalls:seq<'inputrow>) : Script<int> = 
+let insertEdges (dict:EdgeInsertDict<'inputrow>) (outfalls:seq<'inputrow>) : Script<int> = 
     let proc1 (row:'inputrow) : PGSQLConn<int> = 
-        match dict.tryMakeVertexInsert row with
-        | Some vertex -> execNonQuery <| makeVertexINSERT vertex
+        match dict.tryMakeEdgeInsert row with
+        | Some edge -> execNonQuery <| makeEdgeInsert edge
         | None -> pgsqlConn.Return 0
     liftWithConnParams 
         << runPGSQLConn << withTransaction <| SL.PGSQLConn.sumTraverseM proc1 outfalls
 
-let SetupVertexDB (dict:VertexInsertDict<'inputrow>) (outfalls:seq<'inputrow>) : Script<int> = 
+let SetupEdgesDB (dict:EdgeInsertDict<'inputrow>) (edges:seq<'inputrow>) : Script<int> = 
     scriptMonad { 
         let! _ = deleteAllData () |> logScript (sprintf "%i rows deleted")
-        let! count = insertOutfalls dict outfalls  |> logScript (sprintf "%i rows inserted") 
+        let! count = insertEdges dict edges |> logScript (sprintf "%i rows inserted") 
         return count
      }
 
@@ -67,7 +66,7 @@ type PathTree<'a> =
 type Route<'a> = Route of 'a list
 
 
-type Vertex =
+type Edge =
     { UID: int
       Basetype: string
       FunctionNode: string
@@ -77,7 +76,7 @@ type Vertex =
 // SELECT id, basetype, function_node, ST_AsText(end_point) 
 // FROM spt_pathfind 
 // WHERE start_point = ST_GeomFromText('POINT(-2.16438 54.40591 )', 4326);
-let makeFindVerticesQUERY (startPt:WGS84Point) : string = 
+let makeFindEdgesQUERY (startPt:WGS84Point) : string = 
     System.String.Format("""
         SELECT 
             id, basetype, function_node, ST_AsText(end_point)
@@ -90,13 +89,13 @@ let makeFindVerticesQUERY (startPt:WGS84Point) : string =
 
 
 
-let findVertices (startPt:WGS84Point) : Script<Vertex list> = 
-    let query = makeFindVerticesQUERY startPt
-    let procM (reader:NpgsqlDataReader) : Vertex = 
+let findEdges (startPt:WGS84Point) : Script<Edge list> = 
+    let query = makeFindEdgesQUERY startPt
+    let procM (reader:NpgsqlDataReader) : Edge = 
         let wgs84End = 
             match tryReadWktPoint (reader.GetString(3)) with
             | Some pt -> wktToWGS84Point pt
-            | None -> failwith "findVertices ..."
+            | None -> failwith "findEdges - point not readable"
         { UID           = int <| reader.GetInt32(0)
         ; Basetype      = reader.GetString(1)
         ; FunctionNode  = reader.GetString(2)
@@ -104,24 +103,24 @@ let findVertices (startPt:WGS84Point) : Script<Vertex list> =
         ; EndPoint      = wgs84End }
     liftWithConnParams << runPGSQLConn <| execReaderList query procM  
 
-let notVisited (visited:Vertex list) (v1:Vertex) = 
-    not <| List.exists (fun (v:Vertex) -> v.UID = v1.UID) visited
+let notVisited (visited:Edge list) (e1:Edge) = 
+    not <| List.exists (fun (e:Edge) -> e.UID = e1.UID) visited
 
 /// A start-point may have many outward paths, hence we build a list of trees.
 /// Note - if we study the data we should be able to prune the searches 
 /// by looking at Function_link and only following paths that start with 
 /// a particular link type.
-let buildForest (startPt:WGS84Point) : Script<PathTree<Vertex> list> = 
-    let rec recBuild (pt:WGS84Point) (visited:Vertex list) : Script<PathTree<Vertex> list> = 
+let buildForest (startPt:WGS84Point) : Script<PathTree<Edge> list> = 
+    let rec recBuild (pt:WGS84Point) (visited:Edge list) : Script<PathTree<Edge> list> = 
         scriptMonad { 
             // TO CHECK - Are we sure we are handling cyclic paths "wisely"?
-            let! (vsNew:Vertex list) = fmapM (List.filter (notVisited visited)) <| findVertices pt
+            let! (esNew:Edge list) = fmapM (List.filter (notVisited visited)) <| findEdges pt
             let! branches = 
-                forM vsNew <| 
-                    fun (v1:Vertex) -> 
+                forM esNew <| 
+                    fun (e1:Edge) -> 
                         scriptMonad { 
-                            let! kids = recBuild v1.EndPoint (v1::visited)
-                            return (PathTree(v1,kids))
+                            let! kids = recBuild e1.EndPoint (e1::visited)
+                            return (PathTree(e1,kids))
                         }
             return branches
         }
@@ -139,7 +138,7 @@ let allRoutes (allPaths:PathTree<'a>) : Route<'a> list =
 
 // Note to self - be careful using <| in computation expressions
 
-let getRoutesFrom (startPt:WGS84Point) : Script<Route<Vertex> list> = 
+let getRoutesFrom (startPt:WGS84Point) : Script<Route<Edge> list> = 
     fmapM (List.collect allRoutes) <| buildForest startPt
 
 

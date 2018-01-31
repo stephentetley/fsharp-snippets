@@ -113,7 +113,6 @@
     <Compile Include="Scripts\RoutingTsp.fs" />
     <None Include="CsvTrim.fsx" />
     <None Include="TestGeo.fsx" />
-    <None Include="TspRouting.fsx" />
     <None Include="NearestNeighbour.fsx" />
     <None Include="GenLinestringWKT.fsx" />
     <None Include="TotalOrder.fsx" />
@@ -134,6 +133,7 @@
     <None Include="TestFileStore.fsx" />
     <None Include="InvestigateDb.fsx" />
     <None Include="PgNearestHospital.fsx" />
+    <None Include="PgTspRouting.fsx" />
     <None Include="PgGroupings.fsx" />
     <None Include="PgOutfalls.fsx" />
     <None Include="PgPathplan.fsx" />

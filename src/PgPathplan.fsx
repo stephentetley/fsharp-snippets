@@ -54,7 +54,7 @@ let getPathImportRows () : seq<PathImportRow> =
     (new PathImportTable ()).Rows |> Seq.cast<PathImportRow>
 
 
-let tryMakeVertex (row:PathImportRow) : VertexInsert option = 
+let tryMakeEdge (row:PathImportRow) : EdgeInsert option = 
     match tryReadWktPoint row.StartPoint, tryReadWktPoint row.EndPoint with
     | Some startPt, Some endPt -> 
         let wgs84Start = wktOSGB36ToWktWGS84 startPt
@@ -65,13 +65,13 @@ let tryMakeVertex (row:PathImportRow) : VertexInsert option =
                 ; EndPoint = osgb36ToWGS84 <| wktToOSGB36Point endPt }
     | _,_ -> None
 
-let MakeDict : VertexInsertDict<PathImportRow> = { tryMakeVertexInsert = tryMakeVertex }
+let edgeInsertDict : EdgeInsertDict<PathImportRow> = { tryMakeEdgeInsert = tryMakeEdge }
 
 let SetupDB(password:string) : unit = 
     let conn = pgsqlConnParamsTesting "spt_geo" password
     let rows = getPathImportRows ()
     runScript (failwith) (printfn "Success: %i modifications") (consoleLogger) conn 
-        <| SetupVertexDB MakeDict rows 
+        <| SetupEdgesDB edgeInsertDict rows 
 
 // ***** Testing towards path finding...
 
@@ -94,8 +94,8 @@ let test03 (password:string) : unit =
 
     runScript (failwith) (printfn "Success: %A") (consoleLogger) conn 
         <| scriptMonad { 
-            let! vs = findVertices startPt
-            do! liftAction (List.iter (printfn "Vertex: %A") vs)
+            let! vs = findEdges startPt
+            do! liftAction (List.iter (printfn "Edge: %A") vs)
             }
 
 
