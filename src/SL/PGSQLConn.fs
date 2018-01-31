@@ -167,6 +167,20 @@ let execReader (statement:string) (proc:NpgsqlDataReader -> 'a) : PGSQLConn<'a> 
         reader.Close()
         ans
 
+/// The read procedure (proc) is expected to read from a single row.
+/// WARNING - this does not seem to work, possibly releasing the reader
+/// before all records are read. Use execReaderList until we have invetigated...
+let execReaderSeq (statement:string) (proc:NpgsqlDataReader -> 'a) : PGSQLConn<seq<'a>> =
+    liftConn <| fun conn -> 
+        let cmd : NpgsqlCommand = new NpgsqlCommand(statement, conn)
+        let reader = cmd.ExecuteReader()
+        let resultset = 
+            seq { while reader.Read() do
+                    let ans = proc reader
+                    yield ans } 
+        reader.Close()
+        resultset
+
 // The read procedure (proc) is expected to read from a single row.
 let execReaderList (statement:string) (proc:NpgsqlDataReader -> 'a) : PGSQLConn<'a list> =
     liftConn <| fun conn -> 

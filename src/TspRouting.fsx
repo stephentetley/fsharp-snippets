@@ -52,7 +52,7 @@ open SL.ScriptMonad
 open Scripts.RoutingTsp
 
 
-let [<Literal>] StationsCsv  = __SOURCE_DIRECTORY__ + @"\..\data\stations.csv"
+let [<Literal>] StationsCsv  =  @"..\data\stations.csv"
 type StationData = 
     CsvProvider< StationsCsv,
                  HasHeaders = true>
@@ -61,6 +61,32 @@ type StationRow = StationData.Row
 
 let getStations () : StationRow list = (new StationData ()).Rows |> Seq.toList
 
+
+let vertexInsertDict:VertexInsertDict<StationRow> = 
+    { TryMakeVertexPoint = 
+        fun (row:StationRow) -> Option.map osgb36ToWGS84 <| tryReadOSGB36Point row.Grid_Ref
+      MakeVertexLabel = 
+        fun (row:StationRow) -> row.Name
+    }
+
+
+
+let SetupDB(password:string) : unit = 
+    let rows = getStations ()
+    let conn = pgsqlConnParamsTesting "spt_geo" password
+    runConsoleScript (printfn "Success: %i inserts") conn 
+        <| insertVertices vertexInsertDict rows 
+
+
+
+let test01(password:string) : unit = 
+    let conn = pgsqlConnParamsTesting "spt_geo" password
+    runConsoleScript (printfn "Success: %A ") conn 
+        <| eucledianTspQuery 0 3 
+
+
+
+// ***** OLD  *****
 
 
 // Implementation note:

@@ -175,6 +175,20 @@ let execReader (statement:string) (proc:SQLite.SQLiteDataReader -> 'a) : SQLiteC
         reader.Close()
         ans
 
+/// The read procedure (proc) is expected to read from a single row.
+/// WARNING - the equivalent function on PGSQLConn does not work.
+/// Both need to be investigated.
+let execReaderSeq (statement:string) (proc:SQLite.SQLiteDataReader -> 'a) : SQLiteConn<seq<'a>> =
+    liftConn <| fun conn -> 
+        let cmd : SQLiteCommand = new SQLiteCommand(statement, conn)
+        let reader = cmd.ExecuteReader()
+        let resultset = 
+            seq { while reader.Read() do
+                    let ans = proc reader
+                    yield ans }
+        reader.Close()
+        resultset
+
 // The read procedure (proc) is expected to read from a single row.
 let execReaderList (statement:string) (proc:SQLite.SQLiteDataReader -> 'a) : SQLiteConn<'a list> =
     liftConn <| fun conn -> 
@@ -183,7 +197,7 @@ let execReaderList (statement:string) (proc:SQLite.SQLiteDataReader -> 'a) : SQL
         let resultset = 
             seq { while reader.Read() do
                     let ans = proc reader
-                    yield ans }  |> Seq.toList
+                    yield ans } |> Seq.toList
         reader.Close()
         resultset
 
@@ -195,9 +209,10 @@ let execReaderArray (statement:string) (proc:SQLite.SQLiteDataReader -> 'a) : SQ
         let resultset = 
             seq { while reader.Read() do
                     let ans = proc reader
-                    yield ans }  |> Seq.toArray
+                    yield ans } |> Seq.toArray
         reader.Close()
         resultset
+
 
 
 // The read procedure (proc) is expected to read from a single row.
