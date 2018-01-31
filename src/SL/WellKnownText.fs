@@ -11,8 +11,19 @@ open SL.Geo.Coord
 
 module WellKnownText = 
     
-    // Note - Wkt should not favour WGS84 srids.
-    // Other spatial references with Lon & Lat are possible.
+    // Note - Wkt should not favour the WGS84 reference system.
+    // Other spatial references with "Lon" & "Lat" are possible.
+
+    // Probably need: 
+    // type WellKnownText<'a> = WKT of string
+    // ... to represent answers from PostGIS
+
+
+    // TODO - potentially we should have a point type without a phantom
+    // and a wrapper over point with a phantom.
+    // This means we can the result the point type for linestring etc.
+    // with a lot less wrapping.
+
 
     /// Encode coordinate reference system as a phantom type.
     /// Values are represented as decimal

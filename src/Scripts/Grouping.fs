@@ -24,6 +24,8 @@ type Grouping<'Key,'a> =
 let groupingBy (projection:'a -> 'Key) (source:seq<'a>) : seq<Grouping<'Key,'a>> = 
     Seq.map (fun (a,b) -> {GroupingKey = a; Elements = b}) <| Seq.groupBy projection source
 
+
+/// This is just temporary at some point use datatypes from the SL.WellKnownText module
 type WKText = string 
 
 

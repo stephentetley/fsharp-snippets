@@ -20,24 +20,27 @@ let liftWithConnParams (fn:PGSQLConnParams -> Answer<'a>) : Script<'a> =
 
 
 
-
-
-// TODO - do we actually want a library of "common" queries?
-
-// TODO - invoke PostGIS, send WKT (and WKB?) in and out... 
-
-// e.g ST_Centroid, ST_AsGeoJSON, ST_GeomFromText
-// (pgr_tsp is possible but it seems to require an existing table and more data setup...)
-
-// files with WKT for QGIS can have any number of fields
-
-
-let singletonWithReader (query:string) (proc:NpgsqlDataReader -> 'a) : Script<'a> = 
+let private singletonWithReader (query:string) (proc:NpgsqlDataReader -> 'a) : Script<'a> = 
     liftWithConnParams << runPGSQLConn <| execReaderSingleton query proc
 
-let singletonAsText1 (query:string) : Script<string> = 
-    liftWithConnParams 
-        << runPGSQLConn << execReaderSingleton query <| fun reader -> reader.GetString(0)
+let private singletonAsText1 (query:string) : Script<string> = 
+    singletonWithReader query <| fun reader -> reader.GetString(0)
+
+
+// TODO - how much of the PostGIS API can we wrap? (do we want to?) 
+// e.g ST_Centroid, ST_AsGeoJSON, ST_GeomFromText
+
+// pgr_tsp can't really be wrapped. It requires an existing table and data setup, 
+// thus we consider it a script in itself.
+
+// TODO - be more clever about the input and output arguments.
+// Should be know if we are sending / receiving Geom, WKT (and WKB?) etc.
+
+// In this module we shouldn't consider generating output for 
+// e.g. QGIS Delimited Text imports. This is the domain of scripts. 
+// Note though, for QGIS files with WKT can have any number of fields.
+
+
 
 // ***** Distance Spheroid
 
@@ -68,7 +71,7 @@ let private makeConvexHullQUERY (points:WGS84Point list) : string =
 	        ST_Collect(
 		        ST_GeomFromText('{0}')
                 )) );
-        """, (genMULTIPOINT points) )
+        """, genMULTIPOINT points )
 
 /// Returns WellKnownText.
 /// May return different geometry types depending on number of points in the result set.

@@ -18,6 +18,7 @@ open SL.CommonUtils
 #I @"..\packages\ClosedXML.0.90.0\lib\net452\"
 #r "ClosedXML"
 #load @"SL\AnswerMonad.fs"
+#load @"SL\JsonExtractor.fs"
 #load @"SL\ScriptMonad.fs"
 #load @"SL\ClosedXMLOutput.fs"
 #load @"SL\CsvOutput.fs"
