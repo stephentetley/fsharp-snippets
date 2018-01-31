@@ -57,7 +57,7 @@ type ConcaveHullOptions =
     { TargetPercentage: float }
 
 
-    // (projection:'a -> 'Key)
+
 let private genHullsCsv (make1:Grouping<'Key,'a> -> Script<'Key * WKText * seq<'a>>) (dict:GroupingMakeHullsDict<'Key,'a>) (source:seq<'a>) (outputFile:string) : Script<unit> =
     scriptMonad { 
         let groups = groupingBy dict.GroupByOperation source

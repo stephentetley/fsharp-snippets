@@ -13,7 +13,7 @@ open Scripts.PostGIS
 
 
 // ***** Set up the database
-
+// TODO - This is and edge not a vertex!
 type VertexInsert =
     { Basetype: string
       FunctionNode: string

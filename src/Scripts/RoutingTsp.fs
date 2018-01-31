@@ -12,14 +12,12 @@ open SL.ScriptMonad
 open Scripts.PostGIS
 
 
-// API note - two views of pgr_tsp. Either it:
-// [a] Generates a route of List<label * grid_ref * cost> 
-// [b] Or it is a sorting algorithm.
-// Of course we will want to print the output (to Csv etc.) but the API
-// should let us sort some arbitrary typed input into shortest route order.
-//
-// Note - some filtering will occur if the data is bad 
-// (missing or invalid grid refs).
+// Generate a route of List<label * grid_ref * cost> 
+
+// We want to:
+// (1) print out to Csv in order, 
+// (2) generate a WKT linestring for viewing
+// Maybe other things...
 
 
 
@@ -39,7 +37,7 @@ let private makeVertexINSERT (serialNum:int) (vertex:WGS84Point) (label:string) 
                 ; stringValue   "label"     label
                 ]
 
-type VertexInsertDict<'row> = 
+type TspVertexInsertDict<'row> = 
     { TryMakeVertexPoint : 'row -> WGS84Point option
       MakeVertexLabel: 'row -> string }
 
@@ -48,7 +46,7 @@ type VertexInsertDict<'row> =
 /// This procedure associates a row with an Id but the Id is (probably) unknown
 /// to the user when it is returned from pgr_tsp, hence I think we need label 
 /// and a join.
-let insertVertices (dict:VertexInsertDict<'row>) (vertices:seq<'row>) : Script<int> = 
+let insertVertices (dict:TspVertexInsertDict<'row>) (vertices:seq<'row>) : Script<int> = 
     let proc1 (ix:int) (point:WGS84Point, label:string) : PGSQLConn<int> = 
         execNonQuery <| makeVertexINSERT ix point label
     
@@ -61,7 +59,7 @@ let insertVertices (dict:VertexInsertDict<'row>) (vertices:seq<'row>) : Script<i
     liftWithConnParams 
         << runPGSQLConn << withTransaction <| SL.PGSQLConn.sumTraverseiM proc1 goodData
 
-let SetupVertexDB (dict:VertexInsertDict<'row>) (vertices:seq<'row>) : Script<int> = 
+let SetupTspVertexDB (dict:TspVertexInsertDict<'row>) (vertices:seq<'row>) : Script<int> = 
     scriptMonad { 
         let! _      = deleteAllData ()              |> logScript (sprintf "%i rows deleted")
         let! count  = insertVertices dict vertices  |> logScript (sprintf "%i rows inserted") 
@@ -78,7 +76,7 @@ let makeEucledianTSPQUERY (startId:int) (endId:int) : string =
                     end_id := {1}
                    ) AS r
         LEFT JOIN spt_tsp_vertices AS v ON r.node = v.id;
-    """, startId, endId)
+        """, startId, endId)
 
 /// NodeLabel must be a short string so we can store it in the DB.
 type RouteNode = 
@@ -90,16 +88,73 @@ type RouteNode =
 
 type Route = RouteNode list
 
-let eucledianTspQuery (startId:int) (endId:int) : Script<Route> = 
+let private dropLast (source:'a list) : 'a list = 
+    let rec work ac xs = 
+        match xs with
+        | [] -> List.rev ac
+        | [x] -> List.rev ac
+        | x :: xs -> work (x::ac) xs
+    work [] source
+
+let eucledianTSP (startId:int) (endId:int) : Script<Route> = 
     let query = makeEucledianTSPQUERY startId endId
     let procM (reader:NpgsqlDataReader) : RouteNode = 
         let gridRef = 
             let lon = float <| reader.GetDouble(3)
             let lat = float <| reader.GetDouble(4)
             { Longitude = 1.0<degree> * lon; Latitude = 1.0<degree> * lat}
-        { SeqNumber          = reader.GetInt32(0)
+        { SeqNumber     = reader.GetInt32(0)
         ; NodeLabel     = reader.GetString(2)
         ; GridRef       = gridRef
         ; Cost          = float <| reader.GetDouble(5)
-        ; AggCost       = float<| reader.GetDouble(6) }  // TODO null for first...
-    liftWithConnParams << runPGSQLConn <| execReaderList query procM  
+        ; AggCost       = float<| reader.GetDouble(6) } 
+    fmapM dropLast << liftWithConnParams << runPGSQLConn <| execReaderList query procM  
+
+
+let makeFindIdByLabelQUERY (label:string) : string = 
+    System.String.Format("""
+        SELECT id FROM spt_tsp_vertices WHERE label='{0}';
+        """, label)
+
+let private findIdQuery (query:string) : Script<int> = 
+    let procM (reader:NpgsqlDataReader) : int = reader.GetInt32(0)
+    liftWithConnParams << runPGSQLConn <| execReaderFirst query procM  
+
+
+let findIdByLabel (label:string) : Script<int> = 
+    findIdQuery <| makeFindIdByLabelQUERY label
+    
+
+let furthestNorthIdQUERY : string  = 
+    "SELECT a.id FROM spt_tsp_vertices a WHERE y = (SELECT MAX(b.y) FROM spt_tsp_vertices b);"
+
+let furthestSouthIdQUERY : string  = 
+    "SELECT a.id FROM spt_tsp_vertices a WHERE y = (SELECT MIN(b.y) FROM spt_tsp_vertices b);"
+
+let furthestEastIdQUERY : string  = 
+    "SELECT a.id FROM spt_tsp_vertices a WHERE x = (SELECT MIN(b.x) FROM spt_tsp_vertices b);"
+
+let furthestWestIdQUERY : string  = 
+    "SELECT a.id FROM spt_tsp_vertices a WHERE x = (SELECT MAX(b.x) FROM spt_tsp_vertices b);"
+
+
+let furthestNorthId : Script<int> = findIdQuery furthestNorthIdQUERY
+    
+let furthestSouthId : Script<int> = findIdQuery furthestSouthIdQUERY
+
+let furthestEastId : Script<int> = findIdQuery furthestEastIdQUERY
+
+let furthestWestId : Script<int> = findIdQuery furthestWestIdQUERY
+
+type TspPrintRouteStepDict = 
+    { CsvHeaders: string list
+      MakeCsvRow: RouteNode -> RowWriter
+    }
+
+let generateTspRouteCsv (dict:TspPrintRouteStepDict) (startId:int) (endId:int) (outputFile:string) : Script<unit> =
+    scriptMonad { 
+        let! steps = eucledianTSP startId endId
+        let rows = List.map  dict.MakeCsvRow steps
+        let csvProc:CsvOutput<unit> = writeRowsWithHeaders dict.CsvHeaders rows
+        do! liftAction <| outputToNew {Separator=","} csvProc outputFile
+        }

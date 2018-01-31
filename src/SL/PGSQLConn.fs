@@ -227,6 +227,22 @@ let execReaderSingleton (statement:string) (proc:NpgsqlDataReader -> 'a) : PGSQL
         with
         | ex -> Err(ex.ToString())
 
+/// Err if no answers
+let execReaderFirst (statement:string) (proc:NpgsqlDataReader -> 'a) : PGSQLConn<'a> =
+    PGSQLConn <| fun conn -> 
+        try 
+            let cmd : NpgsqlCommand = new NpgsqlCommand(statement, conn)
+            let reader = cmd.ExecuteReader()
+            if reader.Read() then
+                let ans = proc reader
+                reader.Close()
+                Ok <| ans
+            else
+                reader.Close ()
+                Err <| "execReaderFirst - no results."
+        with
+        | ex -> Err(ex.ToString())
+
 // With error handling added to the monad we should be able to rollback instead...
 let withTransaction (ma:PGSQLConn<'a>) : PGSQLConn<'a> = 
     PGSQLConn <| fun conn -> 

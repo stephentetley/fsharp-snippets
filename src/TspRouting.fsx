@@ -45,6 +45,7 @@ open SL.AnswerMonad
 open SL.SqlUtils
 open SL.PGSQLConn
 open SL.JsonOutput
+open SL.CsvOutput
 open SL.ScriptMonad
 
 #load @"Scripts\PostGIS.fs"
@@ -62,7 +63,7 @@ type StationRow = StationData.Row
 let getStations () : StationRow list = (new StationData ()).Rows |> Seq.toList
 
 
-let vertexInsertDict:VertexInsertDict<StationRow> = 
+let tspVertexInsertDict:TspVertexInsertDict<StationRow> = 
     { TryMakeVertexPoint = 
         fun (row:StationRow) -> Option.map osgb36ToWGS84 <| tryReadOSGB36Point row.Grid_Ref
       MakeVertexLabel = 
@@ -70,25 +71,49 @@ let vertexInsertDict:VertexInsertDict<StationRow> =
     }
 
 
-
 let SetupDB(password:string) : unit = 
     let rows = getStations ()
     let conn = pgsqlConnParamsTesting "spt_geo" password
-    runConsoleScript (printfn "Success: %i inserts") conn 
-        <| insertVertices vertexInsertDict rows 
+    runConsoleScript (printfn "Success: %A") conn 
+        <| SetupTspVertexDB tspVertexInsertDict rows 
 
 
+let stationOutputDict : TspPrintRouteStepDict = 
+    { CsvHeaders = [ "Serial Num"; "Station"; "Grid Ref"; "Aggregate Cost" ]
+      MakeCsvRow =  
+        fun (node:RouteNode) -> 
+            [ tellInt           node.SeqNumber
+            ; tellString        node.NodeLabel
+            ; tellString        << showOSGB36Point << wgs84ToOSGB36 <| node.GridRef
+            ; tellFloat         node.AggCost
+            ]
+    }
 
-let test01(password:string) : unit = 
+
+let main (password:string) : unit = 
+    let outputFile = __SOURCE_DIRECTORY__ + @"\..\data\stations-route.csv"
     let conn = pgsqlConnParamsTesting "spt_geo" password
     runConsoleScript (printfn "Success: %A ") conn 
-        <| eucledianTspQuery 0 3 
+        <| scriptMonad { 
+            let! startId    = findIdByLabel "Bradford Interchange"
+            let! endId      = findIdByLabel "Mytholmroyd"
+            do! generateTspRouteCsv stationOutputDict startId endId outputFile
+            }
 
 
+let test02 (password:string) : unit = 
+    let conn = pgsqlConnParamsTesting "spt_geo" password
+    runConsoleScript (printfn "Success: %A ") conn 
+        <| scriptMonad { 
+            let! startId    = furthestEastId
+            let! endId      = furthestWestId
+            let! ans        = eucledianTSP startId endId 
+            return ans
+            }
 
 // ***** OLD  *****
 
-
+(* 
 // Implementation note:
 // PostGIS (pgr_tsp) seems to like (or need) a numeric
 // id on the coordinate table.
@@ -279,4 +304,6 @@ let main2 () : unit =
     let outputPath = @"G:\work\Projects\pgrouting\routing_data1.json"
     let rows = buildImports ()
     ignore <| runJsonOutput (genJSON rows) 2 outputPath
+
+*)
 
