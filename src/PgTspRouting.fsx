@@ -9,12 +9,7 @@ open FSharp.ExcelProvider
 
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
-#I @"..\packages\DocumentFormat.OpenXml.2.7.2\lib\net46\"
-#I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
-#I @"..\packages\ClosedXML.0.90.0\lib\net452\"
-#r "ClosedXML"
-#load @"SL\ClosedXMLOutput.fs"
-open SL.ClosedXMLOutput
+
 
 #I @"..\packages\Npgsql.3.2.6\lib\net451\"
 #I @"..\packages\System.Threading.Tasks.Extensions.4.3.0\lib\portable-net45+win8+wp8+wpa81"
@@ -43,8 +38,8 @@ open SL.CsvOutput
 open SL.ScriptMonad
 
 #load @"Scripts\PostGIS.fs"
-#load @"Scripts\RoutingTsp.fs"
-open Scripts.RoutingTsp
+#load @"Scripts\TspRouting.fs"
+open Scripts.TspRouting
 
 
 let [<Literal>] StationsCsv  =  @"..\data\stations.csv"
@@ -101,7 +96,7 @@ let test02 (password:string) : unit =
         <| scriptMonad { 
             let! startId    = furthestEastId
             let! endId      = furthestWestId
-            let! ans        = eucledianTSP startId endId 
+            let! ans        = generateTspRouteWKT startId endId 
             return ans
             }
 

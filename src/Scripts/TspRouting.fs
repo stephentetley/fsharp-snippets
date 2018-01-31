@@ -1,4 +1,4 @@
-﻿module Scripts.RoutingTsp
+﻿module Scripts.TspRouting
 
 open Npgsql
 
@@ -7,6 +7,7 @@ open SL.Geo.Coord
 open SL.SqlUtils
 open SL.PGSQLConn
 open SL.CsvOutput
+open SL.Geo.WellKnownText
 open SL.ScriptMonad
 
 open Scripts.PostGIS
@@ -157,4 +158,15 @@ let generateTspRouteCsv (dict:TspPrintRouteStepDict) (startId:int) (endId:int) (
         let rows = List.map  dict.MakeCsvRow steps
         let csvProc:CsvOutput<unit> = writeRowsWithHeaders dict.CsvHeaders rows
         do! liftAction <| outputToNew {Separator=","} csvProc outputFile
+        }
+
+
+let private getPoints (nodes:RouteNode list) : WGS84Point list = 
+    List.map (fun x -> x.GridRef) nodes
+
+let generateTspRouteWKT (startId:int) (endId:int) : Script<string> =
+    scriptMonad { 
+        let! steps = eucledianTSP startId endId
+        let (points:WGS84Point list) = getPoints steps
+        return (genLINESTRING points)
         }
