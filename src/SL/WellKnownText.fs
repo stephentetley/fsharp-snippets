@@ -33,7 +33,8 @@ module WellKnownText =
 
     // Probably need: 
     // type WellKnownText<'a> = WKT of string
-    // ... to represent answers from PostGIS
+    // Represent answers from PostGIS
+    type WellKnowntText<'a> = WellKnowntText of string
 
 
     // The base point type does not have a phantom type wrapper.
@@ -57,6 +58,10 @@ module WellKnownText =
     let wktPointsEqual (tx:Tolerance) (p1:WktPoint<'a>) (p2:WktPoint<'a>) : bool =
         wktCoordsEqual tx (unwrapWktPoint p1) (unwrapWktPoint p2)
 
+    type WktMultiPoint<'a> = WktMultiPoint of WktCoord list 
+
+    let inline unwrapWktMultiPoint (source:WktMultiPoint<'a>) : WktCoord list = 
+        match source with | WktMultiPoint xs -> xs
 
     type WktLineString<'a> = WktLineString of WktCoord list 
 
@@ -79,6 +84,13 @@ module WellKnownText =
     /// (Ideally we would print with user supplied precision)
     let inline showWktPoint (point:WktPoint<'a>) : string = 
         sprintf "POINT(%s)" (showWktCoord <| unwrapWktPoint point)
+
+
+    /// Prints as 'LINESTRING(-1.08066 53.93863,-1.43627 53.96907)'
+    let showWktMultiPoint (source:WktMultiPoint<'a>) : string =
+        match unwrapWktMultiPoint source with
+        | [] -> "MULTIPOINT EMPTY"
+        | xs -> sprintf "MULTIPOINT(%s)" (String.concat "," <| List.map showWktCoord xs)
 
 
     /// Prints as 'LINESTRING(-1.08066 53.93863,-1.43627 53.96907)'
@@ -144,31 +156,32 @@ module WellKnownText =
     let private pWktCoords : Parser<WktCoord list, unit> = 
         sepBy pWktCoord (pSymbol ",")
 
+    let private pEMPTY : Parser<WktCoord list, unit> = 
+        pSymbol "EMPTY" |>> (fun _ -> [])
+
    
-    let private parsePOINT : Parser<WktPoint<NoSRID>, unit> = 
-        let p1 = pWktCoord |>> WktPoint
-        pSymbol "POINT" >>. pParens p1
-
-
-    let tryReadWktPoint (source:string) : WktPoint<'a> option = 
-        let unTEMP (pt:WktPoint<NoSRID>) : WktPoint<'a> = 
-            match pt with | WktPoint a -> (WktPoint a):WktPoint<'a>
-        let ans1 = runParserOnString parsePOINT () "none" source
+    let tryReadParse (p1:Parser<'a,unit>) (source:string) : 'a option = 
+        let ans1 = runParserOnString p1 () "none" source
         match ans1 with
-        | Success(a,_,_) -> Some <| unTEMP a
+        | Success(a,_,_) -> Some <| a
         | Failure(s,_,_) -> None
-    
-    let private parseLINESTRING : Parser<WktLineString<NoSRID>, unit> = 
-        let p1 = pWktCoords |>> WktLineString
-        pSymbol "LINESTRING" >>. pParens p1
 
-    let tryReadWktLineString (source:string) : WktLineString<'a> option = 
-        let unTEMP (pt:WktLineString<NoSRID>) : WktLineString<'a> = 
-            match pt with | WktLineString a -> (WktLineString a):WktLineString<'a>
-        let ans1 = runParserOnString parseLINESTRING () "none" source
-        match ans1 with
-        | Success(a,_,_) -> Some <| unTEMP a
-        | Failure(s,_,_) -> None
+
+    let tryReadWktPoint (source:string) : WktPoint<'srid> option = 
+        let parsePOINT = pSymbol "POINT" >>. (pParens pWktCoord) |>> WktPoint
+        tryReadParse parsePOINT source
+
+    let tryReadWktMultiPoint (source:string) : WktMultiPoint<'srid> option = 
+        let parseMULTIPOINT = pSymbol "MULTIPOINT" >>. (pEMPTY <|> pParens pWktCoords) |>> WktMultiPoint
+        tryReadParse parseMULTIPOINT source
+
+    let tryReadWktLineString (source:string) : WktLineString<'srid> option = 
+        let parseLINESTRING = pSymbol "LINESTRING" >>. (pEMPTY <|> pParens pWktCoords) |>> WktLineString
+        tryReadParse parseLINESTRING source
+
+    let tryReadWktPolygon1 (source:string) : WktPolygon<'srid> option = 
+        let parsePOLYGON1 = pSymbol "POLYGON" >>. (pEMPTY <|> pParens pWktCoords) |>> WktPolygon
+        tryReadParse parsePOLYGON1 source
 
     // OLD CODE...
 
