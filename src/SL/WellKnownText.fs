@@ -68,11 +68,12 @@ module WellKnownText =
     let inline unwrapWktLineString (source:WktLineString<'a>) : WktCoord list = 
         match source with | WktLineString xs -> xs
         
+        
+    type WktPolygon<'a> =   
+        { ExteriorRing: WktCoord list 
+          InteriorRings: (WktCoord list) list }
 
-    type WktPolygon<'a> = WktPolygon of WktCoord list 
 
-    let inline unwrapWktPolygon (source:WktPolygon<'a>) : WktCoord list = 
-        match source with | WktPolygon xs -> xs
 
     // ***** PRINTING *****
     
@@ -104,9 +105,10 @@ module WellKnownText =
     /// The user is responsible to ensure the polygon is closed before printing and
     /// that points are in counter-clockwise direction.
     let showWktPolygon (source:WktPolygon<'a>) : string =
-        match unwrapWktPolygon source with
-        | [] -> "POLYGON EMPTY"
-        | xs -> sprintf "POLYGON(%s)" (String.concat "," <| List.map showWktCoord xs)  
+        let showRing xs = sprintf "(%s)" << String.concat "," <| List.map showWktCoord xs
+        match source.ExteriorRing, source.InteriorRings with
+        | [], [] -> "POLYGON EMPTY"
+        | xs, xss -> sprintf "POLYGON(%s)" << String.concat "," <| List.map showRing (xs::xss)
 
 
     // ***** Conversion *****
@@ -156,10 +158,24 @@ module WellKnownText =
     let private pWktCoords : Parser<WktCoord list, unit> = 
         sepBy pWktCoord (pSymbol ",")
 
-    let private pEMPTY : Parser<WktCoord list, unit> = 
+    let private pWktRing : Parser<WktCoord list, unit> = 
+        pParens pWktCoords
+
+    let private pWktRings : Parser<(WktCoord list) list, unit> = 
+        sepBy pWktRing (pSymbol ",")
+
+
+    let private pEMPTY : Parser<'a list, unit> = 
         pSymbol "EMPTY" |>> (fun _ -> [])
 
-   
+
+    let pGeometry(name:string) (p:Parser<'a list,unit>) : Parser<'a list,unit> = 
+        pSymbol name >>. (pEMPTY <|> pParens p)
+    
+    // Non empty
+    let pGeometryNoneEmpty (name:string) (p:Parser<'a,unit>) : Parser<'a,unit> = 
+        pSymbol name >>. (pParens p)
+        
     let tryReadParse (p1:Parser<'a,unit>) (source:string) : 'a option = 
         let ans1 = runParserOnString p1 () "none" source
         match ans1 with
@@ -168,19 +184,26 @@ module WellKnownText =
 
 
     let tryReadWktPoint (source:string) : WktPoint<'srid> option = 
-        let parsePOINT = pSymbol "POINT" >>. (pParens pWktCoord) |>> WktPoint
+        let parsePOINT = pGeometryNoneEmpty "POINT" (pWktCoord |>> WktPoint)
         tryReadParse parsePOINT source
 
+    // TODO - the proper version is MULTIPOINT((1 2), (3 4))            
     let tryReadWktMultiPoint (source:string) : WktMultiPoint<'srid> option = 
-        let parseMULTIPOINT = pSymbol "MULTIPOINT" >>. (pEMPTY <|> pParens pWktCoords) |>> WktMultiPoint
+        let parseMULTIPOINT = pGeometry "MULTIPOINT" pWktCoords |>> WktMultiPoint
         tryReadParse parseMULTIPOINT source
 
     let tryReadWktLineString (source:string) : WktLineString<'srid> option = 
-        let parseLINESTRING = pSymbol "LINESTRING" >>. (pEMPTY <|> pParens pWktCoords) |>> WktLineString
+        let parseLINESTRING = pGeometry "LINESTRING" pWktCoords |>> WktLineString
         tryReadParse parseLINESTRING source
 
+    let private buildPolygon (source:(WktCoord list) list) : WktPolygon<'srid> = 
+        match source with
+        | [] -> { ExteriorRing = []; InteriorRings = [] }
+        | x :: xs -> { ExteriorRing = x; InteriorRings = xs }
+
+    // WARNING - to test
     let tryReadWktPolygon1 (source:string) : WktPolygon<'srid> option = 
-        let parsePOLYGON1 = pSymbol "POLYGON" >>. (pEMPTY <|> pParens pWktCoords) |>> WktPolygon
+        let parsePOLYGON1 = pGeometryNoneEmpty "POLYGON" pWktRings |>> buildPolygon
         tryReadParse parsePOLYGON1 source
 
     // OLD CODE...
