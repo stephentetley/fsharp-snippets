@@ -18,6 +18,7 @@ open Npgsql
 #r "FParsec"
 #r "FParsecCS"
 
+open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 
 #load @"SL\AnswerMonad.fs"
 #load @"SL\Coord.fs"
@@ -63,13 +64,12 @@ let deleteAllData () : Script<int> =
 let private makeDWithinINSERT (row:SiteListRow) : string option = 
     let make1 (osgb36:OSGB36Point)  = 
         sqlINSERT "spt_dwithin" 
-            <|  [ stringValue       "uid"               row.``#SAINUMBER``
-                ; stringValue       "name"              row.``#SITENAME``
-                ; stringValue       "function_type"     row.``#ASSETTYPE``
-                ; stringValue       "osgb36_ref"        row.``#GRIDREF``
+            <|  [ stringValue       "uid"               (row.``#SAINUMBER``.Trim())
+                ; stringValue       "name"              (row.``#SITENAME``.Trim())
+                ; stringValue       "function_type"     (row.``#ASSETTYPE``.Trim())
+                ; stringValue       "osgb36_ref"        (row.``#GRIDREF``.Trim())
                 ; literalValue      "location"          <| makeSTGeogFromTextPointLiteral (osgb36ToWGS84 osgb36)
                 ]
-
     Option.map make1 <| tryReadOSGB36Point row.``#GRIDREF``
 
 
@@ -91,4 +91,60 @@ let SetupDB(password:string) : unit =
                 let! _      = deleteAllData ()  |> logScript (sprintf "%i rows deleted")
                 let! count  = insertRows rows   |> logScript (sprintf "%i rows inserted") 
                 return count
-                }    
+                }   
+                
+/// Objects within distance.
+let makeDWithinQUERY (point:WGS84Point)  (distance:float<meter>) : string = 
+    System.String.Format("""
+        SELECT 
+            d.uid, d.name
+        FROM 
+            spt_dwithin d
+        WHERE
+            ST_DWithin(d.location, ST_Point({0}, {1}), {2}); 
+        """, point.Longitude, point.Latitude, distance)
+
+
+type NeighbourRec = 
+    { Uid: string
+      Name: string }
+
+let neighboursWithin (point:WGS84Point) (distance:float<meter>) : Script<NeighbourRec list> = 
+    let query = makeDWithinQUERY point distance
+    let procM (reader:NpgsqlDataReader) : NeighbourRec = 
+        { Uid   = reader.GetString(0)
+        ; Name  = reader.GetString(1) }
+    liftWithConnParams << runPGSQLConn <| execReaderList query procM  
+
+let csvHeaders = [ "Uid"; "Name"; "Neighbours within 25m"; "Neighbours within 1km" ]
+
+
+let makeOutputRow (row:SiteListRow) : Script<RowWriter> =
+    let removeSelf xs = List.filter (fun (x:NeighbourRec) -> x.Name <> row.``#SITENAME``) xs
+    let getNeighbours (dist:float<meter>) (gridref:string) : Script<string list> = 
+        match tryReadOSGB36Point row.``#GRIDREF`` with
+        | None -> scriptMonad.Return []
+        | Some osgb -> 
+            fmapM (List.map (fun (x:NeighbourRec) -> x.Name) << removeSelf)
+                <| neighboursWithin (osgb36ToWGS84 osgb) dist
+    scriptMonad { 
+        let! neighbours25m  = fmapM (String.concat "; ") <| getNeighbours 25.0<meter> row.``#GRIDREF``
+        let! neighbours1k   = fmapM (String.concat "; ") <| getNeighbours 1000.0<meter> row.``#GRIDREF``
+        return [ tellQuotedString   row.``#SAINUMBER``
+               ; tellQuotedString   row.``#SITENAME``
+               ; tellQuotedString   neighbours25m
+               ; tellQuotedString   neighbours1k]
+        }
+        
+
+let main (password:string) : unit = 
+    let sites = getSiteListRows ()
+    let outputFile = @"G:\work\Projects\events2\site-list-neighbours.csv"
+    let conn = pgsqlConnParamsTesting "spt_geo" password
+    runConsoleScript (printfn "Success: %A") conn 
+        <| scriptMonad { 
+                let! rows = mapM makeOutputRow sites
+                let csvProc:CsvOutput<unit> = 
+                    SL.CsvOutput.writeRowsWithHeaders csvHeaders rows
+                do! liftAction <| SL.CsvOutput.outputToNew {Separator=","} csvProc outputFile
+                }

@@ -43,6 +43,7 @@ let private singletonAsText1 (query:string) : Script<string> =
 
 /// Generates ```ST_GeogFromText('SRID=4326;POINT(1.12345 2.12345')```
 /// The name for this needs to be considered.
+/// Favour calling ST_Point instead.
 let makeSTGeogFromTextPointLiteral (pt:WGS84Point) : string = 
     sprintf "ST_GeogFromText('SRID=4326;%s')" << showWktPoint <| wgs84PointToWKT pt
 

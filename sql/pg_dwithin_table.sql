@@ -8,6 +8,10 @@
 -- This is a sample table for running ST_DWithin queries
 -- We need geom, all other fields are for printing  and identification.
 
+-- Always use Geography (rather than Geometry) unless we have a specific 
+-- use-case (i.e. input data might not be geodic).
+-- Geography accounts for the curvature of the earth (vis Haversine distance)
+
 CREATE TABLE spt_dwithin (
     uid VARCHAR(16) PRIMARY KEY,
     name VARCHAR(160), 

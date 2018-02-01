@@ -179,8 +179,8 @@ let csvHeaders =
 let OutputNN(password:string) : unit = 
     let conn = pgsqlConnParamsTesting "spt_geo" password
     let outFile = @"G:\work\Projects\events2\outfall-neighbours.csv"
-    // Ideally CsvOutput should have the same extent as ScriptMonad... 
-    runScript (failwith) (printfn "Success: %A") (consoleLogger) conn 
+
+    runConsoleScript (printfn "Success: %A") conn 
         <| scriptMonad { 
                 let rows1:seq<NeighboursRow> = getDataForNeighbours ()
                 let! (rows2:seq<OutputRow>) = SL.ScriptMonad.traverseM (genOutputRow 5) rows1
