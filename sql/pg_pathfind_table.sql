@@ -5,7 +5,7 @@
 DROP TABLE spt_pathfind;
 
 
--- Use PostgreSQL's SERIAL typer for an auto-incrementing id
+-- Use PostgreSQL's SERIAL type for an auto-incrementing id
 
 CREATE TABLE spt_pathfind (
     id SERIAL PRIMARY KEY,

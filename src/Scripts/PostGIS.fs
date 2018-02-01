@@ -41,6 +41,12 @@ let private singletonAsText1 (query:string) : Script<string> =
 // Note though, for QGIS files with WKT can have any number of fields.
 
 
+/// Generates ```ST_GeogFromText('SRID=4326;POINT(1.12345 2.12345')```
+/// The name for this needs to be considered.
+let makeSTGeogFromTextPointLiteral (pt:WGS84Point) : string = 
+    sprintf "ST_GeogFromText('SRID=4326;%s')" << showWktPoint <| wgs84PointToWKT pt
+
+
 
 // ***** Distance Spheroid
 

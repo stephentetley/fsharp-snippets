@@ -28,9 +28,7 @@ open SL.ScriptMonad
 open SL.CsvOutput
 
 // PostgresSQL with PostGIS enabled.
-// Table Schema:
-// CREATE TABLE spt_outfalls (stc25_ref VARCHAR(12) PRIMARY KEY, function_node VARCHAR(30), osgb36_grid VARCHAR(16), point_loc geography (POINT));
-
+// Use Table: spt_outfalls
 
 
 type GisOutfallData = 

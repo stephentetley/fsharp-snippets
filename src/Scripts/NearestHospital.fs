@@ -61,15 +61,13 @@ let MakeDict : HospitalInsertDict<HospitalsRow> = { tryMakeHospitalRecord = tryM
 
 
 let private makeHospitalINSERT (hospital:HospitalRecord) : string = 
-    let makePointLit (pt:WGS84Point) : string = 
-        sprintf "ST_GeogFromText('SRID=4326;%s')" (showWktPoint <| wgs84PointToWKT pt)
     sqlINSERT "spt_hospitals" 
-            <|  [ stringValue       "name"              hospital.HospitalName
-                ; stringValue       "telephone"         hospital.Phone
-                ; stringValue       "address"           hospital.Address
-                ; stringValue       "postcode"          hospital.Postcode
-                ; literalValue      "grid_ref"          <| makePointLit hospital.LatLon
-                ]
+        <|  [ stringValue       "name"              hospital.HospitalName
+            ; stringValue       "telephone"         hospital.Phone
+            ; stringValue       "address"           hospital.Address
+            ; stringValue       "postcode"          hospital.Postcode
+            ; literalValue      "grid_ref"          <| makeSTGeogFromTextPointLiteral hospital.LatLon
+            ]
 
 
 let insertHospitals (dict:HospitalInsertDict<'inputrow>) (outfalls:seq<'inputrow>) : Script<int> = 
@@ -83,8 +81,8 @@ let insertHospitals (dict:HospitalInsertDict<'inputrow>) (outfalls:seq<'inputrow
 
 let SetupHospitalDB (dict:HospitalInsertDict<'inputrow>) (hospitals:seq<'inputrow>) : Script<int> = 
     scriptMonad { 
-        let! _ = deleteAllData () |> logScript (sprintf "%i rows deleted")
-        let! count = insertHospitals dict hospitals  |> logScript (sprintf "%i rows inserted") 
+        let! _      = deleteAllData ()                  |> logScript (sprintf "%i rows deleted")
+        let! count  = insertHospitals dict hospitals    |> logScript (sprintf "%i rows inserted") 
         return count
      }
 

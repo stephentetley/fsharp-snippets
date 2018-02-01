@@ -158,6 +158,10 @@ module WellKnownText =
     let private pWktCoords : Parser<WktCoord list, unit> = 
         sepBy pWktCoord (pSymbol ",")
 
+    let private pParenWktCoords1 : Parser<WktCoord list, unit> = 
+        sepBy1 (pParens pWktCoord) (pSymbol ",")
+
+
     let private pWktRing : Parser<WktCoord list, unit> = 
         pParens pWktCoords
 
@@ -165,12 +169,12 @@ module WellKnownText =
         sepBy pWktRing (pSymbol ",")
 
 
-    let private pEMPTY : Parser<'a list, unit> = 
-        pSymbol "EMPTY" |>> (fun _ -> [])
+    let private pEMPTY (emptyDefault:'a) : Parser<'a, unit> = 
+        pSymbol "EMPTY" |>> (fun _ -> emptyDefault)
 
 
-    let pGeometry(name:string) (p:Parser<'a list,unit>) : Parser<'a list,unit> = 
-        pSymbol name >>. (pEMPTY <|> pParens p)
+    let pGeometry (name:string) (emptyDefault:'a) (p:Parser<'a,unit>) : Parser<'a,unit> = 
+        pSymbol name >>. (pEMPTY emptyDefault <|> pParens p)
     
     // Non empty
     let pGeometryNoneEmpty (name:string) (p:Parser<'a,unit>) : Parser<'a,unit> = 
@@ -189,11 +193,12 @@ module WellKnownText =
 
     // TODO - the proper version is MULTIPOINT((1 2), (3 4))            
     let tryReadWktMultiPoint (source:string) : WktMultiPoint<'srid> option = 
-        let parseMULTIPOINT = pGeometry "MULTIPOINT" pWktCoords |>> WktMultiPoint
+        let parseMULTIPOINT : Parser<WktMultiPoint<'srid>, unit>= 
+            pGeometry "MULTIPOINT" [] (pParenWktCoords1 <|> pWktCoords) |>> WktMultiPoint
         tryReadParse parseMULTIPOINT source
 
     let tryReadWktLineString (source:string) : WktLineString<'srid> option = 
-        let parseLINESTRING = pGeometry "LINESTRING" pWktCoords |>> WktLineString
+        let parseLINESTRING = pGeometry "LINESTRING" [] pWktCoords |>> WktLineString
         tryReadParse parseLINESTRING source
 
     let private buildPolygon (source:(WktCoord list) list) : WktPolygon<'srid> = 
@@ -203,8 +208,11 @@ module WellKnownText =
 
     // WARNING - to test
     let tryReadWktPolygon1 (source:string) : WktPolygon<'srid> option = 
-        let parsePOLYGON1 = pGeometryNoneEmpty "POLYGON" pWktRings |>> buildPolygon
+        let parsePOLYGON1 = pGeometry "POLYGON" [] pWktRings |>> buildPolygon
         tryReadParse parsePOLYGON1 source
+
+
+
 
     // OLD CODE...
 
