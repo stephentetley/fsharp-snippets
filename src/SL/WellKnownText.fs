@@ -65,6 +65,9 @@ module WellKnownText =
         | Some p1, Some p2 -> wktCoordsEqual tx p1 p2
         | _,_ -> false      
 
+    /// According to the spec, we should allow Null Points in a MULTIPOINT
+    /// string, however there are pragmatic reasons not to (1. efficiency, 2. we 
+    /// can't interpret them anyway).
     type WktMultiPoint<'a> = WktMultiPoint of WktCoord list 
 
     let inline unwrapWktMultiPoint (source:WktMultiPoint<'a>) : WktCoord list = 
@@ -173,57 +176,54 @@ module WellKnownText =
                 return (ans1,ansMany) }
 
     // This is not within parens
-    let private pCoord : Parser<WktCoord, unit> = 
+
+    type PointText1 = WktCoord
+     
+    let private pPointText1 : Parser<WktCoord, unit> = 
         pipe2   (pDecimal .>> spaces)
                 (pDecimal .>> spaces) 
                 (fun lon lat -> { WktLon = lon; WktLat = lat })
 
-    let private pEmptySet (emptySet:'a) : Parser<'a,unit> = 
-        pSymbol "EMPTY" |>> (fun _ -> emptySet)
+    let private pComma : Parser<unit,unit> = 
+        pSymbol "," |>> fun _ -> ()
+
+    let private pEMPTY (emptyDefault:'a) : Parser<'a, unit> = 
+        pSymbol "EMPTY" |>> (fun _ -> emptyDefault)
+
 
     type private PointText = WktCoord option
 
     let private pPointText : Parser<PointText,unit> = 
-        (pSymbol "EMPTY" |>> fun _ -> None) <|> (pParens pCoord |>> Some)
+        (pEMPTY None) <|> (pParens pPointText1 |>> Some)
 
 
 
     type private LinestringText = WktCoord list
 
     let private pLinestringText : Parser<LinestringText, unit> = 
-        pEmptySet [] <|> pParens (sepBy1 pCoord (pSymbol ","))
+        pEMPTY [] <|> pParens (sepBy1 pPointText1 (pSymbol ","))
         
 
     let private pParenLinestringText1 : Parser<LinestringText, unit> = 
-        sepBy1 (pParens pCoord) (pSymbol ",")
+        sepBy1 (pParens pPointText1) (pSymbol ",")
 
     type private PolygonText = LinestringText list
 
     let private pPolygonText : Parser<PolygonText,unit> =
-        pEmptySet [] <|> pParens (sepBy1 pLinestringText (pSymbol ","))
+        pEMPTY [] <|> pParens (sepBy1 pLinestringText (pSymbol ","))
 
     
-    type MultipointText = PointText list
+    /// Note - we diverge from the WKT Spec. Null Points are not allowed.
+    type private MultipointText = PointText1 list
     
-    // Old...
-    let private pWktRing : Parser<WktCoord list, unit> = 
-        pParens pLinestringText
 
-    // Old...
-    let private pWktRings : Parser<(WktCoord list) list, unit> = 
-        sepBy pWktRing (pSymbol ",")
+    /// Note - we diverge from the WKT Spec. Null Points are not recognized.
+    /// We also allow old style Point Lists where individual points are not within parens.
+    let private pMultipointText : Parser<MultipointText,unit> = 
+        let goodList = sepBy1 (pParens pPointText1) pComma
+        let badList = sepBy1 pPointText1 pComma
+        pEMPTY [] <|> pParens (goodList <|> badList)
 
-
-    let private pEMPTY (emptyDefault:'a) : Parser<'a, unit> = 
-        pSymbol "EMPTY" |>> (fun _ -> emptyDefault)
-
-
-    let pGeometry (name:string) (emptyDefault:'a) (p:Parser<'a,unit>) : Parser<'a,unit> = 
-        pSymbol name >>. (pEMPTY emptyDefault <|> pParens p)
-    
-    // Non empty -i.e "EMPTY" token is not an alternative in the data
-    let pGeometryNonEmpty (name:string) (p:Parser<'a,unit>) : Parser<'a,unit> = 
-        pSymbol name >>. (pParens p)
         
     let tryReadParse (p1:Parser<'a,unit>) (source:string) : 'a option = 
         let ans1 = runParserOnString p1 () "none" source
@@ -238,21 +238,22 @@ module WellKnownText =
         let parsePOINT = pSymbol "POINT" >>. (pPointText |>> WktPoint)
         tryReadParse parsePOINT source
 
-    // TODO - the proper version is MULTIPOINT((1 2), (3 4))            
+    // Note - the proper version is MULTIPOINT((1 2), (3 4))            
     let tryReadWktMultiPoint (source:string) : WktMultiPoint<'srid> option = 
         let parseMULTIPOINT : Parser<WktMultiPoint<'srid>, unit>= 
-            pGeometry "MULTIPOINT" [] (pParenLinestringText1 <|> pLinestringText) |>> WktMultiPoint
+            pSymbol "MULTIPOINT" >>. ( pMultipointText |>> WktMultiPoint)
         tryReadParse parseMULTIPOINT source
 
     let tryReadWktLineString (source:string) : WktLineString<'srid> option = 
         let parseLINESTRING = pSymbol "LINESTRING" >>. pLinestringText |>> WktLineString
         tryReadParse parseLINESTRING source
 
+
+
     let private buildPolygon (source:PolygonText) : WktPolygon<'srid> = 
         match source with
         | [] -> { ExteriorRing = []; InteriorRings = [] }
         | x :: xs -> { ExteriorRing = x; InteriorRings = xs }
-
 
 
     // WARNING - to test
