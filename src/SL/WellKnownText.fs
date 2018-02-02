@@ -8,6 +8,10 @@ open FParsec
 open SL.Tolerance
 open SL.Geo.Coord
 
+// Only concerned with 2d.
+// 3d or 4d would be the subject for another module.
+// Note BNF starts on page 54 of the spec.
+// This should be the authority for naming etc.
 
 module WellKnownText = 
     
@@ -37,9 +41,8 @@ module WellKnownText =
     type WellKnowntText<'a> = WellKnowntText of string
 
 
-    // The base point type does not have a phantom type wrapper.
-    // This means the phantom param is only wrapped once for LINESTRING etc.
-
+    /// The base point type does not have a phantom type wrapper.
+    /// This means the phantom param is only wrapped once for LINESTRING etc.
     type WktCoord = 
         { WktLon: decimal      
           WktLat: decimal }
@@ -47,16 +50,20 @@ module WellKnownText =
 
     /// Encode coordinate reference system as a phantom type.
     /// Values are represented as decimal
-    type WktPoint<'a> = WktPoint of WktCoord
+    /// A null point must be allowed, encode it internally with option.
+    type WktPoint<'a> = WktPoint of WktCoord option
 
-    let inline unwrapWktPoint (pt:WktPoint<'a>) : WktCoord = 
-        match pt with | WktPoint pt -> pt
+    let inline unwrapWktPoint (pt:WktPoint<'a>) : WktCoord option = 
+        match pt with | WktPoint opt -> opt
     
     let wktCoordsEqual (tx:Tolerance) (p1:WktCoord) (p2:WktCoord) : bool =
         tEqual tx p1.WktLon p2.WktLon && tEqual tx p1.WktLat p2.WktLat
 
-    let wktPointsEqual (tx:Tolerance) (p1:WktPoint<'a>) (p2:WktPoint<'a>) : bool =
-        wktCoordsEqual tx (unwrapWktPoint p1) (unwrapWktPoint p2)
+    // Null Point <> Null Point
+    let wktPointsEqual (tx:Tolerance) (point1:WktPoint<'a>) (point2:WktPoint<'a>) : bool =
+        match unwrapWktPoint point1, unwrapWktPoint point2 with
+        | Some p1, Some p2 -> wktCoordsEqual tx p1 p2
+        | _,_ -> false      
 
     type WktMultiPoint<'a> = WktMultiPoint of WktCoord list 
 
@@ -84,7 +91,9 @@ module WellKnownText =
     /// Prints as 'POINT(14.12345, 15.12345)'
     /// (Ideally we would print with user supplied precision)
     let inline showWktPoint (point:WktPoint<'a>) : string = 
-        sprintf "POINT(%s)" (showWktCoord <| unwrapWktPoint point)
+        match unwrapWktPoint point with
+        | None -> "POINT EMPTY"
+        | Some coord -> sprintf "POINT(%s)" (showWktCoord coord)
 
 
     /// Prints as 'LINESTRING(-1.08066 53.93863,-1.43627 53.96907)'
@@ -110,31 +119,34 @@ module WellKnownText =
         | [], [] -> "POLYGON EMPTY"
         | xs, xss -> sprintf "POLYGON(%s)" << String.concat "," <| List.map showRing (xs::xss)
 
-
+        
     // ***** Conversion *****
     let wgs84PointToWKT (point:WGS84Point) : WktPoint<WGS84> =
-        WktPoint <| { WktLon = decimal point.Longitude; WktLat = decimal point.Latitude }
+        WktPoint <| Some { WktLon = decimal point.Longitude; WktLat = decimal point.Latitude }
 
     let osgb36PointToWKT (point:OSGB36Point) : WktPoint<OSGB36> = 
-        WktPoint <| { WktLon = decimal point.Easting; WktLat = decimal point.Northing }
+        WktPoint <| Some { WktLon = decimal point.Easting; WktLat = decimal point.Northing }
 
-    let wktToWGS84Point (point:WktPoint<WGS84>) : WGS84Point = 
-        match unwrapWktPoint point with
-        | coord -> 
-            { Latitude = 1.0<degree> * float coord.WktLat
-            ; Longitude = 1.0<degree> * float coord.WktLon }
+    let wktToWGS84Point (point:WktPoint<WGS84>) : WGS84Point option = 
+        let change (coord:WktCoord) = { Latitude = 1.0<degree> * float coord.WktLat
+                                      ; Longitude = 1.0<degree> * float coord.WktLon }
+        Option.map change <| unwrapWktPoint point
 
-    let wktToOSGB36Point (point:WktPoint<OSGB36>) : OSGB36Point = 
-        match unwrapWktPoint point with
-        | coord -> 
-            { Easting = 1.0<meter> * float coord.WktLon
-            ; Northing = 1.0<meter> * float coord.WktLat }
+    let wktToOSGB36Point (point:WktPoint<OSGB36>) : OSGB36Point option = 
+        let change (coord:WktCoord) = { Easting = 1.0<meter> * float coord.WktLon
+                                      ; Northing = 1.0<meter> * float coord.WktLat }
+        Option.map change <| unwrapWktPoint point
+
 
     let wktOSGB36ToWktWGS84 (point:WktPoint<OSGB36>) : WktPoint<WGS84> = 
-        point |> wktToOSGB36Point |> osgb36ToWGS84 |> wgs84PointToWKT
+        match wktToOSGB36Point point with
+        | None -> WktPoint None 
+        | Some osgb -> wgs84PointToWKT <| osgb36ToWGS84 osgb
 
     let wktWGS84ToWktOSGB36 (point:WktPoint<WGS84>) : WktPoint<OSGB36> = 
-        point |> wktToWGS84Point |> wgs84ToOSGB36 |> osgb36PointToWKT
+        match wktToWGS84Point point with 
+        | None -> WktPoint None
+        | Some wgs -> osgb36PointToWKT <| wgs84ToOSGB36 wgs
 
     // ***** PARSING *****
 
@@ -150,21 +162,54 @@ module WellKnownText =
 
     let private pDecimal : Parser<decimal,unit> = pfloat |>> decimal
 
-    let private pWktCoord : Parser<WktCoord, unit> = 
+    type private OneAndMany<'a> = 'a * 'a list
+
+    
+
+    /// This is the pattern for Polygon
+    let private sepByOneMany (p:Parser<'a,unit>) (sepa:Parser<'z,unit>) : Parser<OneAndMany<'a>,unit> = 
+        parse { let! ans1 = p
+                let! ansMany = sepBy p sepa
+                return (ans1,ansMany) }
+
+    // This is not within parens
+    let private pCoord : Parser<WktCoord, unit> = 
         pipe2   (pDecimal .>> spaces)
                 (pDecimal .>> spaces) 
                 (fun lon lat -> { WktLon = lon; WktLat = lat })
 
-    let private pWktCoords : Parser<WktCoord list, unit> = 
-        sepBy pWktCoord (pSymbol ",")
+    let private pEmptySet (emptySet:'a) : Parser<'a,unit> = 
+        pSymbol "EMPTY" |>> (fun _ -> emptySet)
 
-    let private pParenWktCoords1 : Parser<WktCoord list, unit> = 
-        sepBy1 (pParens pWktCoord) (pSymbol ",")
+    type private PointText = WktCoord option
+
+    let private pPointText : Parser<PointText,unit> = 
+        (pSymbol "EMPTY" |>> fun _ -> None) <|> (pParens pCoord |>> Some)
 
 
+
+    type private LinestringText = WktCoord list
+
+    let private pLinestringText : Parser<LinestringText, unit> = 
+        pEmptySet [] <|> pParens (sepBy1 pCoord (pSymbol ","))
+        
+
+    let private pParenLinestringText1 : Parser<LinestringText, unit> = 
+        sepBy1 (pParens pCoord) (pSymbol ",")
+
+    type private PolygonText = LinestringText list
+
+    let private pPolygonText : Parser<PolygonText,unit> =
+        pEmptySet [] <|> pParens (sepBy1 pLinestringText (pSymbol ","))
+
+    
+    type MultipointText = PointText list
+    
+    // Old...
     let private pWktRing : Parser<WktCoord list, unit> = 
-        pParens pWktCoords
+        pParens pLinestringText
 
+    // Old...
     let private pWktRings : Parser<(WktCoord list) list, unit> = 
         sepBy pWktRing (pSymbol ",")
 
@@ -176,8 +221,8 @@ module WellKnownText =
     let pGeometry (name:string) (emptyDefault:'a) (p:Parser<'a,unit>) : Parser<'a,unit> = 
         pSymbol name >>. (pEMPTY emptyDefault <|> pParens p)
     
-    // Non empty
-    let pGeometryNoneEmpty (name:string) (p:Parser<'a,unit>) : Parser<'a,unit> = 
+    // Non empty -i.e "EMPTY" token is not an alternative in the data
+    let pGeometryNonEmpty (name:string) (p:Parser<'a,unit>) : Parser<'a,unit> = 
         pSymbol name >>. (pParens p)
         
     let tryReadParse (p1:Parser<'a,unit>) (source:string) : 'a option = 
@@ -187,28 +232,32 @@ module WellKnownText =
         | Failure(s,_,_) -> None
 
 
+    // ***** Parsing Public API
+
     let tryReadWktPoint (source:string) : WktPoint<'srid> option = 
-        let parsePOINT = pGeometryNoneEmpty "POINT" (pWktCoord |>> WktPoint)
+        let parsePOINT = pSymbol "POINT" >>. (pPointText |>> WktPoint)
         tryReadParse parsePOINT source
 
     // TODO - the proper version is MULTIPOINT((1 2), (3 4))            
     let tryReadWktMultiPoint (source:string) : WktMultiPoint<'srid> option = 
         let parseMULTIPOINT : Parser<WktMultiPoint<'srid>, unit>= 
-            pGeometry "MULTIPOINT" [] (pParenWktCoords1 <|> pWktCoords) |>> WktMultiPoint
+            pGeometry "MULTIPOINT" [] (pParenLinestringText1 <|> pLinestringText) |>> WktMultiPoint
         tryReadParse parseMULTIPOINT source
 
     let tryReadWktLineString (source:string) : WktLineString<'srid> option = 
-        let parseLINESTRING = pGeometry "LINESTRING" [] pWktCoords |>> WktLineString
+        let parseLINESTRING = pSymbol "LINESTRING" >>. pLinestringText |>> WktLineString
         tryReadParse parseLINESTRING source
 
-    let private buildPolygon (source:(WktCoord list) list) : WktPolygon<'srid> = 
+    let private buildPolygon (source:PolygonText) : WktPolygon<'srid> = 
         match source with
         | [] -> { ExteriorRing = []; InteriorRings = [] }
         | x :: xs -> { ExteriorRing = x; InteriorRings = xs }
 
+
+
     // WARNING - to test
     let tryReadWktPolygon1 (source:string) : WktPolygon<'srid> option = 
-        let parsePOLYGON1 = pGeometry "POLYGON" [] pWktRings |>> buildPolygon
+        let parsePOLYGON1 = pSymbol "POLYGON" >>. pPolygonText |>> buildPolygon
         tryReadParse parsePOLYGON1 source
 
 
@@ -232,7 +281,9 @@ module WellKnownText =
         let nonempties = List.filter (not << List.isEmpty) listoflists
         String.concat ", " <| List.map (parens << printPointList) nonempties 
 
-
+    // Note for the API - isClosed (predicate) may be more important 
+    // than closePolygon (action).
+    // Can we expect data from client codeto be always closed?
     let private closePolygon (coords:Coord.WGS84Point list) : Coord.WGS84Point list = 
         match coords with
         | [] -> []
@@ -281,5 +332,5 @@ module WellKnownText =
         | [] -> "MULTIPOINT EMPTY"
         | _ -> sprintf "MULTIPOINT(%s)" (printPointList coords)
 
-    // TODO MULTILINESTRING MULTIPOLYGON and reading...
+
 

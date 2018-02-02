@@ -68,6 +68,8 @@ let wktRead01 () =
 let wktRead02 () =
     printfn "%A" <| tryReadWktLineString "LINESTRING(-1.98073 53.72879, -1.90546 53.70771, -1.85249 53.72091, -1.75227 53.74991, -1.74833 53.79111)" 
 
+// TODO - this is invalid according to the later revision of the spec, but we should still be able
+// to parse it
 let wktRead03 () =
     printfn "%A" <| tryReadWktMultiPoint "MULTIPOINT(-1.98073 53.72879, -1.90546 53.70771, -1.85249 53.72091, -1.75227 53.74991, -1.74833 53.79111)" 
 
