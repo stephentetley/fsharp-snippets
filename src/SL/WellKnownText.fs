@@ -65,6 +65,21 @@ module WellKnownText =
         | Some p1, Some p2 -> wktCoordsEqual tx p1 p2
         | _,_ -> false      
 
+
+
+
+    type WktLineString<'a> = WktLineString of WktCoord list 
+
+    let inline unwrapWktLineString (source:WktLineString<'a>) : WktCoord list = 
+        match source with | WktLineString xs -> xs
+
+    /// The user is responsible to ensure the polygon is closed before printing and
+    /// that points are in counter-clockwise direction.        
+    type WktPolygon<'a> =   
+        { ExteriorRing: WktCoord list 
+          InteriorRings: (WktCoord list) list }
+
+
     /// According to the spec, we should allow Null Points in a MULTIPOINT
     /// string, however there are pragmatic reasons not to (1. efficiency, 2. we 
     /// can't interpret them anyway).
@@ -73,22 +88,23 @@ module WellKnownText =
     let inline unwrapWktMultiPoint (source:WktMultiPoint<'a>) : WktCoord list = 
         match source with | WktMultiPoint xs -> xs
 
-    type WktLineString<'a> = WktLineString of WktCoord list 
 
-    let inline unwrapWktLineString (source:WktLineString<'a>) : WktCoord list = 
-        match source with | WktLineString xs -> xs
+    /// TODO polyhedralsurface
         
-        
-    type WktPolygon<'a> =   
-        { ExteriorRing: WktCoord list 
-          InteriorRings: (WktCoord list) list }
+    type WktTriangle<'a> = WktTriangle of WktCoord list 
 
+    let inline unwrapWktTriangle (source:WktTriangle<'a>) : WktCoord list = 
+        match source with | WktTriangle xs -> xs
 
 
     // ***** PRINTING *****
     
     let inline showWktCoord (coord:WktCoord) : string = 
         sprintf "%.5f %.5f" coord.WktLon coord.WktLat
+
+    /// Prints in parens
+    let inline private showWktCoordText (coord:WktCoord) : string = 
+        sprintf "(%.5f %.5f)" coord.WktLon coord.WktLat
 
 
     /// Prints as 'POINT(14.12345, 15.12345)'
@@ -98,29 +114,43 @@ module WellKnownText =
         | None -> "POINT EMPTY"
         | Some coord -> sprintf "POINT(%s)" (showWktCoord coord)
 
+    let showLineStringText (source:WktCoord list) = 
+        match source with
+        | [] -> "EMPTY"
+        | xs -> sprintf "(%s)" (String.concat "," <| List.map showWktCoord xs)
 
     /// Prints as 'LINESTRING(-1.08066 53.93863,-1.43627 53.96907)'
+    let showWktLineString (source:WktLineString<'a>) : string =
+        sprintf "LINESTRING %s" << showLineStringText <| unwrapWktLineString source
+        
+
+    let showPolygonText (source:(WktCoord list) list) = 
+        match source with
+        | [] -> "EMPTY"
+        | xs -> sprintf "(%s)" (String.concat "," <| List.map showLineStringText xs)
+
+
+    let showWktPolygon (source:WktPolygon<'a>) : string =
+        sprintf "POLYGON %s" <| showPolygonText (source.ExteriorRing :: source.InteriorRings)
+        
+
+
+    /// Prints as 'MULTIPOINT((-1.08066 53.93863), (-1.43627 53.96907))'
     let showWktMultiPoint (source:WktMultiPoint<'a>) : string =
+        match unwrapWktMultiPoint source with
+        | [] -> "MULTIPOINT EMPTY"
+        | xs -> sprintf "MULTIPOINT(%s)" (String.concat "," <| List.map showWktCoordText xs)
+
+    /// Prints as 'MULTIPOINT(-1.08066 53.93863,-1.43627 53.96907)'
+    let showWktMultiPointLax (source:WktMultiPoint<'a>) : string =
         match unwrapWktMultiPoint source with
         | [] -> "MULTIPOINT EMPTY"
         | xs -> sprintf "MULTIPOINT(%s)" (String.concat "," <| List.map showWktCoord xs)
 
-
-    /// Prints as 'LINESTRING(-1.08066 53.93863,-1.43627 53.96907)'
-    let showWktLineString (source:WktLineString<'a>) : string =
-        match unwrapWktLineString source with
-        | [] -> "LINESTRING EMPTY"
-        | xs -> sprintf "LINESTRING(%s)" (String.concat "," <| List.map showWktCoord xs)
-
-
-    /// This is a simple closed polygon without any interior polygons.
-    /// The user is responsible to ensure the polygon is closed before printing and
-    /// that points are in counter-clockwise direction.
-    let showWktPolygon (source:WktPolygon<'a>) : string =
-        let showRing xs = sprintf "(%s)" << String.concat "," <| List.map showWktCoord xs
-        match source.ExteriorRing, source.InteriorRings with
-        | [], [] -> "POLYGON EMPTY"
-        | xs, xss -> sprintf "POLYGON(%s)" << String.concat "," <| List.map showRing (xs::xss)
+    let showWktTriangle (source:WktTriangle<'a>) : string =
+        match unwrapWktTriangle source with
+        | [] -> "TRIANGLE EMPTY"
+        | xs -> sprintf "TRIANGLE(%s)" (String.concat "," <| List.map showWktCoordText xs)
 
         
     // ***** Conversion *****
@@ -185,7 +215,7 @@ module WellKnownText =
                 (fun lon lat -> { WktLon = lon; WktLat = lat })
 
     let private pComma : Parser<unit,unit> = 
-        pSymbol "," |>> fun _ -> ()
+        pSymbol "," |>> ignore
 
     let private pEMPTY (emptyDefault:'a) : Parser<'a, unit> = 
         pSymbol "EMPTY" |>> (fun _ -> emptyDefault)
@@ -238,18 +268,12 @@ module WellKnownText =
         let parsePOINT = pSymbol "POINT" >>. (pPointText |>> WktPoint)
         tryReadParse parsePOINT source
 
-    // Note - the proper version is MULTIPOINT((1 2), (3 4))            
-    let tryReadWktMultiPoint (source:string) : WktMultiPoint<'srid> option = 
-        let parseMULTIPOINT : Parser<WktMultiPoint<'srid>, unit>= 
-            pSymbol "MULTIPOINT" >>. ( pMultipointText |>> WktMultiPoint)
-        tryReadParse parseMULTIPOINT source
-
     let tryReadWktLineString (source:string) : WktLineString<'srid> option = 
         let parseLINESTRING = pSymbol "LINESTRING" >>. pLinestringText |>> WktLineString
         tryReadParse parseLINESTRING source
 
 
-
+    // Polygon
     let private buildPolygon (source:PolygonText) : WktPolygon<'srid> = 
         match source with
         | [] -> { ExteriorRing = []; InteriorRings = [] }
@@ -260,6 +284,13 @@ module WellKnownText =
     let tryReadWktPolygon1 (source:string) : WktPolygon<'srid> option = 
         let parsePOLYGON1 = pSymbol "POLYGON" >>. pPolygonText |>> buildPolygon
         tryReadParse parsePOLYGON1 source
+
+    // Note - the proper version is MULTIPOINT((1 2), (3 4))            
+    let tryReadWktMultiPoint (source:string) : WktMultiPoint<'srid> option = 
+        let parseMULTIPOINT : Parser<WktMultiPoint<'srid>, unit>= 
+            pSymbol "MULTIPOINT" >>. ( pMultipointText |>> WktMultiPoint)
+        tryReadParse parseMULTIPOINT source
+
 
 
 
