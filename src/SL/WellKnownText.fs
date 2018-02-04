@@ -109,9 +109,15 @@ module WellKnownText =
         match source with | WktMultiPoint xs -> xs
 
 
-    // TODO MultiLineString
+    type WktMultiLineString<'a> = WktMultiLineString of (WktCoord list) list
 
-    // TODO MultiPolygon
+    let inline unwrapWktMultiLineString (source:WktMultiLineString<'a>) : (WktCoord list) list= 
+        match source with | WktMultiLineString xs -> xs
+
+    type WktMultiPolygon<'a> =  WktMultiPolygon of WktSurface list
+
+    let inline unwrapWktMultiPolygon (source:WktMultiPolygon<'a>) : WktSurface list= 
+        match source with | WktMultiPolygon xs -> xs
 
 
     // ***** PRINTING *****
@@ -189,6 +195,24 @@ module WellKnownText =
         | [] -> "MULTIPOINT EMPTY"
         | xs -> sprintf "MULTIPOINT(%s)" (String.concat "," <| List.map showWktCoord xs)
 
+
+    let private showMultiLineStringText (source:(WktCoord list) list) : string =
+        match source with
+        | [] -> "EMPTY"
+        | xs -> sprintf "(%s)" (String.concat "," <| List.map showLineStringText xs)
+
+
+    let showWktMultiLineString (source:WktMultiLineString<'a>) : string = 
+        sprintf "MULTILINESTRING %s" << showMultiLineStringText <| unwrapWktMultiLineString source
+
+    let private showMultiPolygonText (source:WktSurface list) : string =
+        match source with
+        | [] -> "EMPTY"
+        | xs -> sprintf "(%s)" (String.concat "," <| List.map showPolygonText xs)
+
+    let showWktMultiPolygon (source:WktMultiPolygon<'a>) : string = 
+        sprintf "MULTIPOLYGON %s" << showMultiPolygonText <| unwrapWktMultiPolygon source
+
     // ***** Conversion *****
     let wgs84PointToWKT (point:WGS84Point) : WktPoint<WGS84> =
         WktPoint <| Some { WktLon = decimal point.Longitude; WktLat = decimal point.Latitude }
@@ -255,6 +279,8 @@ module WellKnownText =
     let private pEMPTY (emptyDefault:'a) : Parser<'a, unit> = 
         pSymbol "EMPTY" |>> (fun _ -> emptyDefault)
 
+    let private pTagged (tag:string) (p:Parser<'a,unit>) :Parser<'a,unit> = 
+        pSymbol tag >>. p
 
     type private PointText = WktCoord option
 
@@ -263,33 +289,67 @@ module WellKnownText =
 
 
 
-    type private LinestringText = WktCoord list
+    type private LineStringText = WktCoord list
 
-    let private pLinestringText : Parser<LinestringText, unit> = 
+    let private pLineStringText : Parser<LineStringText, unit> = 
         pEMPTY [] <|> pParens (sepBy1 pPointText1 (pSymbol ","))
         
 
-    let private pParenLinestringText1 : Parser<LinestringText, unit> = 
+    let private pParenLineStringText1 : Parser<LineStringText, unit> = 
         sepBy1 (pParens pPointText1) (pSymbol ",")
 
-    type private PolygonText = LinestringText list
+    type private PolygonText = LineStringText list
+
+    let private buildSurface (source:PolygonText) : WktSurface = 
+        match source with
+        | [] -> { ExteriorBoundary = []; InteriorBoundaries = [] }
+        | x :: xs -> { ExteriorBoundary = x; InteriorBoundaries = xs }
 
     let private pPolygonText : Parser<PolygonText,unit> =
-        pEMPTY [] <|> pParens (sepBy1 pLinestringText (pSymbol ","))
+        pEMPTY [] <|> pParens (sepBy1 pLineStringText (pSymbol ","))
 
     
+    let private pWktSurface : Parser<WktSurface,unit> =
+        let build1 xs xss = { ExteriorBoundary = xs; InteriorBoundaries = xss}
+        let buildXs xss = 
+            match xss with 
+            | [] -> { ExteriorBoundary = []; InteriorBoundaries = []}
+            | y :: ys -> { ExteriorBoundary = y; InteriorBoundaries = ys}
+        pEMPTY (build1 [] []) <|> pParens (sepBy1 pLineStringText pComma |>> buildXs)
+
+    
+    let pTriangleText : Parser<WktCoord list,unit> =
+        pEMPTY [] <|> pParens pLineStringText
+
+    let private pPolyhedralSurfaceText: Parser<WktSurface list,unit> =
+        pEMPTY [] <|> pParens (sepBy1 pWktSurface (pSymbol ","))
+
+
+    // Divergence from the EBNF - Tin is disallowed interior rings, so cannot use 
+    // pPolyhedralSurfaceText
+    let private pTinText: Parser<(WktCoord list) list,unit> =
+        pParens (sepBy1 pLineStringText pComma)
+
     /// Note - we diverge from the WKT Spec. Null Points are not allowed.
-    type private MultipointText = PointText1 list
+    type private MultiPointText = PointText1 list
     
 
     /// Note - we diverge from the WKT Spec. Null Points are not recognized.
     /// We also allow old style Point Lists where individual points are not within parens.
-    let private pMultipointText : Parser<MultipointText,unit> = 
-        let goodList = sepBy1 (pParens pPointText1) pComma
-        let badList = sepBy1 pPointText1 pComma
-        pEMPTY [] <|> pParens (goodList <|> badList)
+    let private pMultiPointText : Parser<MultiPointText,unit> = 
+        let newStyle = sepBy1 (pParens pPointText1) pComma
+        let oldStyle = sepBy1 pPointText1 pComma
+        pEMPTY [] <|> pParens (newStyle <|> oldStyle)
 
+    let private pMultiLineStringText : Parser<LineStringText list,unit> = 
+        pEMPTY [] <|> pParens (sepBy1 pLineStringText pComma)
         
+
+    let private pMultiPolygonText: Parser<WktSurface list,unit> =
+        pEMPTY [] <|> pParens (sepBy1 pWktSurface (pSymbol ","))
+        
+    // *** utlity
+                        
     let tryReadParse (p1:Parser<'a,unit>) (source:string) : 'a option = 
         let ans1 = runParserOnString p1 () "none" source
         match ans1 with
@@ -300,36 +360,53 @@ module WellKnownText =
     // ***** Parsing Public API
 
     let tryReadWktPoint (source:string) : WktPoint<'srid> option = 
-        let parsePOINT = pSymbol "POINT" >>. (pPointText |>> WktPoint)
+        let parsePOINT = pTagged "POINT" pPointText |>> WktPoint
         tryReadParse parsePOINT source
 
     let tryReadWktLineString (source:string) : WktLineString<'srid> option = 
-        let parseLINESTRING = pSymbol "LINESTRING" >>. pLinestringText |>> WktLineString
+        let parseLINESTRING = pTagged "LINESTRING" pLineStringText |>> WktLineString
         tryReadParse parseLINESTRING source
 
 
     // Surface
-    let private buildSurface (source:PolygonText) : WktSurface = 
-        match source with
-        | [] -> { ExteriorBoundary = []; InteriorBoundaries = [] }
-        | x :: xs -> { ExteriorBoundary = x; InteriorBoundaries = xs }
-
     let private buildPolygon (source:PolygonText) : WktPolygon<'srid> = 
         WktPolygon <| buildSurface source
 
     // WARNING - to test
-    let tryReadWktPolygon1 (source:string) : WktPolygon<'srid> option = 
-        let parsePOLYGON1 = pSymbol "POLYGON" >>. pPolygonText |>> buildPolygon
-        tryReadParse parsePOLYGON1 source
+    let tryReadWktPolygon (source:string) : WktPolygon<'srid> option = 
+        let parsePOLYGON = pTagged "POLYGON" pPolygonText |>> buildPolygon
+        tryReadParse parsePOLYGON source
 
-    // Note - the proper version is MULTIPOINT((1 2), (3 4))            
+    let tryReadWktTriangle (source:string) : WktTriangle<'srid> option = 
+        let parseTRIANGLE = pTagged "TRIANGLE" pTriangleText |>> WktTriangle
+        tryReadParse parseTRIANGLE source
+
+    let tryReadWktPolyhedralSurface (source:string) : WktPolyhedralSurface<'srid> option = 
+        let parsePOLYHEDRAL = 
+            pTagged "POLYHEDRALSURFACE" pPolyhedralSurfaceText |>> WktPolyhedralSurface
+        tryReadParse parsePOLYHEDRAL source
+
+
+    let tryReadWktTin (source:string) : WktTin<'srid> option = 
+        let parseTIN = pTagged "TIN" pTinText |>> WktTin
+        tryReadParse parseTIN source
+
+
+    /// Note - the proper version is MULTIPOINT((1 2), (3 4))            
+    /// This hould handle both cases - to check...
     let tryReadWktMultiPoint (source:string) : WktMultiPoint<'srid> option = 
-        let parseMULTIPOINT : Parser<WktMultiPoint<'srid>, unit>= 
-            pSymbol "MULTIPOINT" >>. ( pMultipointText |>> WktMultiPoint)
+        let parseMULTIPOINT = pTagged "MULTIPOINT" pMultiPointText |>> WktMultiPoint
         tryReadParse parseMULTIPOINT source
 
 
+    let tryReadWktMultiLineString (source:string) : WktMultiLineString<'srid> option = 
+        let parseMULTILINESTRING = pTagged "MULTILINESTRING" pMultiLineStringText |>> WktMultiLineString
+        tryReadParse parseMULTILINESTRING source
 
+
+    let tryReadWktMultiPolygon (source:string) : WktMultiPolygon<'srid> option = 
+        let parseMULTILINESTRING = pTagged "MULTIPOLYGON" pMultiPolygonText |>> WktMultiPolygon
+        tryReadParse parseMULTILINESTRING source
 
 
     // OLD CODE...
