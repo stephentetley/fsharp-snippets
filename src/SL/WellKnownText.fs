@@ -73,11 +73,31 @@ module WellKnownText =
     let inline unwrapWktLineString (source:WktLineString<'a>) : WktCoord list = 
         match source with | WktLineString xs -> xs
 
+    type WktSurface = 
+        { ExteriorBoundary: WktCoord list 
+          InteriorBoundaries: (WktCoord list) list } 
+    
+
+
     /// The user is responsible to ensure the polygon is closed before printing and
     /// that points are in counter-clockwise direction.        
-    type WktPolygon<'a> =   
-        { ExteriorRing: WktCoord list 
-          InteriorRings: (WktCoord list) list }
+    type WktPolygon<'a> =  WktPolygon of WktSurface 
+
+
+    type WktPolyhedralSurface<'a> = WktPolyhedralSurface of WktSurface list 
+
+    let inline unwrapWktPolyhedralSurface (source:WktPolyhedralSurface<'a>) : WktSurface list = 
+        match source with | WktPolyhedralSurface xs -> xs
+    
+    type WktTriangle<'a> = WktTriangle of WktCoord list 
+
+    let inline unwrapWktTriangle (source:WktTriangle<'a>) : WktCoord list = 
+        match source with | WktTriangle xs -> xs
+
+    type WktTin<'a> = WktTin of (WktCoord list) list
+    
+    let inline unwrapWktTin (source:WktTin<'a>) : (WktCoord list) list= 
+        match source with | WktTin xs -> xs
 
 
     /// According to the spec, we should allow Null Points in a MULTIPOINT
@@ -89,32 +109,33 @@ module WellKnownText =
         match source with | WktMultiPoint xs -> xs
 
 
-    /// TODO polyhedralsurface
-        
-    type WktTriangle<'a> = WktTriangle of WktCoord list 
+    // TODO MultiLineString
 
-    let inline unwrapWktTriangle (source:WktTriangle<'a>) : WktCoord list = 
-        match source with | WktTriangle xs -> xs
+    // TODO MultiPolygon
 
 
     // ***** PRINTING *****
     
-    let inline showWktCoord (coord:WktCoord) : string = 
-        sprintf "%.5f %.5f" coord.WktLon coord.WktLat
-
     /// Prints in parens
     let inline private showWktCoordText (coord:WktCoord) : string = 
         sprintf "(%.5f %.5f)" coord.WktLon coord.WktLat
 
+    let inline showWktCoord (coord:WktCoord) : string = 
+        sprintf "%.5f %.5f" coord.WktLon coord.WktLat
+
+    
+    let inline private showPointText (point:WktPoint<'a>) : string = 
+        match unwrapWktPoint point with
+        | None -> "EMPTY"
+        | Some coord -> sprintf "(%s)" (showWktCoord coord)
 
     /// Prints as 'POINT(14.12345, 15.12345)'
     /// (Ideally we would print with user supplied precision)
     let inline showWktPoint (point:WktPoint<'a>) : string = 
-        match unwrapWktPoint point with
-        | None -> "POINT EMPTY"
-        | Some coord -> sprintf "POINT(%s)" (showWktCoord coord)
+        sprintf "POINT %s" <| showPointText point
 
-    let showLineStringText (source:WktCoord list) = 
+
+    let private showLineStringText (source:WktCoord list) = 
         match source with
         | [] -> "EMPTY"
         | xs -> sprintf "(%s)" (String.concat "," <| List.map showWktCoord xs)
@@ -124,22 +145,43 @@ module WellKnownText =
         sprintf "LINESTRING %s" << showLineStringText <| unwrapWktLineString source
         
 
-    let showPolygonText (source:(WktCoord list) list) = 
-        match source with
+    let private showPolygonText (source:WktSurface) = 
+        match (source.ExteriorBoundary :: source.InteriorBoundaries) with
         | [] -> "EMPTY"
         | xs -> sprintf "(%s)" (String.concat "," <| List.map showLineStringText xs)
 
 
-    let showWktPolygon (source:WktPolygon<'a>) : string =
-        sprintf "POLYGON %s" <| showPolygonText (source.ExteriorRing :: source.InteriorRings)
-        
+    let showWktPolygon (source:WktSurface) : string =
+        sprintf "POLYGON %s" <| showPolygonText source
 
+
+    let private showPolyhedralSurfaceText (source:WktSurface list) : string =
+        match source with
+        | [] -> "EMPTY"
+        | xs -> sprintf "(%s)" (String.concat "," <| List.map showPolygonText xs)
+
+
+    let showWktPolyhedralSurface (source:WktPolyhedralSurface<'a>) : string =
+        sprintf "POLYHEDRALSURACE %s" << showPolyhedralSurfaceText <| unwrapWktPolyhedralSurface source
+
+    
+    let showWktTriangle (source:WktTriangle<'a>) : string =
+        sprintf "TRIANGLE %s" 
+            << showPolygonText <| { ExteriorBoundary = unwrapWktTriangle source; InteriorBoundaries = [] }
+                    
+    let showWktTin (source:WktTin<'a>) : string = 
+        let toSurface1 = fun xs ->  { ExteriorBoundary = xs; InteriorBoundaries = [] }
+        sprintf "TIN %s" << showPolyhedralSurfaceText << List.map toSurface1 <| unwrapWktTin source
+            
+        
+    let private showMultiPointText (source:WktMultiPoint<'a>) : string =
+        match unwrapWktMultiPoint source with
+        | [] -> "EMPTY"
+        | xs -> sprintf "(%s)" (String.concat "," <| List.map showWktCoordText xs)
 
     /// Prints as 'MULTIPOINT((-1.08066 53.93863), (-1.43627 53.96907))'
     let showWktMultiPoint (source:WktMultiPoint<'a>) : string =
-        match unwrapWktMultiPoint source with
-        | [] -> "MULTIPOINT EMPTY"
-        | xs -> sprintf "MULTIPOINT(%s)" (String.concat "," <| List.map showWktCoordText xs)
+        sprintf "MULTIPOINT %s" <| showMultiPointText source
 
     /// Prints as 'MULTIPOINT(-1.08066 53.93863,-1.43627 53.96907)'
     let showWktMultiPointLax (source:WktMultiPoint<'a>) : string =
@@ -147,12 +189,6 @@ module WellKnownText =
         | [] -> "MULTIPOINT EMPTY"
         | xs -> sprintf "MULTIPOINT(%s)" (String.concat "," <| List.map showWktCoord xs)
 
-    let showWktTriangle (source:WktTriangle<'a>) : string =
-        match unwrapWktTriangle source with
-        | [] -> "TRIANGLE EMPTY"
-        | xs -> sprintf "TRIANGLE(%s)" (String.concat "," <| List.map showWktCoordText xs)
-
-        
     // ***** Conversion *****
     let wgs84PointToWKT (point:WGS84Point) : WktPoint<WGS84> =
         WktPoint <| Some { WktLon = decimal point.Longitude; WktLat = decimal point.Latitude }
@@ -189,9 +225,8 @@ module WellKnownText =
     let private pParens (p:Parser<'a,'u>) : Parser<'a,'u> =
         between (pSymbol "(") (pSymbol ")") p
 
-    // We have got over the value restriction by fixing the WktPoint phantom tag 
-    // to TEMP and parser state to unit.
-    // This is not a brilliant solution.
+    // We have got over the value restriction by fixing the parser state to unit.
+
 
     let private pDecimal : Parser<decimal,unit> = pfloat |>> decimal
 
@@ -273,12 +308,14 @@ module WellKnownText =
         tryReadParse parseLINESTRING source
 
 
-    // Polygon
-    let private buildPolygon (source:PolygonText) : WktPolygon<'srid> = 
+    // Surface
+    let private buildSurface (source:PolygonText) : WktSurface = 
         match source with
-        | [] -> { ExteriorRing = []; InteriorRings = [] }
-        | x :: xs -> { ExteriorRing = x; InteriorRings = xs }
+        | [] -> { ExteriorBoundary = []; InteriorBoundaries = [] }
+        | x :: xs -> { ExteriorBoundary = x; InteriorBoundaries = xs }
 
+    let private buildPolygon (source:PolygonText) : WktPolygon<'srid> = 
+        WktPolygon <| buildSurface source
 
     // WARNING - to test
     let tryReadWktPolygon1 (source:string) : WktPolygon<'srid> option = 
