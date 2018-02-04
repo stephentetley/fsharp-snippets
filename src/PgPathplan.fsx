@@ -55,14 +55,14 @@ let getPathImportRows () : seq<PathImportRow> =
 
 
 let tryMakeEdge (row:PathImportRow) : EdgeInsert option = 
-    match tryReadWktPoint row.StartPoint, tryReadWktPoint row.EndPoint with
+    let convert1 = 
+        Option.bind wktToOSGB36Point << tryReadWktPoint
+    match convert1 row.StartPoint, convert1 row.EndPoint with
     | Some startPt, Some endPt -> 
-        let wgs84Start = wktOSGB36ToWktWGS84 startPt
-        let wgs84End = wktOSGB36ToWktWGS84 endPt 
         Some <| { Basetype = row.BASETYPE
                 ; FunctionNode = row.FUNCTION_Link
-                ; StartPoint = osgb36ToWGS84 <| wktToOSGB36Point startPt
-                ; EndPoint = osgb36ToWGS84 <| wktToOSGB36Point endPt }
+                ; StartPoint = osgb36ToWGS84 startPt
+                ; EndPoint = osgb36ToWGS84 endPt }
     | _,_ -> None
 
 let edgeInsertDict : EdgeInsertDict<PathImportRow> = { tryMakeEdgeInsert = tryMakeEdge }

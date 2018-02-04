@@ -93,8 +93,8 @@ let findEdges (startPt:WGS84Point) : Script<Edge list> =
     let query = makeFindEdgesQUERY startPt
     let procM (reader:NpgsqlDataReader) : Edge = 
         let wgs84End = 
-            match tryReadWktPoint (reader.GetString(3)) with
-            | Some pt -> wktToWGS84Point pt
+            match Option.bind wktToWGS84Point <| tryReadWktPoint (reader.GetString(3)) with
+            | Some pt -> pt
             | None -> failwith "findEdges - point not readable"
         { UID           = int <| reader.GetInt32(0)
         ; Basetype      = reader.GetString(1)
