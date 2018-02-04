@@ -117,7 +117,7 @@ let nearestHospitalQuery (point:WGS84Point) : Script<NeighbourRec list> =
     let query = makeNearestNeighbourQUERY 1 point
     let procM (reader:NpgsqlDataReader) : NeighbourRec = 
         let gridRef = 
-            match Option.bind wktToWGS84Point <| tryReadWktPoint (reader.GetString(4)) with
+            match Option.bind wktPointToWGS84 <| tryReadWktPoint (reader.GetString(4)) with
             | Some pt -> pt
             | None -> failwith "findVertices ..."
         { Name          = reader.GetString(0)

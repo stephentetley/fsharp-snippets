@@ -120,6 +120,64 @@ module WellKnownText =
         match source with | WktMultiPolygon xs -> xs
 
 
+    // ***** construction / Conversion *****
+    let wgs84WktCoord (point:WGS84Point) : WktCoord =
+        { WktLon = decimal point.Longitude; WktLat = decimal point.Latitude }
+
+    let wgs84WktCoordList (points:WGS84Point list) : WktCoord list =
+        List.map wgs84WktCoord points
+
+    let wgs84WktPoint (point:WGS84Point) : WktPoint<WGS84> =
+        WktPoint << Some <| wgs84WktCoord point
+
+    let wktCoordToWGS84 (coord:WktCoord) : WGS84Point =
+        { Latitude = 1.0<degree> * float coord.WktLat
+        ; Longitude = 1.0<degree> * float coord.WktLon }
+
+    let wktCoordListToWGS84 (coords:WktCoord list) : WGS84Point list =
+        List.map wktCoordToWGS84 coords
+
+    let wktPointToWGS84 (point:WktPoint<WGS84>) : WGS84Point option =
+        Option.map wktCoordToWGS84 <| unwrapWktPoint point
+
+
+    // Design note 
+    // We better building higher level structures like PolyhedralSurface from parts
+    // made out of Wtk datatypes rather than trying to make everything out of lists 
+    // of ``WGS84Point list``.
+    // The latter leads to an unwieldy API.
+
+    let osgb36WktCoord (point:OSGB36Point) : WktCoord = 
+        { WktLon = decimal point.Easting; WktLat = decimal point.Northing }
+    
+    let osgb36WktCoordList (points:OSGB36Point list) : WktCoord list =
+        List.map osgb36WktCoord points
+
+    let osgb36WktPoint (point:OSGB36Point) : WktPoint<WGS84> =
+        WktPoint << Some <| osgb36WktCoord point
+
+
+    let wktCoordToOSGB36 (coord:WktCoord) : OSGB36Point =
+        { Easting = 1.0<meter> * float coord.WktLon
+        ; Northing = 1.0<meter> * float coord.WktLat }
+
+    let wktCoordListToOSGB36 (coords:WktCoord list) : OSGB36Point list =
+        List.map wktCoordToOSGB36 coords
+
+    let wktPointToOSGB36 (point:WktPoint<OSGB36>) : OSGB36Point option =
+        Option.map wktCoordToOSGB36 <| unwrapWktPoint point
+
+
+    // Previously we have had SRID changing functions, e.g. 
+    //
+    // val wktPointOSGB36ToWGS84 : point:WktPoint<OSGB36> -> WktPoint<WGS84>
+    // val wktPointWGS84ToOSGB36 : point:WktPoint<WGS84> -> WktPoint<OSGB36>
+    //
+    // However, maybe they are not so wise, if we need to change SRIDs we should be working
+    // with more concrete objects / datatypes. The Wtk datatypes are meant for data transfer.
+
+
+
     // ***** PRINTING *****
     
     /// Prints in parens
@@ -213,33 +271,7 @@ module WellKnownText =
     let showWktMultiPolygon (source:WktMultiPolygon<'a>) : string = 
         sprintf "MULTIPOLYGON %s" << showMultiPolygonText <| unwrapWktMultiPolygon source
 
-    // ***** Conversion *****
-    let wgs84PointToWKT (point:WGS84Point) : WktPoint<WGS84> =
-        WktPoint <| Some { WktLon = decimal point.Longitude; WktLat = decimal point.Latitude }
 
-    let osgb36PointToWKT (point:OSGB36Point) : WktPoint<OSGB36> = 
-        WktPoint <| Some { WktLon = decimal point.Easting; WktLat = decimal point.Northing }
-
-    let wktToWGS84Point (point:WktPoint<WGS84>) : WGS84Point option = 
-        let change (coord:WktCoord) = { Latitude = 1.0<degree> * float coord.WktLat
-                                      ; Longitude = 1.0<degree> * float coord.WktLon }
-        Option.map change <| unwrapWktPoint point
-
-    let wktToOSGB36Point (point:WktPoint<OSGB36>) : OSGB36Point option = 
-        let change (coord:WktCoord) = { Easting = 1.0<meter> * float coord.WktLon
-                                      ; Northing = 1.0<meter> * float coord.WktLat }
-        Option.map change <| unwrapWktPoint point
-
-
-    let wktOSGB36ToWktWGS84 (point:WktPoint<OSGB36>) : WktPoint<WGS84> = 
-        match wktToOSGB36Point point with
-        | None -> WktPoint None 
-        | Some osgb -> wgs84PointToWKT <| osgb36ToWGS84 osgb
-
-    let wktWGS84ToWktOSGB36 (point:WktPoint<WGS84>) : WktPoint<OSGB36> = 
-        match wktToWGS84Point point with 
-        | None -> WktPoint None
-        | Some wgs -> osgb36PointToWKT <| wgs84ToOSGB36 wgs
 
     // ***** PARSING *****
 
@@ -410,73 +442,73 @@ module WellKnownText =
 
 
     // OLD CODE...
-
-    let inline private parens (s:string) : string = sprintf "(%s)" s
-
-    
-    let inline private printPoint (coord:Coord.WGS84Point) : string = 
-        sprintf "%.5f %.5f" coord.Longitude coord.Latitude
-
-    let inline private printPointList (coords:Coord.WGS84Point list) : string = 
-        String.concat ", " <| List.map printPoint coords
-    
-    let inline private printPointListParens (coords:Coord.WGS84Point list) : string = 
-        String.concat ", " <| List.map (parens << printPoint) coords
-
-    let inline private printListOfPointLists (listoflists:Coord.WGS84Point list list) = 
-        let nonempties = List.filter (not << List.isEmpty) listoflists
-        String.concat ", " <| List.map (parens << printPointList) nonempties 
-
-    // Note for the API - isClosed (predicate) may be more important 
-    // than closePolygon (action).
-    // Can we expect data from client codeto be always closed?
-    let private closePolygon (coords:Coord.WGS84Point list) : Coord.WGS84Point list = 
-        match coords with
-        | [] -> []
-        | (hd::xs) -> 
-            let rec proc ac rest = 
-                match rest with
-                | [] -> List.rev ac
-                | [y] -> 
-                    if y = hd then List.rev (y::ac) else List.rev (hd::y::ac)
-                | (y::ys) -> proc (y::ac) ys
-            proc [hd] xs 
-    
-    // Note - don't quote output, client code can do that if necessary
-
-    let genPOINT (coord:Coord.WGS84Point) : string = 
-        sprintf  "POINT(%f %f)" coord.Longitude coord.Latitude
-
-    let genLINESTRING (coords:Coord.WGS84Point list) : string =
-        match coords with
-        | [] -> "LINESTRING EMPTY"
-        | _ -> sprintf "LINESTRING(%s)" (printPointList coords)
-
-    // User must ensure points are in counter-clockwise direction
-    let genPOLYGON1 (coords:Coord.WGS84Point list) : string =
-        match coords with
-        | [] -> "POLYGON EMPTY"
-        | _ -> 
-            let closedlist = closePolygon coords
-            sprintf "POLYGON(%s)" (printPointList closedlist)       
-
-    // User must ensure exterior points are in counter-clockwise direction
-    // and interior polygon points are in clockwise direction.
-    let genPOLYGON (exterior:Coord.WGS84Point list) (interiors:Coord.WGS84Point list list) : string =
-        match exterior with
-        | [] -> "POLYGON EMPTY"
-        | _ -> 
-            let closeExt = closePolygon exterior
-            let closedInts = List.map closePolygon interiors
-            match closedInts with
-            | [] -> sprintf "POLYGON(%s)" (printPointList closeExt)   
-            | _ -> 
-                sprintf "POLYGON((%s), %s)" (printPointList closeExt) (printListOfPointLists closedInts)
-                    
-    let genMULTIPOINT (coords:Coord.WGS84Point list) : string =
-        match coords with
-        | [] -> "MULTIPOINT EMPTY"
-        | _ -> sprintf "MULTIPOINT(%s)" (printPointList coords)
+//
+//    let inline private parens (s:string) : string = sprintf "(%s)" s
+//
+//    
+//    let inline private printPoint (coord:Coord.WGS84Point) : string = 
+//        sprintf "%.5f %.5f" coord.Longitude coord.Latitude
+//
+//    let inline private printPointList (coords:Coord.WGS84Point list) : string = 
+//        String.concat ", " <| List.map printPoint coords
+//    
+//    let inline private printPointListParens (coords:Coord.WGS84Point list) : string = 
+//        String.concat ", " <| List.map (parens << printPoint) coords
+//
+//    let inline private printListOfPointLists (listoflists:Coord.WGS84Point list list) = 
+//        let nonempties = List.filter (not << List.isEmpty) listoflists
+//        String.concat ", " <| List.map (parens << printPointList) nonempties 
+//
+//    // Note for the API - isClosed (predicate) may be more important 
+//    // than closePolygon (action).
+//    // Can we expect data from client codeto be always closed?
+//    let private closePolygon (coords:Coord.WGS84Point list) : Coord.WGS84Point list = 
+//        match coords with
+//        | [] -> []
+//        | (hd::xs) -> 
+//            let rec proc ac rest = 
+//                match rest with
+//                | [] -> List.rev ac
+//                | [y] -> 
+//                    if y = hd then List.rev (y::ac) else List.rev (hd::y::ac)
+//                | (y::ys) -> proc (y::ac) ys
+//            proc [hd] xs 
+//    
+//    // Note - don't quote output, client code can do that if necessary
+//
+//    let genPOINT (coord:Coord.WGS84Point) : string = 
+//        sprintf  "POINT(%f %f)" coord.Longitude coord.Latitude
+//
+//    let genLINESTRING (coords:Coord.WGS84Point list) : string =
+//        match coords with
+//        | [] -> "LINESTRING EMPTY"
+//        | _ -> sprintf "LINESTRING(%s)" (printPointList coords)
+//
+//    // User must ensure points are in counter-clockwise direction
+//    let genPOLYGON1 (coords:Coord.WGS84Point list) : string =
+//        match coords with
+//        | [] -> "POLYGON EMPTY"
+//        | _ -> 
+//            let closedlist = closePolygon coords
+//            sprintf "POLYGON(%s)" (printPointList closedlist)       
+//
+//    // User must ensure exterior points are in counter-clockwise direction
+//    // and interior polygon points are in clockwise direction.
+//    let genPOLYGON (exterior:Coord.WGS84Point list) (interiors:Coord.WGS84Point list list) : string =
+//        match exterior with
+//        | [] -> "POLYGON EMPTY"
+//        | _ -> 
+//            let closeExt = closePolygon exterior
+//            let closedInts = List.map closePolygon interiors
+//            match closedInts with
+//            | [] -> sprintf "POLYGON(%s)" (printPointList closeExt)   
+//            | _ -> 
+//                sprintf "POLYGON((%s), %s)" (printPointList closeExt) (printListOfPointLists closedInts)
+//                    
+//    let genMULTIPOINT (coords:Coord.WGS84Point list) : string =
+//        match coords with
+//        | [] -> "MULTIPOINT EMPTY"
+//        | _ -> sprintf "MULTIPOINT(%s)" (printPointList coords)
 
 
 

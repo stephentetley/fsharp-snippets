@@ -168,5 +168,5 @@ let generateTspRouteWKT (startId:int) (endId:int) : Script<string> =
     scriptMonad { 
         let! steps = eucledianTSP startId endId
         let (points:WGS84Point list) = getPoints steps
-        return (genLINESTRING points)
+        return (showWktLineString << WktLineString <| wgs84WktCoordList points)
         }

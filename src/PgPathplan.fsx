@@ -56,7 +56,7 @@ let getPathImportRows () : seq<PathImportRow> =
 
 let tryMakeEdge (row:PathImportRow) : EdgeInsert option = 
     let convert1 = 
-        Option.bind wktToOSGB36Point << tryReadWktPoint
+        Option.bind wktPointToOSGB36 << tryReadWktPoint
     match convert1 row.StartPoint, convert1 row.EndPoint with
     | Some startPt, Some endPt -> 
         Some <| { Basetype = row.BASETYPE
@@ -78,7 +78,7 @@ let SetupDB(password:string) : unit =
 let test01 () : unit =
     match tryReadWktPoint "POINT  ( 389330.850 501189.852) " with
     | Some (pt:WktPoint<OSGB36>) -> 
-        printfn "%s => %s" (showWktPoint pt) (showWktPoint <| wktOSGB36ToWktWGS84 pt) 
+        printfn "%s => %A" (showWktPoint pt) (Option.map showOSGB36Point <| wktPointToOSGB36 pt) 
     | None -> failwith "Grr!"
 
 let roseTree1 :PathTree<string> = 

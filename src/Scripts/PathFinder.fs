@@ -31,7 +31,7 @@ let deleteAllData () : Script<int> =
 
 let private makeEdgeInsert (edge1:EdgeInsert) : string = 
     let makePointLit (pt:WGS84Point) : string = 
-        sprintf "ST_GeogFromText('SRID=4326;%s')" (showWktPoint <| wgs84PointToWKT pt)
+        sprintf "ST_GeogFromText('SRID=4326;%s')" (showWktPoint <| wgs84WktPoint pt)
     // Note the id column is PG's SERIAL type so it is inserted automatically
     sqlINSERT "spt_pathfind" 
             <|  [ stringValue       "basetype"          edge1.Basetype
@@ -84,7 +84,7 @@ let makeFindEdgesQUERY (startPt:WGS84Point) : string =
             spt_pathfind
         WHERE 
             start_point = ST_GeomFromText('{0}', 4326);
-        """, showWktPoint <| wgs84PointToWKT startPt)
+        """, showWktPoint <| wgs84WktPoint startPt)
 
 
 
@@ -93,7 +93,7 @@ let findEdges (startPt:WGS84Point) : Script<Edge list> =
     let query = makeFindEdgesQUERY startPt
     let procM (reader:NpgsqlDataReader) : Edge = 
         let wgs84End = 
-            match Option.bind wktToWGS84Point <| tryReadWktPoint (reader.GetString(3)) with
+            match Option.bind wktPointToWGS84 <| tryReadWktPoint (reader.GetString(3)) with
             | Some pt -> pt
             | None -> failwith "findEdges - point not readable"
         { UID           = int <| reader.GetInt32(0)

@@ -45,7 +45,7 @@ let private singletonAsText1 (query:string) : Script<string> =
 /// The name for this needs to be considered.
 /// Favour calling ST_Point instead.
 let makeSTGeogFromTextPointLiteral (pt:WGS84Point) : string = 
-    sprintf "ST_GeogFromText('SRID=4326;%s')" << showWktPoint <| wgs84PointToWKT pt
+    sprintf "ST_GeogFromText('SRID=4326;%s')" << showWktPoint <| wgs84WktPoint pt
 
 
 
@@ -58,8 +58,8 @@ let makeDistanceQUERY (point1:WGS84Point) (point2:WGS84Point) : string =
             ST_GeomFromText('{0}', 4326),
             ST_GeomFromText('{1}', 4326),
             '{2}');
-        """, showWktPoint <| wgs84PointToWKT point1
-           , showWktPoint <| wgs84PointToWKT point2
+        """, showWktPoint <| wgs84WktPoint point1
+           , showWktPoint <| wgs84WktPoint point2
            , wgs84Spheroid)
 
 
@@ -78,7 +78,7 @@ let private makeConvexHullQUERY (points:WGS84Point list) : string =
 	        ST_Collect(
 		        ST_GeomFromText('{0}')
                 )) );
-        """, genMULTIPOINT points )
+        """, showWktMultiPoint << WktMultiPoint <| wgs84WktCoordList points )
 
 /// Returns WellKnownText.
 /// May return different geometry types depending on number of points in the result set.
@@ -96,7 +96,8 @@ let private makeConcaveHullQUERY (points:WGS84Point list) (targetPercent:float) 
 	        ST_Collect(
 		        ST_GeomFromText('{0}')
                 ), {1}) );
-        """, genMULTIPOINT points, targetPercent)
+        """, showWktMultiPoint << WktMultiPoint <| wgs84WktCoordList points
+           , targetPercent)
 
 /// Returns WellKnownText.
 /// May return different geometry types depending on number of points in the result set.
@@ -112,7 +113,7 @@ let pgConcaveHull (points:WGS84Point list) (targetPercent:float) : Script<string
 let private makeCentroidQUERY (points:WGS84Point list) : string = 
     System.String.Format("""
         SELECT ST_AsText(ST_Centroid('{0}'));
-        """, genMULTIPOINT points)
+        """, showWktMultiPoint << WktMultiPoint <| wgs84WktCoordList points)
 
 let pgCentroid (points:WGS84Point list) : Script<string> = 
     singletonAsText1 <| makeCentroidQUERY points 
