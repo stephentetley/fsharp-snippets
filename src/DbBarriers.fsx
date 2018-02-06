@@ -28,22 +28,23 @@ open FSharp.ExcelProvider
 #load @"SL\SQLiteConn.fs"
 #load @"SL\ClosedXMLOutput.fs"
 #load @"SL\JsonExtractor.fs"
+#load @"SL\ExcelProviderHelper.fs"
 #load @"SL\ScriptMonad.fs"
 open SL.AnswerMonad
 open SL.StringUtils
 open SL.SqlUtils
 open SL.SQLiteConn
 open SL.ClosedXMLOutput
+open SL.ExcelProviderHelper
 open SL.ScriptMonad
 
 
-#load @"SL\ExcelProviderHelper.fs"
-open SL.ExcelProviderHelper
+
 
 
 type ImportTable = 
-    ExcelFile< @"G:\work\Projects\barriers\sai_all.xlsx",
-                SheetName = "SAI_all",
+    ExcelFile< @"G:\work\Projects\barriers\barriers_data.xlsx",
+                SheetName = "INFO_ALL",
                 ForceString = true >
 
 type ImportRow = ImportTable.Row
@@ -60,7 +61,7 @@ type Script<'a> = ScriptMonad<SQLiteConnParams,'a>
 //  **** DB Import
 
 let makeConnParams () : SQLiteConnParams = 
-    let dbSrc = @"G:\work\Projects\barriers\saiDB.sqlite3"
+    let dbSrc = @"G:\work\Projects\barriers\barrierDB.sqlite3"
     sqliteConnParamsVersion3 dbSrc
 
 
@@ -78,14 +79,10 @@ let deleteData () : Script<int> =
 // This is the new style...
 let genINSERT1 (row:ImportRow) : string = 
     sqlINSERT "installations" 
-        <|  [ stringValue       "asset_sai_ref"         row.InstReference
-            ; stringValue       "asset_common_name"     row.InstCommonName
-            ; stringValue       "asset_status"          row.AssetStatus
-            ; stringValue       "osgb36_gridref"        row.LocationReference
-            //; stringValue       "full_address"          row.``Full Address``
-            //; stringValue       "grid_ref"              row.LocationReference
-            //; stringValue       "ops_contact"           row.``Operational Responsibility``
-            //; stringValue       "asset_type"            row.AssetType
+        <|  [ stringValue       "asset_uid"         row.InstReference
+            ; stringValue       "asset_name"        row.InstCommonName
+            ; stringValue       "asset_status"      row.AssetStatus
+            ; stringValue       "location"          row.LocationReference
             ]
 
 let insertData (rows:seq<ImportRow>) : Script<int> = 
@@ -105,7 +102,7 @@ let main () : unit =
 
 
 let testZ () = 
-    makeGlobPattern ["_"] [" "] "CHEVET TERRACE_NO 2 STW"
+    makeGlobPattern ["_"] [" "] "CHEVET CLIFFS_NO 2 LIGHTHOUSE"
 
 let makeNameGlob (source:string) : string = makeGlobPattern ["_"] [" "] source
     
@@ -113,25 +110,25 @@ let makeNameGlob (source:string) : string = makeGlobPattern ["_"] [" "] source
 let genNameQuery (name:string) : string = 
     System.String.Format("""
         SELECT 
-            asset_common_name, asset_sai_ref, osgb36_gridref
+            asset_uid, asset_name, location
         FROM
             installations
         WHERE
-            asset_common_name GLOB '{0}';
+            asset_name GLOB '{0}';
         """, makeNameGlob name)
 
 type ResultRec = 
-    { CommonName: string
-      SaiRef: string
-      GridRef: string } 
+    { Uid: string
+      Name: string
+      Location: string } 
 
-// THis can probably have mutliple matches as the glob may be lax...
+// This can probably have mutliple matches as the glob may be lax...
 let nameGlobQuery (name:string) : SQLiteConn<ResultRec list> = 
     let query = genNameQuery name
     let procM (reader:SQLiteDataReader) : ResultRec = 
-        { CommonName = reader.GetString(0)
-        ; SaiRef = reader.GetString(1) 
-        ; GridRef = reader.GetString(2)
+        { Uid = reader.GetString(0)
+        ; Name = reader.GetString(1) 
+        ; Location = reader.GetString(2)
         }
     execReaderList query procM          
 
@@ -145,24 +142,24 @@ let queryNames (names:string list) : Script<ResultRec list> =
 
 let exportSiteList (recs:ResultRec list) (xlsOutPath:string) : Script<unit> = 
     let proc1 (record:ResultRec) = 
-        [ tellString record.CommonName
-        ; tellString record.SaiRef 
-        ; tellString record.GridRef
+        [ tellString record.Uid
+        ; tellString record.Name 
+        ; tellString record.Location
         ]
         
     liftAction <| 
         outputToNew { SheetName = "Sites" } 
-                    (writeRecordsWithHeaders ["Name"; "Uid"; "NGR"] recs proc1) 
+                    (writeRecordsWithHeaders ["Uid"; "Name"; "Location"] recs proc1) 
                     xlsOutPath
 
 let tempSiteList = 
-    [ @"FOSTER ROAD/URS"
-    ; @"BURNLEY MOOR/URS"
+    [ @"FOSTER ROAD"
+    ; @"BURNLEY MOOR"
     ]
 
 let genSiteList () : unit = 
     let conn = makeConnParams ()
-    let outPath = @"G:\work\Projects\rtu\sites-NS-NGR.xlsx"
+    let outPath = @"G:\work\Projects\barriers\sites-list-barriers.xlsx"
     
     runScript (failwith) (printfn "Success: %A") (consoleLogger) conn <| scriptMonad { 
         let! records = queryNames tempSiteList

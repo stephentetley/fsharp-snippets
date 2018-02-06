@@ -130,7 +130,7 @@
     <None Include="CorrectGridRefs.fsx" />
     <None Include="TestMagick.fsx" />
     <None Include="TestDocOutput.fsx" />
-    <None Include="DbSAI.fsx" />
+    <None Include="DbBarriers.fsx" />
     <None Include="TestFileStore.fsx" />
     <None Include="InvestigateDb.fsx" />
     <None Include="PgNearestHospital.fsx" />
