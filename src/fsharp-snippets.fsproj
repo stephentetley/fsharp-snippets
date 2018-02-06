@@ -111,11 +111,12 @@
     <Compile Include="Scripts\NearestHospital.fs" />
     <Compile Include="Scripts\Grouping.fs" />
     <Compile Include="Scripts\TspRouting.fs" />
+    <Compile Include="Scripts\TotalOrder.fs" />	
     <None Include="CsvTrim.fsx" />
     <None Include="TestGeo.fsx" />
     <None Include="NearestNeighbour.fsx" />
     <None Include="GenLinestringWKT.fsx" />
-    <None Include="TotalOrder.fsx" />
+    <None Include="TotalOrder1.fsx" />
     <None Include="TotalOrder2.fsx" />
     <None Include="WGS84ExcelCoord.fsx" />
     <None Include="GenFindReplaceInput.fsx" />

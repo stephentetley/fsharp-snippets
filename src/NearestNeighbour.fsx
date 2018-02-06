@@ -19,6 +19,7 @@ open Microsoft.Office.Interop
 
 #load @"SL\CommonUtils.fs"
 #load @"SL\AnswerMonad.fs"
+#load @"SL\JsonExtractor.fs"
 #load @"SL\ScriptMonad.fs"
 #load @"SL\CsvOutput.fs"
 #load @"SL\ClosedXMLOutput.fs"
