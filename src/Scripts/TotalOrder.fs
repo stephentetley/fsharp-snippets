@@ -18,11 +18,6 @@ type TotalOrderDict<'a,'b,'r,'out> =
       ProcessRight: 'b -> ScriptMonad<'r,'out>
       ProcessBoth: 'a ->'b -> ScriptMonad<'r,'out> }
 
-let private sortAList (dict:TotalOrderDict<'a,'b,'r,'out>) (source:'a list) : 'a list = 
-    List.sortWith dict.CompareLeft source
-
-let private sortBList (dict:TotalOrderDict<'a,'b,'r,'out>) (source:'b list) : 'b list = 
-    List.sortWith dict.CompareRight source
 
 let private tailRecMapM (mf:'a -> ScriptMonad<'r,'b>) (accum:'b list) (source:'a list) : ScriptMonad<'r, 'b list> =
     let rec go ac xs = 
@@ -45,7 +40,7 @@ let totalOrder (dict:TotalOrderDict<'a,'b,'r,'out>) (lefts:'a list) (rights:'b l
             | i when i > 0 -> 
                 scriptMonad.Bind (dict.ProcessRight y, fun a1 -> go (a1::ac) xs ys1)
             | i -> failwithf "Weird pattern failure: %i" i
-    go [] lefts rights
+    go [] (List.sortWith dict.CompareLeft lefts) (List.sortWith dict.CompareRight rights)
 
 
 
@@ -66,5 +61,5 @@ let totalOrderz (dict:TotalOrderDict<'a,'b,'r,'out>) (lefts:'a list) (rights:'b 
                                 let! _ = dict.ProcessRight y
                                 do! go xs ys1 }
             | i -> failwithf "Weird pattern failure: %i" i
-    go lefts rights
+    go (List.sortWith dict.CompareLeft lefts) (List.sortWith dict.CompareRight rights)
 

@@ -154,7 +154,7 @@ let processMatchM (x:MasterRow) (y:UpdateRow) : Script<RowWriter> =
                     ]
 
 
-let cvsHeaders =  
+let csvHeaders =  
     [ "Measureand"; "Site name"; "Asset type"
     ; "AssetId"; "Reference"; "Common Name"
     ; "Installed From"; "Manufacturer"

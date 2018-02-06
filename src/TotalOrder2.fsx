@@ -48,17 +48,11 @@ let directoryListing = @"G:\work\Projects\rtu\dir.txt"
 
 type Script<'a> = ScriptMonad<unit,'a>
 
-let noPunctuation (input:string) : string = 
-    let bads = ['\\'; '/'; ':'; '#'; '.'; ','; '_']
-    List.fold (fun s c -> s.Replace(c,' ')) input bads
-
-
 
 let buildListing () =
     let emptyPred (s:string) = match s.Trim() with "" -> false | _ -> true
     System.IO.File.ReadLines(directoryListing)
         |> Seq.filter emptyPred
-        |> Seq.sort
 
 let processMaster (row:MasterRow) : Script<RowWriter option> =  
     scriptMonad.Return <| None
@@ -70,11 +64,17 @@ let processUpdate (name:string) : Script<RowWriter option> =
 let processMatch (row:MasterRow) (name:string) : Script<RowWriter option> = 
     scriptMonad.Return <| Some [ tellString name; tellString "Exists" ]
 
+    
+let noPunctuation (input:string) : string = 
+    let bads = ['\\'; '/'; ':'; '#'; '.'; ','; '_']
+    List.fold (fun s c -> s.Replace(c,' ')) input bads
+
+
 let compareElements (row:MasterRow) (name:string) : int = 
     let name1 = noPunctuation <| name.Trim()
     let len = name1.Length
     let prefix = noPunctuation <| (row.Title.Trim()).[0..len-1]
-    printfn "'%s' => '%s'" prefix name1
+    // printfn "'%s' => '%s'" prefix name1
     compare prefix name1
 
 let dictTotalOrderDict : TotalOrderDict<MasterRow,string,unit,RowWriter option> = 
