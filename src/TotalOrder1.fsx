@@ -12,22 +12,16 @@ open Microsoft.Office.Interop
 
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
-#I @"..\packages\DocumentFormat.OpenXml.2.7.2\lib\net46\"
-#I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
-#I @"..\packages\ClosedXML.0.90.0\lib\net452\"
-#r "ClosedXML"
+
 
 #load @"SL\CommonUtils.fs"
 #load @"SL\ExcelProviderHelper.fs"
 #load @"SL\AnswerMonad.fs"
 #load @"SL\JsonExtractor.fs"
-#load @"SL\ScriptMonad.fs"
 #load @"SL\CsvOutput.fs"
-#load @"SL\ClosedXMLOutput.fs"
-#load @"SL\ExcelUtils.fs"
+#load @"SL\ScriptMonad.fs"
 open SL.ExcelProviderHelper
-open SL.ClosedXMLOutput
-open SL.ExcelUtils
+open SL.CsvOutput
 open SL.ScriptMonad
 
 #load @"Scripts\TotalOrder.fs"
@@ -160,7 +154,7 @@ let processMatchM (x:MasterRow) (y:UpdateRow) : Script<RowWriter> =
                     ]
 
 
-let xlsHeaders =  
+let cvsHeaders =  
     [ "Measureand"; "Site name"; "Asset type"
     ; "AssetId"; "Reference"; "Common Name"
     ; "Installed From"; "Manufacturer"
@@ -179,13 +173,13 @@ let dictTotalOrderDict: TotalOrderDict<MasterRow,UpdateRow,unit,RowWriter> =
 let main () = 
     let masterRows = getMasterRows ()
     let updateRows = getUpdateRows ()
-    let outFile = @"G:\work\Projects\usar\usar-updates-total-order.xlsx"
+    let outFile = @"G:\work\Projects\usar\usar-updates-total-order.csv"
     runConsoleScript (printfn "Success: %A") () 
         <| scriptMonad { 
-            let! (xlsRows:RowWriter list) = totalOrder dictTotalOrderDict masterRows updateRows
+            let! (csvRows:RowWriter list) = totalOrder dictTotalOrderDict masterRows updateRows
             do! liftAction (printfn "Generating output...")
-            let procXls = writeRowsWithHeaders xlsHeaders xlsRows
-            do! liftAction (outputToNew {SheetName = "Diffs"} procXls outFile)
+            let procCsv = writeRowsWithHeaders csvHeaders csvRows
+            do! liftAction (outputToNew {Separator = ","} procCsv outFile)
         }
 
 

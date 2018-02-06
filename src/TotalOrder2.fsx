@@ -2,17 +2,30 @@
 #r "Microsoft.Office.Interop.Excel"
 open Microsoft.Office.Interop
 
+#I @"..\packages\FSharp.Data.2.3.3\lib\net40"
+#r @"FSharp.Data.dll"
+open FSharp.Data
+
 #I @"..\packages\ExcelProvider.0.8.2\lib"
 #r "ExcelProvider.dll"
 open FSharp.ExcelProvider
 
+#I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
+#r "FSharpx.Collections"
 open System
 
+#load @"SL\AnswerMonad.fs"
+#load @"SL\JsonExtractor.fs"
 #load @"SL\CsvOutput.fs"
+#load @"SL\ExcelProviderHelper.fs"
+#load @"SL\ScriptMonad.fs"
 open SL.CsvOutput
+open SL.ExcelProviderHelper
+open SL.ScriptMonad
 
-// Just names. ps> dir | select -exp name
-let directoryListing = @"G:\work\Projects\rtu\dir.txt"
+#load @"Scripts\TotalOrder.fs"
+open Scripts.TotalOrder
+
 
 
 type MasterTable = 
@@ -23,19 +36,23 @@ type MasterTable =
 // Maybe can't implement IComparable for MasterRow as it's a type synonym. 
 type MasterRow = MasterTable.Row
 
+
+let getMasterRows () : MasterRow list = 
+    let dict : GetRowsDict<MasterTable, MasterRow> = 
+        { GetRows     = fun imports -> imports.Data 
+          NotNullProc = fun row -> match row.GetValue(0) with null -> false | _ -> true }
+    excelTableGetRows dict (new MasterTable())
+
+// Just names. ps> dir | select -exp name
+let directoryListing = @"G:\work\Projects\rtu\dir.txt"
+
+type Script<'a> = ScriptMonad<unit,'a>
+
 let noPunctuation (input:string) : string = 
     let bads = ['\\'; '/'; ':'; '#'; '.'; ','; '_']
     List.fold (fun s c -> s.Replace(c,' ')) input bads
 
 
-// Sorted lexically on Title
-let buildMaster () : seq<MasterRow> = 
-    let masterData = new MasterTable()
-    let nullPred (row:MasterRow) = match row.Title with null -> false | _ -> true
-    let comparison (a:MasterRow) (b:MasterRow):int = compare a.Title b.Title
-    masterData.Data 
-        |> Seq.filter nullPred
-        |> Seq.sortWith comparison
 
 let buildListing () =
     let emptyPred (s:string) = match s.Trim() with "" -> false | _ -> true
@@ -43,41 +60,45 @@ let buildListing () =
         |> Seq.filter emptyPred
         |> Seq.sort
 
-let processUpdate (name:string) : CsvOutput<unit> = 
-    tellRow [ tellString name; tellString "To make"]
+let processMaster (row:MasterRow) : Script<RowWriter option> =  
+    scriptMonad.Return <| None
 
-let processMaster (row:MasterRow) : CsvOutput<unit> = 
-    csvOutput.Return ()
+let processUpdate (name:string) : Script<RowWriter option> = 
+    scriptMonad.Return <| Some [ tellString name; tellString "To make"]
 
-let processMatch (row:MasterRow) (name:string) : CsvOutput<unit> =
-    tellRow [ tellString name; tellString "Exists" ]
+
+let processMatch (row:MasterRow) (name:string) : Script<RowWriter option> = 
+    scriptMonad.Return <| Some [ tellString name; tellString "Exists" ]
 
 let compareElements (row:MasterRow) (name:string) : int = 
     let name1 = noPunctuation <| name.Trim()
     let len = name1.Length
     let prefix = noPunctuation <| (row.Title.Trim()).[0..len-1]
-    // printfn "'%s' => '%s'" prefix name1
+    printfn "'%s' => '%s'" prefix name1
     compare prefix name1
 
-let processLists (xs:MasterRow list) (ys:string list) : CsvOutput<unit> = 
-    let rec go ms us = 
-        match (ms,us) with
-        | [], us1 -> mapMz processUpdate us1
-        | ms1, [] -> mapMz processMaster ms1
-        | (m::ms1, u::us1) -> 
-            match compareElements m u with
-            | x when x < 0 -> csvOutput { do! processMaster m
-                                          do! go ms1 us }
-            | x when x = 0 -> csvOutput { do! processMatch m u
-                                          do! go ms1 us1 }
-            | x when x > 0 -> csvOutput { do! processUpdate u
-                                          do! go ms us1 }
-            | x -> failwith (sprintf "Weird pattern failure: %d" x)
-    go xs ys
+let dictTotalOrderDict : TotalOrderDict<MasterRow,string,unit,RowWriter option> = 
+    { CompareLeft = fun a b -> compare a.Title b.Title
+      CompareRight = fun a b -> compare a b
+      CompareLeftToRight = compareElements
+      ProcessLeft = processMaster
+      ProcessRight = processUpdate
+      ProcessBoth = processMatch }
+
+let csvHeaders = [ "Name"; "Status" ]
 
 let main () = 
-    let master = buildMaster ()
-    let updates = buildListing ()
-    let outFile = @"G:\work\Projects\rtu\manuals-TODO.csv"
-    let proc = processLists (master |> Seq.toList) (updates |> Seq.toList)
-    outputToNew {Separator=","} proc outFile
+    let masterRows = getMasterRows ()
+    let updates = buildListing () |> Seq.toList
+    let outFile = @"G:\work\Projects\rtu\manuals-To-Make.csv"
+
+    runConsoleScript (printfn "Success: %A") () 
+        <| scriptMonad { 
+            let! (csvRows:RowWriter list) = 
+                fmapM (List.choose id) <| totalOrder dictTotalOrderDict masterRows updates
+            do! liftAction (printfn "Generating output...")
+            let procCsv = writeRowsWithHeaders csvHeaders csvRows
+            do! liftAction (outputToNew {Separator = ","} procCsv outFile)
+        }
+
+
