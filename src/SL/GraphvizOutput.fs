@@ -11,9 +11,9 @@ open System.IO
 // Maybe have indent as an int...
 // StreamWriter or StringWriter
 type GraphvizOutput<'a> = 
-    GraphvizOutput of (StreamWriter -> 'a)
+    GraphvizOutput of (StringWriter -> 'a)
 
-let inline private apply1 (ma : GraphvizOutput<'a>) (handle:StreamWriter) : 'a = 
+let inline private apply1 (ma : GraphvizOutput<'a>) (handle:StringWriter) : 'a = 
     let (GraphvizOutput f) = ma in f handle
 
 let inline private unitM (x:'a) : GraphvizOutput<'a> = GraphvizOutput (fun r -> x)
@@ -35,7 +35,7 @@ let (graphvizOutput:GraphvizOutputBuilder) = new GraphvizOutputBuilder()
 
 // Common monadic operations
 let fmapM (fn:'a -> 'b) (ma:GraphvizOutput<'a>) : GraphvizOutput<'b> = 
-    GraphvizOutput <| fun (handle:StreamWriter) ->
+    GraphvizOutput <| fun (handle:StringWriter) ->
         let ans = apply1 ma handle in fn ans
 
 let mapM (fn:'a -> GraphvizOutput<'b>) (xs:'a list) : GraphvizOutput<'b list> = 
@@ -71,8 +71,28 @@ let traverseMz (fn: 'a -> GraphvizOutput<'b>) (source:seq<'a>) : GraphvizOutput<
 // GraphvizOutput-specific operations
 
 let runGraphvizOutput (ma:GraphvizOutput<'a>) (outputPath:string) : 'a = 
-    use handle : System.IO.StreamWriter = new System.IO.StreamWriter(outputPath)
-    match ma with | GraphvizOutput(f) -> f handle
+    use handle : System.IO.StringWriter = new System.IO.StringWriter()
+    match ma with 
+    | GraphvizOutput(f) -> 
+        let ans = f handle 
+        System.IO.File.WriteAllText(outputPath, handle.ToString())
+        ans
 
+/// TODO this is too low level to expose...
+let tellLine (line:string) : GraphvizOutput<unit> = 
+    GraphvizOutput <| fun handle -> handle.WriteLine line
 
+//// There is no need for an embed primitive for ``graph`` etc. unless 
+//// we introduce nesting
+//let embed (ma:GraphvizOutput<'a>) : GraphvizOutput<'a> = 
+//    GraphvizOutput <| fun handle -> 
+//        match ma with 
+//        | GraphvizOutput(f) -> f handle
+
+let graph (name:string) (body:GraphvizOutput<'a>) : GraphvizOutput<'a> =
+    graphvizOutput {
+        do! tellLine (sprintf "graph %s {" name)
+        let! ans = body
+        do! tellLine "}"
+        return ans }
 
