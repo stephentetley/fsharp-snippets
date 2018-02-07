@@ -83,6 +83,7 @@
     <Compile Include="SL\ClosedXMLOutput.fs" />
     <Compile Include="SL\CsvOutput.fs" />
     <Compile Include="SL\DocOutput.fs" />
+    <Compile Include="SL\GraphvizOutput.fs" />
     <Compile Include="SL\SwOutput.fs" />
     <Compile Include="SL\ExcelUtils.fs" />
     <Compile Include="SL\FileStore.fs" />
