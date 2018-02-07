@@ -20,7 +20,7 @@ open SL.Geo.Coord
 open SL.CsvOutput
 
 let [<Literal>] ResolutionPath1 = __SOURCE_DIRECTORY__ + @"\..\packages\System.Data.SQLite.Core.1.0.105.0\lib\net451"
-let [<Literal>] ConnectionString1 = @"Data Source=G:\work\Projects\events2\edmDB.sqlite3;Version=3"
+let [<Literal>] ConnectionString1 = @"Data Source=G:\work\Projects\events2\eventsDB.sqlite3;Version=3"
 
 type SqlDB = SqlDataProvider< 
               ConnectionString = ConnectionString1,
@@ -31,10 +31,10 @@ type SqlDB = SqlDataProvider<
 let ctx = SqlDB.GetDataContext()
 
 
-// SaiNumber and OutletGridRef can be missing
+// Uid and OutletGridRef can be missing
 type StormDisPermit = 
     { AssetName: string
-      SaiNumber: string option
+      AssetUid: string option
       OutletGridRef: string
       DischargeDesc: string
       PermitUrn: string
@@ -42,24 +42,24 @@ type StormDisPermit =
 
 type LotusConsent = 
     { CommonName: string
-      SaiNumber: string
+      AssetUid: string
       OutfallGridRef : OSGB36Point option 
       FullConsentName: string
       ShortConsentName: string }
 
 type CatsConsent = 
-    { SaiNumber: string
+    { AssetUid: string
       OutletGridRef: string
       PermitRef: string
       ToplevelPermitRef: string }
 
 type CatsAsset = 
-    { SaiNumber: string
+    { AssetUid: string
       AssetName: string
       WorkCategory: string }
 
 type Asset = 
-    { SaiNumber: string
+    { AssetUid: string
       AssetName: string
       WorkPlan: string      // aka CatsConsent:WorkCategory
       AssetOsgb36: string
@@ -93,7 +93,7 @@ let tryMakeGridRefB (east:int64 option) (north:int64 option) : OSGB36Point optio
 let getCatsAssets () : CatsAsset list  = 
     query { for cc in ctx.Main.CatsConsents do
             sortBy (cc.AssetName)
-            select ({ SaiNumber = cc.AssetSaiNumber
+            select ({ AssetUid = cc.AssetUid
                     ; AssetName = cc.AssetName
                     ; WorkCategory = cc.WorkCategory}:CatsAsset)
             distinct }
@@ -103,7 +103,7 @@ let lotusConsentsTP () : LotusConsent list  =
     query { for lc in ctx.Main.LotusConsents do
             sortBy (lc.CommonName)
             select ({ CommonName = lc.CommonName
-                    ; SaiNumber = stringFromOption lc.SaiNumber
+                    ; AssetUid = stringFromOption lc.AssetUid
                     ; OutfallGridRef = tryMakeGridRefB lc.OutfallEasting lc.OutfallNorthing 
                     ; FullConsentName = stringFromOption lc.FullConsentName
                     ; ShortConsentName = stringFromOption lc.ShortConsentName
@@ -111,10 +111,10 @@ let lotusConsentsTP () : LotusConsent list  =
             distinct }
         |> Seq.toList
 
-let getCatsConsentsFor (sai:String) : CatsConsent list  = 
+let getCatsConsentsFor (uid:String) : CatsConsent list  = 
     query { for cc in ctx.Main.CatsConsents do
-            where (cc.AssetSaiNumber = sai)
-            select ({ SaiNumber = cc.AssetSaiNumber
+            where (cc.AssetUid = uid)
+            select ({ AssetUid = cc.AssetUid
                     ; OutletGridRef = stringFromOption cc.OutletNgr
                     ; PermitRef = stringFromOption cc.PermitRef
                     ; ToplevelPermitRef = stringFromOption cc.ToplevelPermitRef
@@ -122,12 +122,12 @@ let getCatsConsentsFor (sai:String) : CatsConsent list  =
             distinct }
         |> Seq.toList
 
-let getLotusConsentsFor (sai:String) : LotusConsent list  = 
+let getLotusConsentsFor (uid:String) : LotusConsent list  = 
     query { for lc in ctx.Main.LotusConsents do
-            where (lc.SaiNumber = Some sai)
+            where (lc.AssetUid = Some uid)
             sortBy (lc.CommonName)
             select ({ CommonName = lc.CommonName
-                    ; SaiNumber = stringFromOption lc.SaiNumber 
+                    ; AssetUid = stringFromOption lc.AssetUid 
                     ; OutfallGridRef = tryMakeGridRefB lc.OutfallEasting lc.OutfallNorthing 
                     ; ShortConsentName = stringFromOption lc.ShortConsentName
                     ; FullConsentName = stringFromOption lc.FullConsentName
@@ -140,7 +140,7 @@ let getStormDisPermitsFor (assetName:String) : StormDisPermit list  =
     query { for sdp in ctx.Main.StormDisPermits do
             where (sdp.AssetName = Some assetName)
             select ({ AssetName = stringFromOption sdp.AssetName
-                    ; SaiNumber = sdp.SaiNumber
+                    ; AssetUid = sdp.AssetUid
                     ; OutletGridRef = stringFromOption sdp.OutletGridRef
                     ; DischargeDesc = stringFromOption sdp.DischargeDecription
                     ; PermitUrn = stringFromOption sdp.PermitUrn
@@ -151,9 +151,9 @@ let getStormDisPermitsFor (assetName:String) : StormDisPermit list  =
 
 let getSiteNGRFor (assetName:String) : string option  = 
     let finalize xs = match xs with | x :: _ -> x | _ -> None
-    query { for sai in ctx.Main.SaiSites do
-            where (sai.CommonName = assetName)
-            select (sai.SiteNgr: string option)
+    query { for site in ctx.Main.BaseSites do
+            where (site.CommonName = assetName)
+            select (site.SiteNgr: string option)
             distinct }
         |> Seq.toList |> finalize
 
@@ -162,12 +162,12 @@ let makeAssets () : Asset list =
     let catsAssets = getCatsAssets ()
     catsAssets 
         |> List.map (fun ca ->
-                { SaiNumber = ca.SaiNumber
+                { AssetUid = ca.AssetUid
                 ; AssetName = ca.AssetName
                 ; WorkPlan = ca.WorkCategory
                 ; AssetOsgb36 = stringFromOption <| getSiteNGRFor ca.AssetName
-                ; CatsConsents = getCatsConsentsFor ca.SaiNumber
-                ; LotusConsents = getLotusConsentsFor ca.SaiNumber
+                ; CatsConsents = getCatsConsentsFor ca.AssetUid
+                ; LotusConsents = getLotusConsentsFor ca.AssetUid
                 ; StormDisPermits = getStormDisPermitsFor ca.AssetName
                 } : Asset )
 
@@ -219,13 +219,13 @@ let AssetCollectedData () =
     let assetList = makeAssets ()
     let outFile = @"G:work\Projects\events2\Asset-collected-data.csv"
     let headers = 
-        [ "SAI Number"; "Asset Name"; "Asset OSGB36"
+        [ "Asset Uid"; "Asset Name"; "Asset OSGB36"
         ; "Cats Consent Count"; "Cats NGRs"; "Cats Consents"
         ; "Lotus Consent Count"; "Lotus NGRs"; "Lotus Consents"
         ; "Storm Permit Count"; "Permit NGRs"; "Permit Outfalls" 
         ]
     let rowProc (a:Asset) : CellWriter list = 
-        [ tellString        a.SaiNumber
+        [ tellString        a.AssetUid
         ; tellString        a.AssetName
         ; tellString        a.AssetOsgb36
         ; tellInt           <| List.length a.CatsConsents
@@ -242,25 +242,25 @@ let AssetCollectedData () =
         writeRecordsWithHeaders headers assetList rowProc
     outputToNew {Separator=","} csvProc outFile
 
-type GisOutfall = 
+type Outfall = 
     { Stc25Ref: string
       FunctionNode: string
       Osgb36GridRef: string }
 
-let getGisOutfalls () : seq<GisOutfall>  = 
-    query { for go in ctx.Main.GisOutfalls do
+let getOutfalls () : seq<Outfall>  = 
+    query { for go in ctx.Main.Outfalls do
             select ({ Stc25Ref = go.Stc25Ref
                     ; FunctionNode = go.FunctionNode
                     ; Osgb36GridRef = go.Osgb36Gridref
-                    } : GisOutfall)
-            distinct } |> Seq.cast<GisOutfall>
+                    } : Outfall)
+            distinct } |> Seq.cast<Outfall>
 
-let GisOutfalls () = 
-    let assetList = getGisOutfalls ()
-    let outFile = @"G:work\Projects\events2\GIS-outfalls.csv"
+let Outfalls () = 
+    let assetList = getOutfalls ()
+    let outFile = @"G:work\Projects\events2\outfalls-output.csv"
     let headers = 
         [ "STC25 Ref"; "Function Node"; "OSGB36 Gridref" ]
-    let rowProc (a:GisOutfall) : CellWriter list = 
+    let rowProc (a:Outfall) : CellWriter list = 
         [ tellString        a.Stc25Ref
         ; tellString        a.FunctionNode
         ; tellString        a.Osgb36GridRef

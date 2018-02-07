@@ -1,6 +1,9 @@
-﻿#I @"..\packages\System.Data.SQLite.Core.1.0.105.0\lib\net451"
-#r "System.Data.SQLite"
+﻿#I @"..\packages\FSharp.Data.2.3.3\lib\net40"
+#r @"FSharp.Data.dll"
+open FSharp.Data
 
+#I @"..\packages\System.Data.SQLite.Core.1.0.105.0\lib\net451"
+#r "System.Data.SQLite"
 open System.Data.SQLite
 
 #I @"C:\WINDOWS\assembly\GAC_MSIL\Microsoft.Office.Interop.Excel\15.0.0.0__71e9bce111e9429c"
@@ -28,23 +31,21 @@ open SL.ClosedXMLOutput
 
 
 let connParams = 
-    let dbSrc = System.IO.Path.Combine(__SOURCE_DIRECTORY__,"..","data\sai_refs.sqlite")
+    let dbSrc = System.IO.Path.Combine(__SOURCE_DIRECTORY__,"..","data\sites.sqlite")
     sqliteConnParamsVersion3 dbSrc
 
 let realName (s:string) : string = s.Replace('_','/').Trim()
 let underscoreName (s:string) : string = s.Replace('/','_').Trim()
 
-let findSAI (name:string) : string = 
+let findUid (name:string) : string = 
     let query1 : string = 
-        sprintf "SELECT sainum FROM all_sites WHERE sitename='%s';" (realName name)        
+        sprintf "SELECT uid FROM all_sites WHERE sitename='%s';" (realName name)        
     let readProc (reader : SQLiteDataReader) = 
         if reader.Read() then reader.GetString(0) else ""
     match runSQLiteConn (execReader query1 readProc) connParams with
-    | Err(msg) -> failwith <| sprintf "Cannot finf SAI %s" name
+    | Err(msg) -> failwith <| sprintf "Cannot find Uid %s" name
     | Ok(a) -> a
 
-
-let test04 () : string = findSAI "CUDWORTH/NO 2 STW"
     
 type WorkListTable = 
     ExcelFile< @"G:\work\Projects\rtu\Final_Docs\year3-batch2-manuals-todo.xlsx",
@@ -61,7 +62,7 @@ let spaceName (input:string) : string =
 let makeOutputRow (row:WorkListRow) : string = 
     sprintf "%s,%s,RTU Asset Replacement,S3953,%s RTU MMIM Upgrade Manual,O & M Manuals,S3953,1,%s S3953 RTU Asset Replacement.pdf,<now>"
             (realName row.sitename)
-            (findSAI row.sitename)
+            (findUid row.sitename)
             (spaceName row.sitename)
             (underscoreName row.sitename)
 
@@ -84,18 +85,19 @@ let dateStamp () : string =
 let timeStamp () : string =
     System.DateTime.Now.ToString("HH:mm:ss")
 
-let makeOutputCells (row:WorkListRow) : string list = 
-    [ realName row.sitename
-    ; findSAI row.sitename
-    ; "RTU Asset Replacement"
-    ; "S3953"
-    ; sprintf "%s S3953 RTU MMIM Upgrade Manual" (spaceName row.sitename)
-    ; "O & M Manuals"
-    ; "S3953"
-    ; "1"
-    ; sprintf "%s S3953 RTU Asset Replacement.pdf" (underscoreName row.sitename)
-    ; dateStamp ()
-    ; "" ]
+let makeOutputCells (row:WorkListRow) : RowWriter = 
+    [ tellString            <| realName row.sitename
+    ; tellString            <| findUid row.sitename
+    ; tellString            <| "RTU Asset Replacement"
+    ; tellString            <| "S3953"
+    ; tellString            <| sprintf "%s S3953 RTU MMIM Upgrade Manual" (spaceName row.sitename)
+    ; tellString            <| "O & M Manuals"
+    ; tellString            <| "S3953"
+    ; tellInt               <| 1
+    ; tellString            <| sprintf "%s S3953 RTU Asset Replacement.pdf" (underscoreName row.sitename)
+    ; tellString            <| dateStamp ()
+    ; tellString            <| "" 
+    ]
 
 
 let main () : unit = 

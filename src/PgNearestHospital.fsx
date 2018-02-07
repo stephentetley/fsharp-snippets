@@ -46,7 +46,7 @@ let SetupDB(password:string) : unit =
 
 
 
-// Note - input file has bad initial rows stopping type interence
+// Note - input file has bad initial rows stopping type interence (???)
 type AssetDataset = 
     CsvProvider< @"G:\work\Projects\rtu\peer-to-peer.csv",
                  HasHeaders = true >
@@ -79,7 +79,7 @@ let nearestMethodDict : NearestHospitalDict<AssetRow>  =
             ; tellQuotedString      hospitalLine
             ; tellFloat             <| float bestMatch.Distance]
 
-    { CsvHeaders = [ "SAI"; "Name"; "Hospital"; "Hospital Details"; "Distance" ]
+    { CsvHeaders = [ "Uid"; "Name"; "Hospital"; "Hospital Details"; "Distance" ]
     ; ExtractLocation = extractLocation
     ; OutputCsvRow = outputRow
     } 

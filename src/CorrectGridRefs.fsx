@@ -32,7 +32,7 @@ let readInputRows () : InputRow list =
     workData.Data |> Seq.filter nullPred |> Seq.toList
 
 let headers : string list = 
-    [ "SAI Num"; "Site Name"; "Outfall NGR"; "Receiving Watercourse" ]
+    [ "Uid"; "Name"; "Outfall NGR"; "Receiving Watercourse" ]
 
 let defaultIfNull (defaultValue:string) (check:string) = 
     match check with 

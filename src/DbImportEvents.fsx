@@ -92,24 +92,24 @@ let getStormDisPermitsRows () : StormDisPermitsRow list =
           NotNullProc = fun row -> match row.``Related AI Asset Name`` with null -> false | _ -> true }
     excelTableGetRows dict (new StormDisPermitsTable())
 
-type SaiSitesTable = 
-    ExcelFile< @"G:\work\Projects\events2\db-import-tables\sai-data-dump.xlsx",
-                SheetName = "Sai_Sites",
+type BaseSitesTable = 
+    ExcelFile< @"G:\work\Projects\events2\db-import-tables\adb-data-dump.xlsx",
+                SheetName = "Base_Sites",
                 ForceString = true >
 
-type SaiSitesRow = SaiSitesTable.Row
+type BaseSitesRow = BaseSitesTable.Row
 
 
-let getSaiSitesRows () : SaiSitesRow list = 
-    let dict : GetRowsDict<SaiSitesTable, SaiSitesRow> = 
+let getBaseSitesRows () : BaseSitesRow list = 
+    let dict : GetRowsDict<BaseSitesTable, BaseSitesRow> = 
         { GetRows     = fun imports -> imports.Data 
           NotNullProc = fun row -> match row.InstReference with null -> false | _ -> true }
-    excelTableGetRows dict (new SaiSitesTable())
+    excelTableGetRows dict (new BaseSitesTable())
 
 
 type OutstationsTable = 
-    ExcelFile< @"G:\work\Projects\events2\db-import-tables\rts-outstations-jan2018-TRIM.xlsx",
-                SheetName = "Outstations",
+    ExcelFile< @"G:\work\Projects\events2\db-import-tables\outstations-jan2018-TRIM.xlsx",
+                SheetName = "OS",
                 ForceString = true >
 
 type OutstationRow = OutstationsTable.Row
@@ -130,13 +130,13 @@ type LotusRow = LotusData.Row
 let getLotusContents () : LotusRow list = (new LotusData ()).Rows |> Seq.toList
 
 
-type GisOutfallData = 
-    CsvProvider< @"G:\work\Projects\events2\db-import-tables\outlet-gridrefs.csv",
+type OutfallData = 
+    CsvProvider< @"G:\work\Projects\events2\db-import-tables\outlets.csv",
                  HasHeaders = true>
 
-type GisOutfallRow = GisOutfallData.Row
+type OutfallRow = OutfallData.Row
 
-let getGisOutfalls () : GisOutfallRow list = (new GisOutfallData ()).Rows |> Seq.toList
+let getOutfalls () : OutfallRow list = (new OutfallData ()).Rows |> Seq.toList
 
 
 // ********** SCRIPT **********
@@ -154,10 +154,10 @@ let deleteAllData () : Script<int> =
     let proc = 
         SL.SQLiteConn.sumSequenceM [  deleteAllRows "cats_consents"
                                     ; deleteAllRows "storm_dis_permits" 
-                                    ; deleteAllRows "sai_sites"
+                                    ; deleteAllRows "base_sites"
                                     ; deleteAllRows "rts_outstations"
                                     ; deleteAllRows "lotus_consents"
-                                    ; deleteAllRows "gis_outfalls"]
+                                    ; deleteAllRows "outfalls"]
     liftWithConnParams <| runSQLiteConn proc
 
 
@@ -167,7 +167,7 @@ let makePoweredCatConsentINSERT (row:CatsPoweredRow) : string =
         <|  [ stringValue       "permit_ref"            row.``Permit Reference``
             ; stringValue       "toplevel_permit_ref"   row.``Top level permit number``
             ; stringValue       "work_category"         "POWERED"
-            ; stringValue       "asset_sai_number"      row.``SAI Number``
+            ; stringValue       "asset_uid"             row.``SAI Number``
             ; stringValue       "asset_name"            row.``Overflow Name`` 
             ; stringValue       "outlet_ngr"            row.``Outlet NGR on consent`` ]
 
@@ -176,7 +176,7 @@ let makeBatteryCatConsentINSERT (row:CatsBatteryRow) : string =
         <|  [ stringValue       "permit_ref"            row.``Permit Reference``
             ; stringValue       "toplevel_permit_ref"   row.``Top level permit number``
             ; stringValue       "work_category"         "BATTERY"
-            ; stringValue       "asset_sai_number"      row.``SAI Number``
+            ; stringValue       "asset_uid"             row.``SAI Number``
             ; stringValue       "asset_name"            row.``Overflow Name`` 
             ; stringValue       "outlet_ngr"            row.``Outlet NGR on consent`` ]
 
@@ -186,14 +186,14 @@ let makeNonTelemCatConsentINSERT (row:CatsNonTelemRow) : string =
         <|  [ stringValue       "permit_ref"            row.``Permit Reference``
             ; stringValue       "toplevel_permit_ref"   row.``Top level permit number``
             ; stringValue       "work_category"         "NO_TELEMETRY"
-            ; stringValue       "asset_sai_number"      row.``SAI Number``
+            ; stringValue       "asset_uid"             row.``SAI Number``
             ; stringValue       "asset_name"            row.``Overflow Name`` 
             ; stringValue       "outlet_ngr"            row.``Outlet NGR on consent`` ]
 
 
 let makeStormDisPermitsINSERT (row:StormDisPermitsRow) : string =
     sqlINSERT "storm_dis_permits" 
-        <|  [ stringValue       "sai_number"            row.``SAI of related asset``
+        <|  [ stringValue       "asset_uid"             row.``SAI of related asset``
             ; stringValue       "asset_name"            row.``Related AI Asset Name``
             ; stringValue       "outlet_grid_ref"       row.``Outlet NGR``
             ; stringValue       "monitoring_grid_ref"   row.``Effluent Monitoring point NGR``
@@ -205,9 +205,9 @@ let makeStormDisPermitsINSERT (row:StormDisPermitsRow) : string =
             ]
 
 
-let makeSaiSitesINSERT (row:SaiSitesRow) : string = 
-    sqlINSERT "sai_sites" 
-        <|  [ stringValue       "sai_number"            row.InstReference
+let makeBaseSitesINSERT (row:BaseSitesRow) : string = 
+    sqlINSERT "base_sites" 
+        <|  [ stringValue       "site_uid"              row.InstReference
             ; stringValue       "common_name"           row.InstCommonName 
             ; stringValue       "site_ngr"              row.LocationReference
             ; stringValue       "asset_type"            row.AssetType
@@ -242,7 +242,7 @@ let makeLotusConsentINSERT (row:LotusRow) : string =
 
     sqlINSERT "lotus_consents" 
         <|  [ stringValue       "common_name"           row.``Common Name``
-            ; stringValue       "sai_number"            row.``AIB Reference``
+            ; stringValue       "asset_uid"             row.``AIB Reference``
             ; intNullableValue  "outfall_easting"       row.``Outfall NGRE``
             ; intNullableValue  "outfall_northing"      row.``Outfall NGRN``
             ; stringValue       "outfall_osgb36"        gridref
@@ -250,13 +250,13 @@ let makeLotusConsentINSERT (row:LotusRow) : string =
             ; stringValue       "short_consent_name"    row.``Consent Number``
             ]
             
-let makeGisOutfallINSERT (row:GisOutfallRow) : string = 
+let makeOutfallINSERT (row:OutfallRow) : string = 
     let gridref : string  = 
         let east    = 1.0<meter> * (float <| row.METREEASTING)
         let north   = 1.0<meter> * (float <| row.METRENORTHING)
         showOSGB36Point <| { Easting = east; Northing = north}
 
-    sqlINSERT "gis_outfalls" 
+    sqlINSERT "outfalls" 
         <|  [ stringValue       "stc25_ref"             row.STC25_REF
             ; decimalValue      "easting"               row.METREEASTING
             ; decimalValue      "northing"              row.METRENORTHING
@@ -288,9 +288,9 @@ let insertStormDisPermits () : Script<int> =
     let insertProc (row:StormDisPermitsRow) : SQLiteConn<int> = execNonQuery <| makeStormDisPermitsINSERT row
     liftWithConnParams <| runSQLiteConn (withTransactionListSum rows insertProc)
 
-let insertSaiSites () : Script<int> =  
-    let rows = getSaiSitesRows ()
-    let insertProc (row:SaiSitesRow) : SQLiteConn<int> = execNonQuery <| makeSaiSitesINSERT row
+let insertBaseSites () : Script<int> =  
+    let rows = getBaseSitesRows ()
+    let insertProc (row:BaseSitesRow) : SQLiteConn<int> = execNonQuery <| makeBaseSitesINSERT row
     liftWithConnParams <| runSQLiteConn (withTransactionListSum rows insertProc)
 
 
@@ -304,22 +304,22 @@ let insertLotusConsents () : Script<int> =
     let insertProc (row:LotusRow) : SQLiteConn<int> = execNonQuery <| makeLotusConsentINSERT row
     liftWithConnParams <| runSQLiteConn (withTransactionListSum rows insertProc)
 
-let insertGisOutfalls () : Script<int> =  
-    let rows = getGisOutfalls ()
-    let insertProc (row:GisOutfallRow) : SQLiteConn<int> = execNonQuery <| makeGisOutfallINSERT row
+let insertOutfalls () : Script<int> =  
+    let rows = getOutfalls ()
+    let insertProc (row:OutfallRow) : SQLiteConn<int> = execNonQuery <| makeOutfallINSERT row
     liftWithConnParams <| runSQLiteConn (withTransactionListSum rows insertProc)
 
 
 let main () : unit = 
-    let conn = sqliteConnParamsVersion3  @"G:\work\Projects\events2\edmDB.sqlite3"
+    let conn = sqliteConnParamsVersion3  @"G:\work\Projects\events2\eventsDB.sqlite3"
   
     runScript (failwith) (printfn "Success: %i modifications") (consoleLogger) conn 
         <| sumSequenceM 
             [ deleteAllData ()          |> logScript (sprintf "%i rows deleted") 
             ; insertCatsConsents ()     |> logScript (sprintf "%i cats_consents inserted")       
             ; insertStormDisPermits ()  |> logScript (sprintf "%i storm_dis_permits inserted")
-            ; insertSaiSites ()         |> logScript (sprintf "%i sai_sites inserted") 
-            ; insertOutstations ()      |> logScript (sprintf "%i rts_outstations inserted") 
+            ; insertBaseSites ()        |> logScript (sprintf "%i base_sites inserted") 
+            ; insertOutstations ()      |> logScript (sprintf "%i outstations inserted") 
             ; insertLotusConsents ()    |> logScript (sprintf "%i lotus consents inserted") 
-            ; insertGisOutfalls ()      |> logScript (sprintf "%i gis outfalls inserted") 
+            ; insertOutfalls ()         |> logScript (sprintf "%i outfalls inserted") 
             ]

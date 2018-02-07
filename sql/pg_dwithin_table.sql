@@ -1,6 +1,6 @@
 -- Must have PostGIS extensions enabled
 -- At the prompt:
--- some_db=# \i d:/path_to/sql/pg_hospitals_table.sql
+-- some_db=# \i d:/path_to/sql/pd_dwithin_tablesql
 
 -- DROP TABLE spt_dwithin;
 

@@ -1,4 +1,8 @@
-﻿#I @"..\packages\System.Data.SQLite.Core.1.0.105.0\lib\net451"
+﻿#I @"..\packages\FSharp.Data.2.3.3\lib\net40"
+#r @"FSharp.Data.dll"
+open FSharp.Data
+
+#I @"..\packages\System.Data.SQLite.Core.1.0.105.0\lib\net451"
 #r "System.Data.SQLite"
 open System.Data.SQLite
 
@@ -16,11 +20,12 @@ open FSharp.ExcelProvider
 #load @"SL\AnswerMonad.fs"
 #load @"SL\SqlUtils.fs"
 #load @"SL\SQLiteConn.fs"
+#load @"SL\JsonExtractor.fs"
+#load @"SL\ScriptMonad.fs"
 open SL.AnswerMonad
 open SL.SqlUtils
 open SL.SQLiteConn
 
-#load @"SL\ScriptMonad.fs"
 open SL.ScriptMonad
 
 #load @"SL\ExcelProviderHelper.fs"
@@ -46,7 +51,7 @@ type Script<'a> = ScriptMonad<SQLiteConnParams,'a>
 //  **** DB Import
 
 let makeConnParams () : SQLiteConnParams = 
-    let dbSrc = System.IO.Path.Combine(__SOURCE_DIRECTORY__,"..","data\sai_refs.sqlite")
+    let dbSrc = System.IO.Path.Combine(__SOURCE_DIRECTORY__,"..","data\sites.sqlite")
     sqliteConnParamsVersion3 dbSrc
 
 
@@ -64,7 +69,7 @@ let deleteData () : Script<int> =
 // This is the new style...
 let genINSERT1 (row:ImportRow) : string = 
     sqlINSERT "all_sites" 
-        <|  [ stringValue       "sainum"                row.InstReference
+        <|  [ stringValue       "uid"                   row.InstReference
             ; stringValue       "installation_name"     row.InstCommonName
             ; stringValue       "location_name"         row.SiteCommonName
             ; stringValue       "postcode"              row.``Post Code``

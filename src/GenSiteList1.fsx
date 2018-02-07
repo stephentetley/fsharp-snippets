@@ -38,7 +38,7 @@ let [<Literal>]  DllResolutionPath =
 
 // Location of the sqlite database
 let [<Literal>] SQLiteConnString = 
-    "Data Source=" + __SOURCE_DIRECTORY__ + @"\..\data\sai_refs.sqlite;Version=3;"
+    "Data Source=" + __SOURCE_DIRECTORY__ + @"\..\data\sites.sqlite;Version=3;"
 
 type SqlDB = 
     SqlDataProvider<
@@ -50,16 +50,6 @@ type SqlDB =
 
 let dbCtx = SqlDB.GetDataContext()
 
-let query01 = 
-    query { for site in  dbCtx.Main.AllSites do
-            where (site.Sainum = "SAI00262693")
-            select (site)
-        }
-    
-
-let test01 () = 
-    query01 |> Seq.toList |> List.iter (fun site -> printfn "%s,%s" site.Sainum site.InstallationName)
-
 // Problem - I've no idea how to get a type abbreviation for Intellisense, etc.
 // The code below is invalid:
 // type SitesRow = System.Linq.IQueryable<SqlDataProvider<...>.dataContext.main.all_sitesEntity>
@@ -67,7 +57,7 @@ let test01 () =
 // Untyped...
 let findRow (uid:string) : Map<string,obj> [] = 
     query { for site in dbCtx.Main.AllSites do
-            where (site.Sainum = uid)
+            where (site.Uid = uid)
             select (site)
         } |> Seq.toArray |> Array.map (fun c -> c.ColumnValues |> Map.ofSeq)
 
@@ -92,29 +82,22 @@ let headers =
     ; "Postcode"
     ; "Operational Contact" ]
 
-let makeOutputCells (row:Map<string,obj>) : string list = 
-    [ row.["sainum"] :?> string
-    ; row.["installation_name"] :?> string
-    ; row.["asset_type"] :?> string
-    ; row.["grid_ref"] :?> string
-    ; row.["full_address"] :?> string
-    ; row.["postcode"] :?> string
-    ; row.["ops_contact"] :?> string 
+let makeOutputCells (row:Map<string,obj>) : RowWriter = 
+    [ tellString        <| (row.["uid"] :?> string)
+    ; tellString        <| (row.["installation_name"] :?> string)
+    ; tellString        <| (row.["asset_type"] :?> string)
+    ; tellString        <| (row.["grid_ref"] :?> string)
+    ; tellString        <| (row.["full_address"] :?> string)
+    ; tellString        <| (row.["postcode"] :?> string)
+    ; tellString        <| (row.["ops_contact"] :?> string)
     ]
 
-let test03 () = 
-    match tryFindRow1 "SAI00262693" with
-    | Some(dict) -> 
-        Map.iter (fun k v -> printfn "%s: %O" k v) dict
-        let strings = makeOutputCells dict
-        printfn "%s" (String.concat "," strings)
-    | None -> printfn "not found"
 
-let writeRow (sai:string) : ClosedXMLOutput<unit> = 
-    match tryFindRow1 sai with
+let writeRow (uid:string) : ClosedXMLOutput<unit> = 
+    match tryFindRow1 uid with
     | Some(dict) -> 
         tellRow <| makeOutputCells dict
-    | None -> tellRow [ tellString sai; tellString "#N/A"]
+    | None -> tellRow [ tellString uid; tellString "#N/A"]
 
 
 let xlsOutputPath = @"G:\work\Projects\rtu\SiteList1.xlsx"

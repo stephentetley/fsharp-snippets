@@ -31,13 +31,13 @@ open SL.CsvOutput
 // Use Table: spt_outfalls
 
 
-type GisOutfallData = 
-    CsvProvider< @"G:\work\Projects\events2\db-import-tables\outlet-gridrefs.csv",
+type OutfallData = 
+    CsvProvider< @"G:\work\Projects\events2\db-import-tables\outlets.csv",
                  HasHeaders = true>
 
-type GisOutfallRow = GisOutfallData.Row
+type OutfallRow = OutfallData.Row
 
-let getGisOutfalls () : GisOutfallRow list = (new GisOutfallData ()).Rows |> Seq.toList
+let getOutfalls () : OutfallRow list = (new OutfallData ()).Rows |> Seq.toList
 
 type NeighboursData = 
     CsvProvider< @"G:\work\Projects\events2\Asset-collected-data.csv",
@@ -60,7 +60,7 @@ let liftWithConnParams (fn:PGSQLConnParams -> Answer<'a>) : Script<'a> =
 let deleteAllData () : Script<int> = 
     liftWithConnParams << runPGSQLConn <| deleteAllRows "spt_outfalls"
 
-let makeOutfallINSERT (row:GisOutfallRow) : string = 
+let makeOutfallINSERT (row:OutfallRow) : string = 
     let east        = 1.0<meter> * (float <| row.METREEASTING)
     let north       = 1.0<meter> * (float <| row.METRENORTHING)
     let osgb36Pt    =  { Easting = east; Northing = north }
@@ -80,8 +80,8 @@ let makeOutfallINSERT (row:GisOutfallRow) : string =
 
 
 let insertOutfalls () : Script<int> = 
-    let rows = getGisOutfalls ()
-    let proc1 (row:GisOutfallRow) : PGSQLConn<int> = execNonQuery <| makeOutfallINSERT row
+    let rows = getOutfalls ()
+    let proc1 (row:OutfallRow) : PGSQLConn<int> = execNonQuery <| makeOutfallINSERT row
     liftWithConnParams 
         << runPGSQLConn << withTransaction <| SL.PGSQLConn.sumForM rows proc1
 
@@ -128,7 +128,7 @@ let printNeighbours (recs:NeighbourRec list) : string =
     String.concat " & " <| List.map print1 recs
 
 type OutputRow = 
-    { Sai: string
+    { Uid: string
       Name: string
       AssetNGR: string
       CatsNGRs: string
@@ -152,7 +152,7 @@ let genOutputRow (limit:int) (row:NeighboursRow) : Script<OutputRow> =
     scriptMonad { 
         let! nsList = neighbours ()
         let (ngr1,stc1) = ngrAndStc25OfOne nsList
-        return { Sai = row.``SAI Number``
+        return { Uid = row.``SAI Number``
                ; Name = row.``Asset Name``
                ; AssetNGR = row.``Asset OSGB36``
                ; CatsNGRs = row.``Cats NGRs``
@@ -163,7 +163,7 @@ let genOutputRow (limit:int) (row:NeighboursRow) : Script<OutputRow> =
 
 
 let tellOutputRow (row:OutputRow) : CellWriter list = 
-    [ tellString row.Sai
+    [ tellString row.Uid
     ; tellString row.Name
     ; tellString row.AssetNGR
     ; tellString row.CatsNGRs
@@ -172,7 +172,7 @@ let tellOutputRow (row:OutputRow) : CellWriter list =
     ; tellString row.OutfallNNs ]
 
 let csvHeaders = 
-    [ "SAI Number"; "Asset Name"; "Asset OSGB36"; "Cats NGRs"
+    [ "Asset Uid"; "Asset Name"; "Asset OSGB36"; "Cats NGRs"
     ; "Best Match NGR"; "Best Match STC25Ref"
     ; "Outfall NNs"]
 
