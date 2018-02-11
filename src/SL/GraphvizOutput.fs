@@ -11,19 +11,22 @@ open System.IO
 // Maybe have indent as an int...
 // StreamWriter or StringWriter?
 
-type Indent = int
+// type Indent = int
+type Config = 
+    { Indent : int
+      EdgeOp: string }
 
 type GraphvizOutput<'a> = 
-    GraphvizOutput of (StringWriter -> Indent-> 'a)
+    GraphvizOutput of (Config -> StringWriter -> 'a)
 
-let inline private apply1 (ma : GraphvizOutput<'a>) (handle:StringWriter) (indent:Indent) : 'a = 
-    let (GraphvizOutput f) = ma in f handle indent
+let inline private apply1 (ma : GraphvizOutput<'a>) (config:Config)  (handle:StringWriter) : 'a = 
+    let (GraphvizOutput f) = ma in f config handle
 
 let inline private unitM (x:'a) : GraphvizOutput<'a> = GraphvizOutput (fun _ _ -> x)
 
 
 let inline private bindM (ma:GraphvizOutput<'a>) (f : 'a -> GraphvizOutput<'b>) : GraphvizOutput<'b> =
-    GraphvizOutput (fun r i -> let a = apply1 ma r i in apply1 (f a) r i)
+    GraphvizOutput (fun r sw -> let a = apply1 ma r sw in apply1 (f a) r sw)
 
 let fail : GraphvizOutput<'a> = GraphvizOutput (fun _ _ -> failwith "GraphvizOutput fail")
 
@@ -38,8 +41,8 @@ let (graphvizOutput:GraphvizOutputBuilder) = new GraphvizOutputBuilder()
 
 // Common monadic operations
 let fmapM (fn:'a -> 'b) (ma:GraphvizOutput<'a>) : GraphvizOutput<'b> = 
-    GraphvizOutput <| fun (handle:StringWriter) (indent:Indent) ->
-        let ans = apply1 ma handle indent in fn ans
+    GraphvizOutput <| fun (config:Config) (sw:StringWriter) ->
+        let ans = apply1 ma config sw in fn ans
 
 let mapM (fn:'a -> GraphvizOutput<'b>) (xs:'a list) : GraphvizOutput<'b list> = 
     let rec work ac ys = 
@@ -77,7 +80,7 @@ let runGraphvizOutput (ma:GraphvizOutput<'a>) (outputPath:string) : 'a =
     use handle : System.IO.StringWriter = new System.IO.StringWriter()
     match ma with 
     | GraphvizOutput(f) -> 
-        let ans = f handle 0
+        let ans = f { Indent=0; EdgeOp="->" } handle
         System.IO.File.WriteAllText(outputPath, handle.ToString())
         ans
 
@@ -85,30 +88,49 @@ let runGraphvizOutputConsole (ma:GraphvizOutput<'a>) : 'a =
     use handle : System.IO.StringWriter = new System.IO.StringWriter()
     match ma with 
     | GraphvizOutput(f) -> 
-        let ans = f handle 0
+        let ans = f { Indent=0; EdgeOp="->" } handle
         printfn "%s" <| handle.ToString()
         ans
 
+/// This is too low level to expose.
+let private askConfig : GraphvizOutput<Config> = 
+    GraphvizOutput <| fun config _ -> config
 
-/// TODO this is too low level to expose...
-let tellLine (line:string) : GraphvizOutput<unit> = 
-    GraphvizOutput <| fun handle indent -> 
-        let prefix = String.replicate indent " "
-        handle.WriteLine (sprintf "%s%s" prefix line )
+/// This is too low level to expose.
+let private asksConfig (extract:Config -> 'a) : GraphvizOutput<'a> = 
+    GraphvizOutput <| fun config _ -> extract config
+
+/// This is too low level to expose.
+let private local (project:Config -> Config) (ma:GraphvizOutput<'a>) : GraphvizOutput<'a> = 
+    GraphvizOutput <| fun config sw -> apply1 ma (project config) sw
+        
+/// This is too low level to expose.
+let private tellLine (line:string) : GraphvizOutput<unit> = 
+    GraphvizOutput <| fun config sw -> 
+        let prefix = String.replicate config.Indent " "
+        sw.WriteLine (sprintf "%s%s" prefix line )
 
 /// Same as tellLine but the string is suffixed with ";".
 let tellStatement (line:string) : GraphvizOutput<unit> = tellLine <| sprintf "%s;" line
 
 let indent (body:GraphvizOutput<'a>) : GraphvizOutput<'a> = 
-    GraphvizOutput <| fun handle indent -> apply1 body handle (indent+4)
+    GraphvizOutput <| fun config sw -> 
+        let indent = config.Indent
+        apply1 body { config with Indent=indent+4 } sw
 
 
 let nested (initial:string) (body:GraphvizOutput<'a>) : GraphvizOutput<'a> =
+    let line1 = 
+        match initial with 
+        | "" -> "{"
+        | _ -> sprintf "%s {" initial
     graphvizOutput {
-        do! tellLine (sprintf "%s {" initial)
+        do! tellLine line1
         let! ans = indent body
         do! tellLine "}"
         return ans }
+
+type ValueRep = QUOTED | UNQUOTED
 
 type Attribute =
     | Unquoted of string * string
@@ -122,8 +144,11 @@ let showAttribute (attrib:Attribute) : string =
 let showAttributeList (xs:Attribute list) = 
     sprintf "[%s]" << String.concat "," <| List.map showAttribute xs
 
-let tellStmt (name:string) (value:string) (quoted:bool) : GraphvizOutput<unit> =
-    let attrib = if quoted then Quoted(name,value) else Unquoted(name,value)
+let tellStmt (name:string) (value:string) (rep:ValueRep) : GraphvizOutput<unit> =
+    let attrib = 
+        match rep with
+        | QUOTED -> Quoted(name,value) 
+        | UNQUOTED -> Unquoted(name,value)
     tellStatement <| showAttribute attrib
 
 let comment (text:string) : GraphvizOutput<unit> =
@@ -131,21 +156,31 @@ let comment (text:string) : GraphvizOutput<unit> =
     forMz lines <| (tellLine << sprintf "// %s")
 
 let graph (name:string) (body:GraphvizOutput<'a>) : GraphvizOutput<'a> =
-    nested (sprintf "graph %s" name) body
+    local (fun x -> {x with EdgeOp="--"}) <| nested (sprintf "graph %s" name) body
 
 let digraph (name:string) (body:GraphvizOutput<'a>) : GraphvizOutput<'a> =
-    nested (sprintf "digraph %s" name) body
+    local (fun x -> {x with EdgeOp="->"}) <| nested (sprintf "digraph %s" name) body
 
+
+let subgraph (name:string) (body:GraphvizOutput<'a>) : GraphvizOutput<'a> =
+    nested (sprintf "subgraph %s" name) body
+
+let anonSubgraph (body:GraphvizOutput<'a>) : GraphvizOutput<'a> = nested "" body
 
 /// cat should be one of "graph", "node","edge"
 let attrStmt (cat:string) (attribs:Attribute list) : GraphvizOutput<unit> =
     tellStatement <| sprintf "%s %s" cat (showAttributeList attribs)
 
+type Rankdir = TB | LR
 
-let rankdirLR : GraphvizOutput<unit> = tellStmt "rankdir" "LR" false
-let rankdirTB : GraphvizOutput<unit> = tellStmt "rankdir" "TB" false
+let rankdir (dir:Rankdir) : GraphvizOutput<unit> = 
+    match dir with
+    | TB -> tellStmt "rankdir" "TB" UNQUOTED
+    | LR -> tellStmt "rankdir" "LR" UNQUOTED
 
-let ranksep (sep:float) = tellStmt "ranksep" (sprintf "%.2f" sep) false
+let ranksep (sep:float) : GraphvizOutput<unit> = tellStmt "ranksep" (sprintf "%.2f" sep) UNQUOTED
+
+let rank (mode:string) : GraphvizOutput<unit> = tellStmt "ranksep" mode UNQUOTED
 
 let node (id:string) (attribs:Attribute list) : GraphvizOutput<unit> =
     match attribs with
@@ -153,13 +188,26 @@ let node (id:string) (attribs:Attribute list) : GraphvizOutput<unit> =
     |_ -> tellStatement <| sprintf "%s %s" id (showAttributeList attribs)
 
 let edge (id1:string) (id2:string) (attribs:Attribute list) : GraphvizOutput<unit> =
-    match attribs with
-    | [] -> tellStatement <| sprintf "%s -> %s" id1 id2
-    |_ -> tellStatement <| sprintf "%s -> %s %s" id1 id2 (showAttributeList attribs)
+    graphvizOutput { 
+        let! edgeOp = asksConfig (fun x -> x.EdgeOp)
+        match attribs with
+        | [] -> do! tellStatement <| sprintf "%s %s %s" id1 edgeOp id2
+        |_ -> do! tellStatement <| sprintf "%s %s %s %s" id1 edgeOp id2 (showAttributeList attribs)
+        }
+
+let edges(id1:string) (ids:string list) (attribs:Attribute list) : GraphvizOutput<unit> =
+    graphvizOutput { 
+        let! edgeOp = fmapM (sprintf " %s ") <| asksConfig (fun x -> x.EdgeOp)
+        let path = String.concat edgeOp (id1::ids)
+        match attribs with
+        | [] -> do! tellStatement path
+        |_ -> do! tellStatement <| sprintf "%s %s" path (showAttributeList attribs)
+        }
+
 
 let nodeAttributes (attribs:Attribute list) : GraphvizOutput<unit> = attrStmt "node" attribs
 
 let fontname (name:string) : Attribute = Quoted ("fontname", name)
 let fontsize (size:int) : Attribute = Unquoted ("fontsize", size.ToString())
 let label (value:string) : Attribute = Quoted ("label", value)
-let shape (value:string) : Attribute = Quoted ("shape", value)
+let shape (value:string) : Attribute = Unquoted ("shape", value)
