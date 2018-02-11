@@ -4,12 +4,11 @@ open SL.GraphvizOutput
 let test01 () : unit = 
     let procM = 
         graphvizOutput { 
-            do! comment "dot -Tjpeg mydot.dot -o mydot.jpg"
+            do! lineComment "dot -Tjpeg mydot.dot -o mydot.jpg"
             do! digraph "G1" <| 
                 graphvizOutput { 
-                
-                    do! rankdir LR
-                    do! ranksep 1.5
+                    do! attrib <| rankdir LR
+                    do! attrib <| ranksep 1.5
                     do! nodeAttributes [fontname "Arial"; fontsize 10]
                     do! anonSubgraph 
                         <| graphvizOutput { 

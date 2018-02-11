@@ -136,22 +136,16 @@ type Attribute =
     | Unquoted of string * string
     | Quoted of string * string
 
-let showAttribute (attrib:Attribute) : string = 
-    match attrib with
+let showAttribute (attr:Attribute) : string = 
+    match attr with
     | Unquoted(n,v) -> sprintf "%s=%s" n v
     | Quoted(n,v) -> sprintf "%s=\"%s\"" n v
 
-let showAttributeList (xs:Attribute list) = 
-    sprintf "[%s]" << String.concat "," <| List.map showAttribute xs
+let showAttributeList (attrs:Attribute list) = 
+    sprintf "[%s]" << String.concat "," <| List.map showAttribute attrs
 
-let tellStmt (name:string) (value:string) (rep:ValueRep) : GraphvizOutput<unit> =
-    let attrib = 
-        match rep with
-        | QUOTED -> Quoted(name,value) 
-        | UNQUOTED -> Unquoted(name,value)
-    tellStatement <| showAttribute attrib
 
-let comment (text:string) : GraphvizOutput<unit> =
+let lineComment (text:string) : GraphvizOutput<unit> =
     let lines = text.Split [|'\n'|] |> Array.toList
     forMz lines <| (tellLine << sprintf "// %s")
 
@@ -168,46 +162,85 @@ let subgraph (name:string) (body:GraphvizOutput<'a>) : GraphvizOutput<'a> =
 let anonSubgraph (body:GraphvizOutput<'a>) : GraphvizOutput<'a> = nested "" body
 
 /// cat should be one of "graph", "node","edge"
-let attrStmt (cat:string) (attribs:Attribute list) : GraphvizOutput<unit> =
-    tellStatement <| sprintf "%s %s" cat (showAttributeList attribs)
+let attrStmt (cat:string) (attrs:Attribute list) : GraphvizOutput<unit> =
+    tellStatement <| sprintf "%s %s" cat (showAttributeList attrs)
 
-type Rankdir = TB | LR
+let attrib (attr:Attribute) : GraphvizOutput<unit> = 
+    tellStatement <| showAttribute attr
 
-let rankdir (dir:Rankdir) : GraphvizOutput<unit> = 
-    match dir with
-    | TB -> tellStmt "rankdir" "TB" UNQUOTED
-    | LR -> tellStmt "rankdir" "LR" UNQUOTED
 
-let ranksep (sep:float) : GraphvizOutput<unit> = tellStmt "ranksep" (sprintf "%.2f" sep) UNQUOTED
 
-let rank (mode:string) : GraphvizOutput<unit> = tellStmt "ranksep" mode UNQUOTED
-
-let node (id:string) (attribs:Attribute list) : GraphvizOutput<unit> =
-    match attribs with
+let node (id:string) (attrs:Attribute list) : GraphvizOutput<unit> =
+    match attrs with
     | [] -> tellStatement id
-    |_ -> tellStatement <| sprintf "%s %s" id (showAttributeList attribs)
+    |_ -> tellStatement <| sprintf "%s %s" id (showAttributeList attrs)
 
-let edge (id1:string) (id2:string) (attribs:Attribute list) : GraphvizOutput<unit> =
+let edge (id1:string) (id2:string) (attrs:Attribute list) : GraphvizOutput<unit> =
     graphvizOutput { 
         let! edgeOp = asksConfig (fun x -> x.EdgeOp)
-        match attribs with
+        match attrs with
         | [] -> do! tellStatement <| sprintf "%s %s %s" id1 edgeOp id2
-        |_ -> do! tellStatement <| sprintf "%s %s %s %s" id1 edgeOp id2 (showAttributeList attribs)
+        |_ -> do! tellStatement <| sprintf "%s %s %s %s" id1 edgeOp id2 (showAttributeList attrs)
         }
 
-let edges(id1:string) (ids:string list) (attribs:Attribute list) : GraphvizOutput<unit> =
+let edges(id1:string) (ids:string list) (attrs:Attribute list) : GraphvizOutput<unit> =
     graphvizOutput { 
         let! edgeOp = fmapM (sprintf " %s ") <| asksConfig (fun x -> x.EdgeOp)
         let path = String.concat edgeOp (id1::ids)
-        match attribs with
+        match attrs with
         | [] -> do! tellStatement path
-        |_ -> do! tellStatement <| sprintf "%s %s" path (showAttributeList attribs)
+        |_ -> do! tellStatement <| sprintf "%s %s" path (showAttributeList attrs)
         }
 
 
-let nodeAttributes (attribs:Attribute list) : GraphvizOutput<unit> = attrStmt "node" attribs
+let nodeAttributes (attrs:Attribute list) : GraphvizOutput<unit> = attrStmt "node" attrs
 
-let fontname (name:string) : Attribute = Quoted ("fontname", name)
-let fontsize (size:int) : Attribute = Unquoted ("fontsize", size.ToString())
-let label (value:string) : Attribute = Quoted ("label", value)
-let shape (value:string) : Attribute = Unquoted ("shape", value)
+let makeBoolAttribute (name:string) (value:bool)  : Attribute = 
+    let value1 = if value then "true" else "false" in Unquoted(name,value1)
+
+let color (value:string) : Attribute            = Unquoted ("color", value)
+
+let fillcolor (value:string) : Attribute        = Unquoted ("fillcolor", value)
+let fixedsize (value:bool) : Attribute          = makeBoolAttribute "fixedsize" value
+let fontname (name:string) : Attribute          = Quoted ("fontname", name)
+let fontsize (size:int) : Attribute             = Unquoted ("fontsize", size.ToString())
+let height (h:float) : Attribute                = Unquoted ("height", sprintf "%.2f" h)
+let label (value:string) : Attribute            = Quoted ("label", value)
+let regular (value:bool) : Attribute            = makeBoolAttribute "regular" value
+let shape (value:string) : Attribute            = Unquoted ("shape", value)
+let sides (count:int) : Attribute               = Unquoted ("sides", count.ToString())
+let style (values:string list) : Attribute      = Quoted ("style", String.concat "," values)
+let width (w:float) : Attribute                 = Unquoted ("width", sprintf "%.2f" w)
+
+let arrowhead (value:string) : Attribute        = Unquoted ("arrowhead", value)
+let arrowsize (size:float) : Attribute          = Unquoted ("arrowsize", sprintf "%.2f" size)
+let arrowtail (value:string) : Attribute        = Unquoted ("arrowtail", value)
+
+type EdgeDirection = FORWARD | BACK | BOTH | NONE
+
+let dir (value:EdgeDirection) : Attribute = 
+    let value1 = 
+        match value with
+        | FORWARD -> "forward"
+        | BACK -> "back"
+        | BOTH -> "both"
+        | NONE -> "none"
+    Unquoted ("dir", value1)
+
+let labelfloat (value:bool) : Attribute         = makeBoolAttribute "labelfloat" value
+let labelfontcolor (value:string) : Attribute   = Unquoted ("labelfontcolor", value)
+let labelfontname (name:string) : Attribute     = Quoted ("labelfontname", name)
+let labelfontsize (size:int) : Attribute        = Unquoted ("labelfontsize", size.ToString())
+
+let center (value:bool) : Attribute             = makeBoolAttribute "center" value
+let fontcolor (value:string) : Attribute        = Unquoted ("fontcolor", value)
+
+type Rankdir = TB | LR
+
+let rankdir (dir:Rankdir) : Attribute = 
+    let dir1 = match dir with | TB -> "TB" | LR -> "LR"
+    Unquoted("rankdir",dir1)
+
+let ranksep (sep:float) : Attribute             = Unquoted("ranksep", sprintf "%.2f" sep)
+let rank (mode:string) : Attribute              = Unquoted("ranksep", mode)
+
