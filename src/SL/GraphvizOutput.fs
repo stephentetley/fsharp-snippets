@@ -96,15 +96,12 @@ let tellLine (line:string) : GraphvizOutput<unit> =
         let prefix = String.replicate indent " "
         handle.WriteLine (sprintf "%s%s" prefix line )
 
+/// Same as tellLine but the string is suffixed with ";".
+let tellStatement (line:string) : GraphvizOutput<unit> = tellLine <| sprintf "%s;" line
+
 let indent (body:GraphvizOutput<'a>) : GraphvizOutput<'a> = 
     GraphvizOutput <| fun handle indent -> apply1 body handle (indent+4)
 
-//// There is no need for an embed primitive for ``graph`` etc. unless 
-//// we introduce nesting
-//let embed (ma:GraphvizOutput<'a>) : GraphvizOutput<'a> = 
-//    GraphvizOutput <| fun handle -> 
-//        match ma with 
-//        | GraphvizOutput(f) -> f handle
 
 let nested (initial:string) (body:GraphvizOutput<'a>) : GraphvizOutput<'a> =
     graphvizOutput {
@@ -113,6 +110,56 @@ let nested (initial:string) (body:GraphvizOutput<'a>) : GraphvizOutput<'a> =
         do! tellLine "}"
         return ans }
 
+type Attribute =
+    | Unquoted of string * string
+    | Quoted of string * string
+
+let showAttribute (attrib:Attribute) : string = 
+    match attrib with
+    | Unquoted(n,v) -> sprintf "%s=%s" n v
+    | Quoted(n,v) -> sprintf "%s=\"%s\"" n v
+
+let showAttributeList (xs:Attribute list) = 
+    sprintf "[%s]" << String.concat "," <| List.map showAttribute xs
+
+let tellStmt (name:string) (value:string) (quoted:bool) : GraphvizOutput<unit> =
+    let attrib = if quoted then Quoted(name,value) else Unquoted(name,value)
+    tellStatement <| showAttribute attrib
+
+let comment (text:string) : GraphvizOutput<unit> =
+    let lines = text.Split [|'\n'|] |> Array.toList
+    forMz lines <| (tellLine << sprintf "// %s")
+
 let graph (name:string) (body:GraphvizOutput<'a>) : GraphvizOutput<'a> =
     nested (sprintf "graph %s" name) body
 
+let digraph (name:string) (body:GraphvizOutput<'a>) : GraphvizOutput<'a> =
+    nested (sprintf "digraph %s" name) body
+
+
+/// cat should be one of "graph", "node","edge"
+let attrStmt (cat:string) (attribs:Attribute list) : GraphvizOutput<unit> =
+    tellStatement <| sprintf "%s %s" cat (showAttributeList attribs)
+
+
+let rankdirLR : GraphvizOutput<unit> = tellStmt "rankdir" "LR" false
+let rankdirTB : GraphvizOutput<unit> = tellStmt "rankdir" "TB" false
+
+let ranksep (sep:float) = tellStmt "ranksep" (sprintf "%.2f" sep) false
+
+let node (id:string) (attribs:Attribute list) : GraphvizOutput<unit> =
+    match attribs with
+    | [] -> tellStatement id
+    |_ -> tellStatement <| sprintf "%s %s" id (showAttributeList attribs)
+
+let edge (id1:string) (id2:string) (attribs:Attribute list) : GraphvizOutput<unit> =
+    match attribs with
+    | [] -> tellStatement <| sprintf "%s -> %s" id1 id2
+    |_ -> tellStatement <| sprintf "%s -> %s %s" id1 id2 (showAttributeList attribs)
+
+let nodeAttributes (attribs:Attribute list) : GraphvizOutput<unit> = attrStmt "node" attribs
+
+let fontname (name:string) : Attribute = Quoted ("fontname", name)
+let fontsize (size:int) : Attribute = Unquoted ("fontsize", size.ToString())
+let label (value:string) : Attribute = Quoted ("label", value)
+let shape (value:string) : Attribute = Quoted ("shape", value)
