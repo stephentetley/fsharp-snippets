@@ -72,6 +72,7 @@
     <Compile Include="SL\Tolerance.fs" />
     <Compile Include="SL\AnswerMonad.fs" />
     <Compile Include="SL\Coord.fs" />
+    <Compile Include="SL\WebMercator.fs" />
     <Compile Include="SL\WellKnownText.fs" />
     <Compile Include="SL\ExcelProviderHelper.fs" />
     <Compile Include="SL\JsonExtractor.fs" />

@@ -32,8 +32,10 @@ open SL.SqlUtils
 open SL.Geo.Coord
 open SL.Geo.WellKnownText
 open SL.PGSQLConn
-open SL.ScriptMonad
 open SL.CsvOutput
+open SL.GraphvizOutput
+open SL.ScriptMonad
+
 
 #load @"Scripts\PostGIS.fs"
 #load @"Scripts\PathFinder.fs"
@@ -108,9 +110,9 @@ let test04 (password:string) : unit =
     runConsoleScript (printfn "Success: %A") conn 
         <| scriptMonad { 
             let! routes = getSimpleRoutesFrom startPt
-            let output = generateDot <| List.map change routes
+            let procM  = generateDot "plan" <| List.map change routes
             do! liftAction (List.iter (printfn "Route: %A") routes)
-            do! liftAction (printfn "%s" output)
+            do! liftAction (runGraphvizOutputFile procM @"G:\work\working\output1.dot")
             }
 
 
@@ -124,4 +126,5 @@ let test05 () =
                             EdgeLabel= None }
         }
     let change (route1:Route<string>) : EdgeList<GraphvizEdge> = routeToEdgeList dict route1
-    generateDot << List.map change <| allRoutes roseTree1
+    let procM = generateDot "plan" << List.map change <| allRoutes roseTree1
+    execGraphvizOutput procM

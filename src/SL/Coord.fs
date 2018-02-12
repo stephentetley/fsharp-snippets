@@ -24,7 +24,7 @@ module Coord =
     // E.g Sullom Voe oil terminal in the Shetlands can be specified as HU396753 or 439668,1175316.
     // So we have two versions.
 
-    [<StructuredFormatDisplay("{Easting}E {Northing}E")>]
+    [<StructuredFormatDisplay("{Easting}E {Northing}N")>]
     type OSGB36Point = 
         { Easting : float<meter>
           Northing : float<meter> }

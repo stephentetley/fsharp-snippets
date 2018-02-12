@@ -118,6 +118,12 @@ type GraphvizEdge =
       LineColour:string option
       EdgeLabel: string option }
 
+type GraphvizNode = 
+    { NodeId: string
+      NodeLabel: string
+      Shape: string
+      FillColor: string option }
+
 // Note - we have to use the Postgres UID if we want to get a
 // GraphvizEdge from an Edge without extra lookups...
 
@@ -135,14 +141,6 @@ let EdgeToGraphvizEdgeDict:MakeEdgeDict<Edge,GraphvizEdge> =
                             LineColour= Some "red1"; 
                             EdgeLabel = Some <| makeLabel n1.DirectDistance }
         }
-
-
-type Node = 
-    { Name: string
-      Location: WGS84Point
-      NodeType: string
-      StcId: string
-      GvNodeId: string }
 
 
 
@@ -252,13 +250,13 @@ let genDotEdges (paths: EdgeList<GraphvizEdge> list) : GraphvizOutput<unit> =
             }
     work [] paths
 
-let generateDot (paths: EdgeList<GraphvizEdge> list) : string = 
-    let procM : GraphvizOutput<unit> = 
-        digraph "plan" 
+let generateDot  (graphName:string) (paths: EdgeList<GraphvizEdge> list) : GraphvizOutput<unit> = 
+    digraph graphName
             <| graphvizOutput { 
+                    do! attrib <| rankdir LR
                     do! genDotEdges paths
                     return ()
                     }
-    execGraphvizOutput procM
+
     
             
