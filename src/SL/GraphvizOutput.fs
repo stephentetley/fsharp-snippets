@@ -76,21 +76,25 @@ let traverseMz (fn: 'a -> GraphvizOutput<'b>) (source:seq<'a>) : GraphvizOutput<
 
 // GraphvizOutput-specific operations
 
-let runGraphvizOutput (ma:GraphvizOutput<'a>) (outputPath:string) : 'a = 
+let runGraphvizOutput (ma:GraphvizOutput<'a>) : (string * 'a) = 
     use handle : System.IO.StringWriter = new System.IO.StringWriter()
     match ma with 
     | GraphvizOutput(f) -> 
         let ans = f { Indent=0; EdgeOp="->" } handle
-        System.IO.File.WriteAllText(outputPath, handle.ToString())
-        ans
+        let text = handle.ToString()
+        (text,ans)
+
+let execGraphvizOutput (ma:GraphvizOutput<'a>) : string = fst <| runGraphvizOutput ma
+
+let runGraphvizOutputFile (ma:GraphvizOutput<'a>) (outputPath:string) : 'a = 
+    let (text,ans) = runGraphvizOutput ma
+    System.IO.File.WriteAllText(outputPath, text)
+    ans
 
 let runGraphvizOutputConsole (ma:GraphvizOutput<'a>) : 'a = 
-    use handle : System.IO.StringWriter = new System.IO.StringWriter()
-    match ma with 
-    | GraphvizOutput(f) -> 
-        let ans = f { Indent=0; EdgeOp="->" } handle
-        printfn "%s" <| handle.ToString()
-        ans
+    let (text,ans) = runGraphvizOutput ma
+    printfn "%s" text
+    ans
 
 /// This is too low level to expose.
 let private askConfig : GraphvizOutput<Config> = 

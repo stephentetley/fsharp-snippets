@@ -26,6 +26,7 @@ open Npgsql
 #load @"SL\JsonExtractor.fs"
 #load @"SL\ScriptMonad.fs"
 #load @"SL\CsvOutput.fs"
+#load @"SL\GraphvizOutput.fs"
 open SL.AnswerMonad
 open SL.SqlUtils
 open SL.Geo.Coord
@@ -105,7 +106,10 @@ let test04 (password:string) : unit =
 
     runConsoleScript (printfn "Success: %A") conn 
         <| scriptMonad { 
-            let! routes = getRoutesFrom startPt
+            let! routes = getSimpleRoutesFrom startPt
             do! liftAction (List.iter (printfn "Route: %A") routes)
             }
 
+
+let test05 () = 
+    generateDot <| allRoutes roseTree1

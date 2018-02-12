@@ -1,5 +1,7 @@
 ﻿module Scripts.PathFinder
 
+open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
+
 open Npgsql
 
 open SL.AnswerMonad
@@ -7,7 +9,9 @@ open SL.SqlUtils
 open SL.PGSQLConn
 open SL.Geo.Coord
 open SL.Geo.WellKnownText
+open SL.GraphvizOutput
 open SL.ScriptMonad
+
 
 open Scripts.PostGIS
 
@@ -65,28 +69,40 @@ let SetupEdgesDB (dict:EdgeInsertDict<'inputrow>) (edges:seq<'inputrow>) : Scrip
 
 // ***** Path finding
 
-type PathTree<'a> = 
-    | PathTree of 'a * PathTree<'a> list
+type PathTree<'edge> = 
+    | PathTree of 'edge * PathTree<'edge> list
     
-
-
-type Route<'a> = Route of 'a list
-
 
 type Edge =
     { UID: int
-      Basetype: string
+      BaseType: string
       FunctionNode: string
       StartPoint: WGS84Point
-      EndPoint: WGS84Point }
+      EndPoint: WGS84Point
+      DirectDistance: float<meter> }
 
-// SELECT id, basetype, function_node, ST_AsText(end_point) 
-// FROM spt_pathfind 
-// WHERE start_point = ST_GeomFromText('POINT(-2.16438 54.40591 )', 4326);
+//type GraphvizEdge = 
+//    { StartId: string
+//      EndId: string
+//      LineStyle:string
+//      EdgeId: string }
+
+      
+type Route<'edge> = Route of 'edge list
+
+type Node<'gvId> = 
+    { Name: string
+      Location: WGS84Point
+      NodeType: string
+      StcId: string
+      GvNodeId: 'gvId }
+
+
+
 let makeFindEdgesQUERY (startPt:WGS84Point) : string = 
     System.String.Format("""
         SELECT 
-            id, basetype, function_node, ST_AsText(end_point)
+            id, basetype, function_node, ST_AsText(end_point), distance_meters
         FROM 
             spt_pathfind
         WHERE 
@@ -104,14 +120,17 @@ let findEdges (startPt:WGS84Point) : Script<Edge list> =
             | Some pt -> pt
             | None -> failwith "findEdges - point not readable"
         { UID           = int <| reader.GetInt32(0)
-        ; Basetype      = reader.GetString(1)
+        ; BaseType      = reader.GetString(1)
         ; FunctionNode  = reader.GetString(2)
         ; StartPoint    = startPt
-        ; EndPoint      = wgs84End }
+        ; EndPoint      = wgs84End
+        ; DirectDistance = 1.0<meter> * (float <| reader.GetDouble(4)) }
     liftWithConnParams << runPGSQLConn <| execReaderList query procM  
 
 let notVisited (visited:Edge list) (e1:Edge) = 
     not <| List.exists (fun (e:Edge) -> e.UID = e1.UID) visited
+
+
 
 /// A start-point may have many outward paths, hence we build a list of trees.
 /// Note - if we study the data we should be able to prune the searches 
@@ -135,7 +154,7 @@ let buildForest (startPt:WGS84Point) : Script<PathTree<Edge> list> =
 
     
 // A Path tree cannot have cycles (they have been identified beforehand)...
-let allRoutes (allPaths:PathTree<'a>) : Route<'a> list = 
+let allRoutes (allPaths:PathTree<'edge>) : Route<'edge> list = 
     let rec build (soFarRev:'a list) (currentTree:PathTree<'a>) : ('a list) list = 
         match currentTree with
         | PathTree(label,[]) -> [label :: soFarRev]
@@ -143,11 +162,50 @@ let allRoutes (allPaths:PathTree<'a>) : Route<'a> list =
             List.collect (build (label::soFarRev)) paths
     List.map (Route << List.rev) <| build [] allPaths
 
-// Note to self - be careful using <| in computation expressions
 
-let getRoutesFrom (startPt:WGS84Point) : Script<Route<Edge> list> = 
+
+let getSimpleRoutesFrom (startPt:WGS84Point) : Script<Route<Edge> list> = 
     fmapM (List.collect allRoutes) <| buildForest startPt
 
+/// EdgeCache is (from,to) names
+type EdgeCache = (string * string) list
 
+let genDotEdges1 (route1: Route<string>) (edgeCache:EdgeCache) : GraphvizOutput<EdgeCache> = 
+    let rec work cache x xs = 
+        match xs with 
+        | y :: ys -> 
+            let current = (x,y)
+            if List.exists (fun t -> t=current) cache then 
+                work cache y ys
+            else
+                graphvizOutput { 
+                    do! edge x y []
+                    let! cache1 = work (current::cache) y ys 
+                    return cache1
+                }
+        | [] -> graphvizOutput.Return cache
+    match route1 with 
+    | Route(x::xs) -> work edgeCache x xs 
+    | Route _ -> graphvizOutput.Return edgeCache
 
+let genDotEdges (routes: Route<string> list) : GraphvizOutput<unit> = 
+    let rec work cache xs = 
+        match xs with
+        | [] -> graphvizOutput.Return ()
+        | x :: xs -> 
+            graphvizOutput { 
+                let! cache1 = genDotEdges1 x cache
+                do! work cache1 xs 
+            }
+    work [] routes
 
+let generateDot (routes: Route<string> list) : string = 
+    let procM : GraphvizOutput<unit> = 
+        digraph "plan" 
+            <| graphvizOutput { 
+                    do! genDotEdges routes
+                    return ()
+                    }
+    execGraphvizOutput procM
+    
+            
