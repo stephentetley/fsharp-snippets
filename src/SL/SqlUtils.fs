@@ -56,6 +56,11 @@ let sqlINSERT (tableName:string) (values:InsertValues) : string =
             (columnsList <| List.map (fun v -> v.columnName) values)
             (valuesList values)
 
+/// PostgreSQL only.
+let pgsqlEXECUTE (procName:string) (values:InsertValues) : string = 
+    sprintf "EXECUTE %s(%s);" procName (valuesList values)
+
+
 
 let nullValue (column:string) () : InsertValue = 
     let render (o:obj) = "NULL"

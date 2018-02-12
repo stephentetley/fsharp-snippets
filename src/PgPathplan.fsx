@@ -39,11 +39,9 @@ open SL.CsvOutput
 open Scripts.PathFinder
 
 // PostgresSQL with PostGIS enabled.
-// Table Schema:
-// CREATE TABLE spt_outfalls (stc25_ref VARCHAR(12) PRIMARY KEY, function_node VARCHAR(30), osgb36_grid VARCHAR(16), point_loc geography (POINT));
+// Table Schema: see sql/pg_pathfind_table.sql
 
-
-
+// Note - pathplan-mock-data.csv has some extraordinary values (e.g. distances > 12km)
 type PathImportTable = 
     CsvProvider< @"G:\work\Projects\events2\pathplan-mock-data.csv",
                  HasHeaders = true>
@@ -54,7 +52,7 @@ let getPathImportRows () : seq<PathImportRow> =
     (new PathImportTable ()).Rows |> Seq.cast<PathImportRow>
 
 
-let tryMakeEdge (row:PathImportRow) : EdgeInsert option = 
+let tryMakeEdge (row:PathImportRow) : EdgeDbRecord option = 
     let convert1 = 
         Option.bind wktPointToOSGB36 << tryReadWktPoint
     match convert1 row.StartPoint, convert1 row.EndPoint with
@@ -65,7 +63,8 @@ let tryMakeEdge (row:PathImportRow) : EdgeInsert option =
                 ; EndPoint = osgb36ToWGS84 endPt }
     | _,_ -> None
 
-let edgeInsertDict : EdgeInsertDict<PathImportRow> = { tryMakeEdgeInsert = tryMakeEdge }
+let edgeInsertDict : EdgeInsertDict<PathImportRow> = 
+    { tryMakeEdgeDbRecord = tryMakeEdge }
 
 let SetupDB(password:string) : unit = 
     let conn = pgsqlConnParamsTesting "spt_geo" password

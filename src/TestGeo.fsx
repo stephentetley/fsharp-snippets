@@ -89,4 +89,12 @@ let wktRead05 () =
         tryReadWktTriangle "TRIANGLE((-0.576 53.724,-0.578 53.722,-0.580 53.722))"
     printfn "%A" triangle1
 
+let dist01 () =
+    // ST_Distance(ST_GeogFromText('SRID=4326;POINT (-0.90565 54.46504)'),ST_GeogFromText('SRID=4326;POINT (-0.91998 54.46242)')));
+    haversineDistance   {Longitude = -0.90565<degree>; Latitude=54.46504<degree>}
+                        {Longitude = -0.91998<degree>; Latitude=54.46242<degree>}   
 
+
+let dist02 () =
+    haversineDistanceOGSB36Point    {Easting=422494.690<meter>; Northing=505852.776<meter>}  
+                                    {Easting=410700.754<meter>; Northing=510164.568<meter>} 

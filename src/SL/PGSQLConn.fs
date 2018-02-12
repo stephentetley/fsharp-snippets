@@ -159,6 +159,13 @@ let execNonQuery (statement:string) : PGSQLConn<int> =
         let cmd : NpgsqlCommand = new NpgsqlCommand(statement, conn)
         cmd.ExecuteNonQuery ()
 
+//let execPreparedStatement (statement:string) : PGSQLConn<int> = 
+//    liftConn <| fun conn -> 
+//        let cmd : NpgsqlCommand = new NpgsqlCommand(statement, conn)
+//        cmd.Prepare()
+//        printfn "IsPrepared: %A"       cmd.IsPrepared
+//        cmd.ExecuteNonQuery ()
+
 let execReader (statement:string) (proc:NpgsqlDataReader -> 'a) : PGSQLConn<'a> =
     liftConn <| fun conn -> 
         let cmd : NpgsqlCommand = new NpgsqlCommand(statement, conn)

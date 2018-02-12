@@ -13,7 +13,7 @@ open Scripts.PostGIS
 
 
 // ***** Set up the database
-type EdgeInsert =
+type EdgeDbRecord =
     { Basetype: string
       FunctionNode: string
       StartPoint: WGS84Point
@@ -21,29 +21,36 @@ type EdgeInsert =
 
 
 type EdgeInsertDict<'inputrow> = 
-    { tryMakeEdgeInsert : 'inputrow -> EdgeInsert option }
+    { tryMakeEdgeDbRecord : 'inputrow -> EdgeDbRecord option }
 
 
 let deleteAllData () : Script<int> = 
     liftWithConnParams << runPGSQLConn <| deleteAllRowsRestartIdentity "spt_pathfind"
 
 
-
-let private makeEdgeInsert (edge1:EdgeInsert) : string = 
+/// We have a prepared statement to do this in a nice way, but calling it generates 
+/// a error that I don't know how to fix.
+let private makeEdgeDbInsert (edge1:EdgeDbRecord) : string = 
     let makePointLit (pt:WGS84Point) : string = 
         sprintf "ST_GeogFromText('SRID=4326;%s')" (showWktPoint <| wgs84WktPoint pt)
     // Note the id column is PG's SERIAL type so it is inserted automatically
+
+    let makeDistanceLit (p1:WGS84Point) (p2:WGS84Point) : string = 
+        sprintf "ST_Distance(%s,%s)"
+                (makePointLit p1) 
+                (makePointLit p2)
     sqlINSERT "spt_pathfind" 
             <|  [ stringValue       "basetype"          edge1.Basetype
                 ; stringValue       "function_node"     edge1.FunctionNode
                 ; literalValue      "start_point"       <| makePointLit edge1.StartPoint
                 ; literalValue      "end_point"         <| makePointLit edge1.EndPoint
+                ; literalValue      "distance_meters"   <| makeDistanceLit edge1.StartPoint edge1.EndPoint
                 ]
 
 let insertEdges (dict:EdgeInsertDict<'inputrow>) (outfalls:seq<'inputrow>) : Script<int> = 
     let proc1 (row:'inputrow) : PGSQLConn<int> = 
-        match dict.tryMakeEdgeInsert row with
-        | Some edge -> execNonQuery <| makeEdgeInsert edge
+        match dict.tryMakeEdgeDbRecord row with
+        | Some edge -> execNonQuery <|makeEdgeDbInsert edge
         | None -> pgsqlConn.Return 0
     liftWithConnParams 
         << runPGSQLConn << withTransaction <| SL.PGSQLConn.sumTraverseM proc1 outfalls
