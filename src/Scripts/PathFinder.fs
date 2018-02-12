@@ -69,9 +69,39 @@ let SetupEdgesDB (dict:EdgeInsertDict<'inputrow>) (edges:seq<'inputrow>) : Scrip
 
 // ***** Path finding
 
-type PathTree<'edge> = 
-    | PathTree of 'edge * PathTree<'edge> list
-    
+
+/// A route is really a node tree, though we we can treat an edge as a node
+/// if we principally consider its start point.
+type PathTree<'node> = 
+    | PathTree of 'node * PathTree<'node> list
+
+/// A route is really a node list, though we we can treat an edge as a node
+/// if we principally consider its start point.
+type Route<'node> = Route of 'node list
+
+
+/// An edge list must provide access to start and end 
+/// (e.g. as coordinates or ids).
+type EdgeList<'edge> = EdgeList of 'edge list
+
+type MakeEdgeDict<'node,'edge> = 
+    { MakeEdgeFromRouteNodes: 'node -> 'node -> 'edge }
+
+let routeToEdgeList (dict:MakeEdgeDict<'node,'edge>) (route:Route<'node>) : EdgeList<'edge> = 
+    let rec work ac node1 nodes =
+        match nodes with
+        | [] -> List.rev ac     
+        | [node2] -> 
+            let edge1 = dict.MakeEdgeFromRouteNodes node1 node2
+            List.rev (edge1::ac)
+        | node2 ::ns -> 
+            let edge1 = dict.MakeEdgeFromRouteNodes node1 node2
+            work (edge1::ac) node2 ns
+    match route with
+    | Route (x::xs) -> EdgeList <| work [] x xs
+    | _ -> EdgeList []
+
+
 
 type Edge =
     { UID: int
@@ -81,21 +111,38 @@ type Edge =
       EndPoint: WGS84Point
       DirectDistance: float<meter> }
 
-//type GraphvizEdge = 
-//    { StartId: string
-//      EndId: string
-//      LineStyle:string
-//      EdgeId: string }
+type GraphvizEdge = 
+    { StartId: string
+      EndId: string
+      LineStyle: string option
+      LineColour:string option
+      EdgeLabel: string option }
 
-      
-type Route<'edge> = Route of 'edge list
+// Note - we have to use the Postgres UID if we want to get a
+// GraphvizEdge from an Edge without extra lookups...
 
-type Node<'gvId> = 
+let EdgeToGraphvizEdgeDict:MakeEdgeDict<Edge,GraphvizEdge> = 
+        let makeLabel (dist:float<meter>) : string = 
+            if dist < 1000.0<meter> then
+                sprintf "%.0fm" (float dist)
+            else
+                sprintf "%.2fkm" (0.001*float dist)
+
+        { MakeEdgeFromRouteNodes = 
+            fun n1 n2 -> { StartId = sprintf "node%i" n1.UID; 
+                            EndId = sprintf "node%i" n2.UID; 
+                            LineStyle = None;
+                            LineColour= Some "red1"; 
+                            EdgeLabel = Some <| makeLabel n1.DirectDistance }
+        }
+
+
+type Node = 
     { Name: string
       Location: WGS84Point
       NodeType: string
       StcId: string
-      GvNodeId: 'gvId }
+      GvNodeId: string }
 
 
 
@@ -112,7 +159,7 @@ let makeFindEdgesQUERY (startPt:WGS84Point) : string =
 
 
 
-let findEdges (startPt:WGS84Point) : Script<Edge list> = 
+let findOutwardEdges (startPt:WGS84Point) : Script<Edge list> = 
     let query = makeFindEdgesQUERY startPt
     let procM (reader:NpgsqlDataReader) : Edge = 
         let wgs84End = 
@@ -140,7 +187,8 @@ let buildForest (startPt:WGS84Point) : Script<PathTree<Edge> list> =
     let rec recBuild (pt:WGS84Point) (visited:Edge list) : Script<PathTree<Edge> list> = 
         scriptMonad { 
             // TO CHECK - Are we sure we are handling cyclic paths "wisely"?
-            let! (esNew:Edge list) = fmapM (List.filter (notVisited visited)) <| findEdges pt
+            let! (esNew:Edge list) = 
+                fmapM (List.filter (notVisited visited)) <| findOutwardEdges pt
             let! branches = 
                 forM esNew <| 
                     fun (e1:Edge) -> 
@@ -170,25 +218,30 @@ let getSimpleRoutesFrom (startPt:WGS84Point) : Script<Route<Edge> list> =
 /// EdgeCache is (from,to) names
 type EdgeCache = (string * string) list
 
-let genDotEdges1 (route1: Route<string>) (edgeCache:EdgeCache) : GraphvizOutput<EdgeCache> = 
-    let rec work cache x xs = 
-        match xs with 
-        | y :: ys -> 
-            let current = (x,y)
+
+let genDotEdges1 (path1: EdgeList<GraphvizEdge>) (edgeCache:EdgeCache) : GraphvizOutput<EdgeCache> = 
+    let rec work (cache:EdgeCache) (edges:GraphvizEdge list) = 
+        match edges with 
+        | x :: xs -> 
+            let current = (x.StartId, x.EndId)
             if List.exists (fun t -> t=current) cache then 
-                work cache y ys
+                work cache xs
             else
-                graphvizOutput { 
-                    do! edge x y []
-                    let! cache1 = work (current::cache) y ys 
+                graphvizOutput {
+                    let attrs = 
+                        List.choose id [ Option.map label x.EdgeLabel;
+                                         Option.map (fun z -> style [z]) x.LineStyle;
+                                         Option.map color x.LineColour ]
+                    do! edge x.StartId x.EndId attrs // [label x.EdgeLabel; style [x.LineStyle]; color x.LineColour]
+                    let! cache1 = work (current::cache) xs 
                     return cache1
                 }
         | [] -> graphvizOutput.Return cache
-    match route1 with 
-    | Route(x::xs) -> work edgeCache x xs 
-    | Route _ -> graphvizOutput.Return edgeCache
+    match path1 with 
+    | EdgeList xs -> work edgeCache xs 
 
-let genDotEdges (routes: Route<string> list) : GraphvizOutput<unit> = 
+
+let genDotEdges (paths: EdgeList<GraphvizEdge> list) : GraphvizOutput<unit> = 
     let rec work cache xs = 
         match xs with
         | [] -> graphvizOutput.Return ()
@@ -197,13 +250,13 @@ let genDotEdges (routes: Route<string> list) : GraphvizOutput<unit> =
                 let! cache1 = genDotEdges1 x cache
                 do! work cache1 xs 
             }
-    work [] routes
+    work [] paths
 
-let generateDot (routes: Route<string> list) : string = 
+let generateDot (paths: EdgeList<GraphvizEdge> list) : string = 
     let procM : GraphvizOutput<unit> = 
         digraph "plan" 
             <| graphvizOutput { 
-                    do! genDotEdges routes
+                    do! genDotEdges paths
                     return ()
                     }
     execGraphvizOutput procM

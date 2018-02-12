@@ -94,7 +94,7 @@ let test03 (password:string) : unit =
 
     runConsoleScript (printfn "Success: %A") conn 
         <| scriptMonad { 
-            let! vs = findEdges startPt
+            let! vs = findOutwardEdges startPt
             do! liftAction (List.iter (printfn "Edge: %A") vs)
             }
 
@@ -104,12 +104,24 @@ let test04 (password:string) : unit =
     let startPt = 
         osgb36ToWGS84 { Easting = 389330.850<meter> ; Northing = 501189.852<meter> }
 
+    let change (route1:Route<Edge>) : EdgeList<GraphvizEdge> = routeToEdgeList EdgeToGraphvizEdgeDict route1
     runConsoleScript (printfn "Success: %A") conn 
         <| scriptMonad { 
             let! routes = getSimpleRoutesFrom startPt
+            let output = generateDot <| List.map change routes
             do! liftAction (List.iter (printfn "Route: %A") routes)
+            do! liftAction (printfn "%s" output)
             }
 
 
 let test05 () = 
-    generateDot <| allRoutes roseTree1
+    let dict:MakeEdgeDict<string,GraphvizEdge> = 
+        { MakeEdgeFromRouteNodes = 
+            fun n1 n2 -> { StartId = n1; 
+                            EndId = n2; 
+                            LineStyle = None;
+                            LineColour = Some "red1"; 
+                            EdgeLabel= None }
+        }
+    let change (route1:Route<string>) : EdgeList<GraphvizEdge> = routeToEdgeList dict route1
+    generateDot << List.map change <| allRoutes roseTree1
