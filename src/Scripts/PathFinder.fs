@@ -118,6 +118,59 @@ let SetupPathsDB (dict:PathFindInsertDict<'noderow,'edgerow>) (nodes:seq<'nodero
         return (c1 + c2)
      }
 
+// ***** Node finding 
+// e.g for start node
+
+let private findNodeQUERY (typeTag:string) (nodeLabel:string) : string = 
+    System.String.Format("""
+        SELECT 
+            id, type_tag, node_label, ST_AsText(grid_ref) as wkt
+        FROM 
+            spt_pathfind_nodes
+        WHERE
+            type_tag = '{0}' AND node_label='{1}';
+        """, typeTag, nodeLabel)
+
+let findNode (typeTag:string) (nodeLabel:string) : Script<NodeRecord> = 
+    let query = findNodeQUERY typeTag nodeLabel
+    let procM (reader:NpgsqlDataReader) : NodeRecord = 
+        let gridRef = 
+            match Option.bind wktPointToWGS84 <| tryReadWktPoint (reader.GetString(3)) with
+            | Some pt -> pt
+            | None -> failwith "findEdges - point not readable"
+        { UID           = int <| reader.GetInt32(0)
+        ; TypeTag       = reader.GetString(1)
+        ; NodeLabel     = reader.GetString(2)
+        ; GridRef       = gridRef }
+    liftWithConnParams << runPGSQLConn <| execReaderFirst query procM  
+
+let private findNearestNodeQUERY (gridRef:WGS84Point) : string = 
+    System.String.Format("""
+        SELECT 
+            o.id, o.type_tag, o.node_label, 
+            ST_AsText(o.grid_ref) as wkt, 
+            ST_Distance(o.grid_ref, ST_Point({0}, {1})) as dist
+        FROM
+            spt_pathfind_nodes o
+        ORDER BY
+            o.grid_ref <-> ST_Point({0}, {1}) :: geography limit 1;
+        """, gridRef.Longitude, gridRef.Latitude )
+
+let findNearestNode (origin:WGS84Point) : Script<NodeRecord option> = 
+    let query = findNearestNodeQUERY origin
+    let procM (reader:NpgsqlDataReader) : NodeRecord option = 
+        let makeNode gridRef = 
+            { UID           = int <| reader.GetInt32(0)
+            ; TypeTag       = reader.GetString(1)
+            ; NodeLabel     = reader.GetString(2)
+            ; GridRef       = gridRef }
+        Option.map makeNode 
+            << Option.bind wktPointToWGS84
+            <| tryReadWktPoint (reader.GetString(3))
+
+    liftWithConnParams << runPGSQLConn <| execReaderFirst query procM  
+
+
 
 // ***** Path finding
 
@@ -137,58 +190,6 @@ type Route<'node> = Route of 'node list
 /// An edge list must provide access to start and end 
 /// (e.g. as coordinates or ids).
 type EdgeList<'edge> = EdgeList of 'edge list
-
-type MakeEdgeDict<'node,'edge> = 
-    { MakeEdgeFromRouteNodes: 'node -> 'node -> 'edge }
-
-let routeToEdgeList (dict:MakeEdgeDict<'node,'edge>) (route:Route<'node>) : EdgeList<'edge> = 
-    let rec work ac node1 nodes =
-        match nodes with
-        | [] -> List.rev ac     
-        | [node2] -> 
-            let edge1 = dict.MakeEdgeFromRouteNodes node1 node2
-            List.rev (edge1::ac)
-        | node2 ::ns -> 
-            let edge1 = dict.MakeEdgeFromRouteNodes node1 node2
-            work (edge1::ac) node2 ns
-    match route with
-    | Route (x::xs) -> EdgeList <| work [] x xs
-    | _ -> EdgeList []
-
-
-
-
-type GraphvizEdge = 
-    { StartId: string
-      EndId: string
-      LineStyle: string option
-      LineColour:string option
-      EdgeLabel: string option }
-
-type GraphvizNode = 
-    { NodeId: string
-      NodeLabel: string
-      Shape: string
-      FillColor: string option }
-
-// Note - we have to use the Postgres UID if we want to get a
-// GraphvizEdge from an Edge without extra lookups...
-
-let edgeToGraphvizEdgeDict:MakeEdgeDict<EdgeRecord,GraphvizEdge> = 
-        let makeLabel (dist:float<meter>) : string = 
-            if dist < 1000.0<meter> then
-                sprintf "%.0fm" (float dist)
-            else
-                sprintf "%.2fkm" (0.001*float dist)
-
-        { MakeEdgeFromRouteNodes = 
-            fun n1 n2 -> { StartId = sprintf "node%i" n1.UID; 
-                            EndId = sprintf "node%i" n2.UID; 
-                            LineStyle = None;
-                            LineColour= Some "red1"; 
-                            EdgeLabel = Some <| makeLabel n1.DirectDistance }
-        }
-
 
 
 let makeFindEdgesQUERY (startPt:WGS84Point) : string = 
@@ -259,6 +260,64 @@ let allRoutes (allPaths:PathTree<'edge>) : Route<'edge> list =
 
 let getSimpleRoutesFrom (startPt:WGS84Point) : Script<Route<EdgeRecord> list> = 
     fmapM (List.collect allRoutes) <| buildForest startPt
+
+
+
+
+// ***** Graphviz
+
+
+type MakeEdgeDict<'node,'edge> = 
+    { MakeEdgeFromRouteNodes: 'node -> 'node -> 'edge }
+
+let routeToEdgeList (dict:MakeEdgeDict<'node,'edge>) (route:Route<'node>) : EdgeList<'edge> = 
+    let rec work ac node1 nodes =
+        match nodes with
+        | [] -> List.rev ac     
+        | [node2] -> 
+            let edge1 = dict.MakeEdgeFromRouteNodes node1 node2
+            List.rev (edge1::ac)
+        | node2 ::ns -> 
+            let edge1 = dict.MakeEdgeFromRouteNodes node1 node2
+            work (edge1::ac) node2 ns
+    match route with
+    | Route (x::xs) -> EdgeList <| work [] x xs
+    | _ -> EdgeList []
+
+
+
+
+type GraphvizEdge = 
+    { StartId: string
+      EndId: string
+      LineStyle: string option
+      LineColour:string option
+      EdgeLabel: string option }
+
+
+type GraphvizNode = 
+    { NodeId: string
+      NodeLabel: string
+      Shape: string
+      FillColor: string option }
+
+
+// Note - we have to use the Postgres UID if we want to get a
+// GraphvizEdge from an Edge without extra lookups...
+
+let edgeToGraphvizEdgeDict:MakeEdgeDict<EdgeRecord,GraphvizEdge> = 
+        let makeLabel (dist:float<meter>) : string = sprintf "%.2fkm" (0.001*float dist)
+ 
+        { MakeEdgeFromRouteNodes = 
+            fun n1 n2 -> { StartId = sprintf "node%i" n1.UID; 
+                            EndId = sprintf "node%i" n2.UID; 
+                            LineStyle = None;
+                            LineColour= Some "red1"; 
+                            EdgeLabel = Some <| makeLabel n1.DirectDistance }
+        }
+
+
+
 
 /// EdgeCache is (from,to) names
 type EdgeCache = (string * string) list

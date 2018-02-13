@@ -126,13 +126,12 @@ let test03 (password:string) : unit =
 
 let test04 (password:string) : unit = 
     let conn = pgsqlConnParamsTesting "spt_geo" password
-    let startPt = 
-        osgb36ToWGS84 { Easting = 389330.850<meter> ; Northing = 501189.852<meter> }
 
     let change (route1:Route<EdgeRecord>) : EdgeList<GraphvizEdge> = routeToEdgeList edgeToGraphvizEdgeDict route1
     runConsoleScript (printfn "Success: %A") conn 
         <| scriptMonad { 
-            let! routes = getSimpleRoutesFrom startPt
+            let! startNode = findNode "Station" "Bradford Forster Square"
+            let! routes = getSimpleRoutesFrom startNode.GridRef
             let procM  = generateDot "plan" <| List.map change routes
             do! liftAction (List.iter (printfn "Route: %A") routes)
             do! liftAction (runGraphvizOutputFile procM @"G:\work\working\output1.dot")
