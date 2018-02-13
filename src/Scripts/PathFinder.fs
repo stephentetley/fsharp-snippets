@@ -38,15 +38,15 @@ type NodeRecord =
 /// create from input omits them.
 type UserLandEdge =
     { TypeTag: string
-      Label: string
+      EdgeLabel: string
       EdgeStart: WGS84Point
       EdgeEnd: WGS84Point }
 
 /// UID is opaque to the user, so the record users have to create from input 
 /// data omits it.
 type UserLandNode =
-    { NodeLabel: string
-      TypeTag: string 
+    { TypeTag: string 
+      NodeLabel: string
       NodeLocation: WGS84Point }
 
 
@@ -56,42 +56,66 @@ type PathFindInsertDict<'node,'edge> =
 
 
 let deleteAllData () : Script<int> = 
-    liftWithConnParams << runPGSQLConn <| deleteAllRowsRestartIdentity "spt_pathfind_edges"
+    liftWithConnParams << runPGSQLConn <| 
+        pgsqlConn { 
+            let! i = deleteAllRowsRestartIdentity "spt_pathfind_edges"
+            let! j = deleteAllRowsRestartIdentity "spt_pathfind_nodes"
+            return (i+j)
+            }
+
+let private makePointLit (pt:WGS84Point) : string = 
+    sprintf "ST_GeogFromText('SRID=4326;%s')" (showWktPoint <| wgs84WktPoint pt)
+
+let private makeNodeInsertStmt (node1:UserLandNode) : string = 
+    sqlINSERT "spt_pathfind_nodes" 
+        <|  [ stringValue       "type_tag"          node1.TypeTag
+            ; stringValue       "node_label"        node1.NodeLabel
+            ; literalValue      "grid_ref"          <| makePointLit node1.NodeLocation
+            ]
 
 
 /// We have a prepared statement to do this in a nice way, but calling it generates 
 /// a error that I don't know how to fix.
-let private makeEdgeDbInsert (edge1:UserLandEdge) : string = 
-    let makePointLit (pt:WGS84Point) : string = 
-        sprintf "ST_GeogFromText('SRID=4326;%s')" (showWktPoint <| wgs84WktPoint pt)
+let private makeEdgeInsertStmt (edge1:UserLandEdge) : string = 
     // Note the id column is PG's SERIAL type so it is inserted automatically
-
     let makeDistanceProc (p1:WGS84Point) (p2:WGS84Point) : string = 
         sprintf "ST_Distance(%s,%s)"
                 (makePointLit p1) 
                 (makePointLit p2)
 
     sqlINSERT "spt_pathfind_edges" 
-            <|  [ stringValue       "type_tag"          edge1.TypeTag
-                ; stringValue       "edge_label"        edge1.Label
-                ; literalValue      "start_point"       <| makePointLit edge1.EdgeStart
-                ; literalValue      "end_point"         <| makePointLit edge1.EdgeEnd
-                ; literalValue      "distance_meters"   <| makeDistanceProc edge1.EdgeStart edge1.EdgeEnd
-                ]
+        <|  [ stringValue       "type_tag"          edge1.TypeTag
+            ; stringValue       "edge_label"        edge1.EdgeLabel
+            ; literalValue      "start_point"       <| makePointLit edge1.EdgeStart
+            ; literalValue      "end_point"         <| makePointLit edge1.EdgeEnd
+            ; literalValue      "distance_meters"   <| makeDistanceProc edge1.EdgeStart edge1.EdgeEnd
+            ]
 
-let insertEdges (dict:PathFindInsertDict<'noderow,'edgerow>) (source:seq<'edgerow>) : Script<int> = 
-    let proc1 (row:'edgerow) : PGSQLConn<int> = 
-        match dict.tryMakeUserLandEdge row with
-        | Some edge -> execNonQuery <| makeEdgeDbInsert edge
+
+let insertNodes (dict:PathFindInsertDict<'noderow,'edgerow>) (source:seq<'noderow>) : Script<int> = 
+    let proc1 (row:'noderow) : PGSQLConn<int> = 
+        match dict.tryMakeUserLandNode row with
+        | Some node -> execNonQuery <| makeNodeInsertStmt node
         | None -> pgsqlConn.Return 0
     liftWithConnParams 
         << runPGSQLConn << withTransaction <| SL.PGSQLConn.sumTraverseM proc1 source
 
-let SetupPathsDB (dict:PathFindInsertDict<'noderow,'edgerow>) (edges:seq<'edgerow>) : Script<int> = 
+let insertEdges (dict:PathFindInsertDict<'noderow,'edgerow>) (source:seq<'edgerow>) : Script<int> = 
+    let proc1 (row:'edgerow) : PGSQLConn<int> = 
+        match dict.tryMakeUserLandEdge row with
+        | Some edge -> execNonQuery <| makeEdgeInsertStmt edge
+        | None -> pgsqlConn.Return 0
+    liftWithConnParams 
+        << runPGSQLConn << withTransaction <| SL.PGSQLConn.sumTraverseM proc1 source
+
+
+
+let SetupPathsDB (dict:PathFindInsertDict<'noderow,'edgerow>) (nodes:seq<'noderow>) (edges:seq<'edgerow>) : Script<int> = 
     scriptMonad { 
-        let! _ = deleteAllData () |> logScript (sprintf "%i rows deleted")
-        let! count = insertEdges dict edges |> logScript (sprintf "%i rows inserted") 
-        return count
+        let! _ = deleteAllData ()           |> logScript (sprintf "%i rows deleted")
+        let! c1 = insertNodes dict nodes    |> logScript (sprintf "%i node rows inserted")
+        let! c2 = insertEdges dict edges    |> logScript (sprintf "%i edge rows inserted") 
+        return (c1 + c2)
      }
 
 

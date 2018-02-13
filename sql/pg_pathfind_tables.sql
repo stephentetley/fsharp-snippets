@@ -12,7 +12,7 @@ DROP TABLE spt_pathfind_nodes;
 CREATE TABLE spt_pathfind_edges (
     id SERIAL PRIMARY KEY,
     type_tag VARCHAR(30), 
-    edge_label VARCHAR(60), 
+    edge_label VARCHAR(120), 
     start_point geography (POINT,4326), 
     end_point geography (POINT,4326),
     distance_meters float8
@@ -22,7 +22,7 @@ CREATE TABLE spt_pathfind_edges (
 CREATE TABLE spt_pathfind_nodes (
     id SERIAL PRIMARY KEY,
     type_tag VARCHAR(30), 
-    node_label VARCHAR(60), 
+    node_label VARCHAR(120), 
     grid_ref geography (POINT,4326)
 );
 

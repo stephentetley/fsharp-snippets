@@ -42,39 +42,61 @@ open SL.ScriptMonad
 open Scripts.PathFinder
 
 // PostgresSQL with PostGIS enabled.
-// Table Schema: see sql/pg_pathfind_table.sql
+// Table Schema: see sql/pg_pathfind_tables.sql
 
-// Note - pathplan-mock-data.csv has some extraordinary values (e.g. distances > 12km)
-type PathImportTable = 
-    CsvProvider< @"G:\work\Projects\events2\pathplan-mock-data.csv",
+// Read Node data
+type NodeImportTable = 
+    CsvProvider< @"G:\work\Projects\events2\pathfind\pathfind-mock-nodes.csv",
                  HasHeaders = true>
 
-type PathImportRow = PathImportTable.Row
+type NodeImportRow = NodeImportTable.Row
 
-let getPathImportRows () : seq<PathImportRow> = 
-    (new PathImportTable ()).Rows |> Seq.cast<PathImportRow>
+let getNodeImportRows () : seq<NodeImportRow> = 
+    (new NodeImportTable ()).Rows |> Seq.cast<NodeImportRow>
+
+let tryMakeNode (row:NodeImportRow) : UserLandNode option = 
+    let convert1 : string -> WGS84Point option = 
+        Option.bind wktPointToWGS84 << tryReadWktPoint
+    match convert1 row.WKT with
+    | Some gridRef -> 
+        Some <| { TypeTag       = row.``Feature Type``
+                ; NodeLabel     = row.``Feature Name``
+                ; NodeLocation  = gridRef }
+    | _ -> None
 
 
-let tryMakeEdge (row:PathImportRow) : UserLandEdge option = 
-    let convert1 = 
-        Option.bind wktPointToOSGB36 << tryReadWktPoint
-    match convert1 row.StartPoint, convert1 row.EndPoint with
+// Read Edge data
+type EdgeImportTable = 
+    CsvProvider< @"G:\work\Projects\events2\pathfind\pathfind-mock-edges.csv",
+                 HasHeaders = true>
+
+type EdgeImportRow = EdgeImportTable.Row
+
+let getEdgeImportRows () : seq<EdgeImportRow> = 
+    (new EdgeImportTable ()).Rows |> Seq.cast<EdgeImportRow>
+
+// Input data is WGS84
+let tryMakeEdge (row:EdgeImportRow) : UserLandEdge option = 
+    let convert1 : string -> WGS84Point option = 
+        Option.bind wktPointToWGS84 << tryReadWktPoint
+    match convert1 row.``Start Point (WKT)``, convert1 row.``End Point (WKT)`` with
     | Some startPt, Some endPt -> 
-        Some <| { TypeTag       = row.BASETYPE
-                ; Label         = row.FUNCTION_Link
-                ; EdgeStart     = osgb36ToWGS84 startPt
-                ; EdgeEnd       = osgb36ToWGS84 endPt }
+        Some <| { TypeTag       = row.Type
+                ; EdgeLabel     = row.Description
+                ; EdgeStart     = startPt
+                ; EdgeEnd       = endPt }
     | _,_ -> None
 
-let edgeInsertDict : PathFindInsertDict<'node,PathImportRow> = 
-    { tryMakeUserLandNode = fun _ -> failwith "TODO"
+let pathFindInsertDict : PathFindInsertDict<NodeImportRow,EdgeImportRow> = 
+    { tryMakeUserLandNode = tryMakeNode
       tryMakeUserLandEdge = tryMakeEdge }
 
 let SetupDB(password:string) : unit = 
     let conn = pgsqlConnParamsTesting "spt_geo" password
-    let rows = getPathImportRows ()
+    let nodeRows = getNodeImportRows ()
+    let edgeRows = getEdgeImportRows ()
     runConsoleScript (printfn "Success: %i modifications") conn 
-        <| SetupPathsDB edgeInsertDict rows 
+        <| SetupPathsDB pathFindInsertDict nodeRows edgeRows 
 
 // ***** Testing towards path finding...
 
