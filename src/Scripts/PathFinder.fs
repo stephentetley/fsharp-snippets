@@ -52,7 +52,7 @@ type UserLandNode =
 
 type PathFindInsertDict<'node,'edge> = 
     { tryMakeUserLandNode: 'node -> UserLandNode option 
-      tryMakeUserLandEdge : 'edge -> UserLandEdge option }
+      tryMakeUserLandEdge: 'edge -> UserLandEdge option }
 
 
 let deleteAllData () : Script<int> = 
@@ -144,7 +144,7 @@ let findNode (typeTag:string) (nodeLabel:string) : Script<NodeRecord> =
         ; GridRef       = gridRef }
     liftWithConnParams << runPGSQLConn <| execReaderFirst query procM  
 
-let private findNearestNodeQUERY (gridRef:WGS84Point) : string = 
+let private findNearestNodeQUERY (gridRef:WGS84Point) (proximity:float<meter>) : string = 
     System.String.Format("""
         SELECT 
             o.id, o.type_tag, o.node_label, 
@@ -152,12 +152,14 @@ let private findNearestNodeQUERY (gridRef:WGS84Point) : string =
             ST_Distance(o.grid_ref, ST_Point({0}, {1})) as dist
         FROM
             spt_pathfind_nodes o
+        WHERE 
+            ST_Distance(o.grid_ref, ST_Point({0},{1})) < {2}
         ORDER BY
             o.grid_ref <-> ST_Point({0}, {1}) :: geography limit 1;
-        """, gridRef.Longitude, gridRef.Latitude )
+        """, gridRef.Longitude, gridRef.Latitude, float proximity )
 
-let findNearestNode (origin:WGS84Point) : Script<NodeRecord option> = 
-    let query = findNearestNodeQUERY origin
+let findNearestNode (origin:WGS84Point) (proximity:float<meter>) : Script<NodeRecord option> = 
+    let query = findNearestNodeQUERY origin proximity
     let procM (reader:NpgsqlDataReader) : NodeRecord option = 
         let makeNode gridRef = 
             { UID           = int <| reader.GetInt32(0)
@@ -175,21 +177,16 @@ let findNearestNode (origin:WGS84Point) : Script<NodeRecord option> =
 // ***** Path finding
 
 
-/// A route is really a node tree, though we we can treat an edge as a node
-/// if we principally consider its start point.
+/// A PathTree is a branching route from a single source 
 type PathTree<'node> = 
     | PathTree of 'node * PathTree<'node> list
 
+/// A source node may have more than one outgoing routes.
 type PathForest<'node> = PathTree<'node> list
 
-/// A route is really a node list, though we we can treat an edge as a node
-/// if we principally consider its start point.
-type Route<'node> = Route of 'node list
 
-
-/// An edge list must provide access to start and end 
-/// (e.g. as coordinates or ids).
-type EdgeList<'edge> = EdgeList of 'edge list
+type DbPathTree     = PathTree<EdgeRecord>
+type DbPathForest   = PathForest<EdgeRecord>
 
 
 let makeFindEdgesQUERY (startPt:WGS84Point) : string = 
@@ -229,8 +226,8 @@ let notVisited (visited:EdgeRecord list) (e1:EdgeRecord) =
 /// Note - if we study the data we should be able to prune the searches 
 /// by looking at Function_link and only following paths that start with 
 /// a particular link type.
-let buildForest (startPt:WGS84Point) : Script<PathForest<EdgeRecord>> = 
-    let rec recBuild (pt:WGS84Point) (visited:EdgeRecord list) : Script<PathForest<EdgeRecord>> = 
+let buildForest (startPt:WGS84Point) : Script<DbPathForest> = 
+    let rec recBuild (pt:WGS84Point) (visited:EdgeRecord list) : Script<DbPathForest> = 
         scriptMonad { 
             // TO CHECK - Are we sure we are handling cyclic paths "wisely"?
             let! (esNew:EdgeRecord list) = 
@@ -246,20 +243,111 @@ let buildForest (startPt:WGS84Point) : Script<PathForest<EdgeRecord>> =
         }
     recBuild startPt []      
 
-    
-// A Path tree cannot have cycles (they have been identified beforehand)...
-let allRoutes (allPaths:PathTree<'edge>) : Route<'edge> list = 
+let private anonTag : string = "###ANON"
+
+let private isAnonNode (node:NodeRecord) : bool =
+    node.UID = -1 && node.TypeTag = anonTag
+
+let private anonNode (gridRef:WGS84Point) : NodeRecord =
+    { UID       = -1
+      NodeLabel = ""
+      TypeTag   = anonTag
+      GridRef   = gridRef }
+
+
+type Route<'node,'edge> = 
+    { StartPoint: 'node
+      Steps: ('edge * 'node) list }
+
+type DbRoute = Route<NodeRecord,EdgeRecord>
+
+type EdgeRecordPath = EdgeRecord list
+
+//// A Path tree cannot have cycles (they have been identified beforehand)...
+let private getEdgeRecordPaths (pathTree:DbPathTree) : EdgeRecordPath list = 
     let rec build (soFarRev:'a list) (currentTree:PathTree<'a>) : ('a list) list = 
         match currentTree with
         | PathTree(label,[]) -> [label :: soFarRev]
         | PathTree(label,paths) -> 
             List.collect (build (label::soFarRev)) paths
-    List.map (Route << List.rev) <| build [] allPaths
+    List.map (List.rev) <| build [] pathTree
+
+type private DbTail = (EdgeRecord * NodeRecord) list
+
+let private edgeRecordPathToDbRoute (edgePath:EdgeRecordPath) : Script<DbRoute option> = 
+    let startNode (edges:EdgeRecordPath) : Script<NodeRecord option> = 
+        match edges with
+        | x :: _ -> findNearestNode x.StartPoint 1.0<meter>
+        | _ -> scriptMonad.Return None
+    
+    let rec buildTail (ac:DbTail) (edges:EdgeRecordPath) : Script<DbTail> = 
+        match edges with 
+        | [] -> scriptMonad.Return (List.rev ac)
+        | x :: xs -> 
+            scriptMonad.Bind ( findNearestNode x.EndPoint 1.0<meter>
+                             , fun opt -> 
+                                let endPt = 
+                                    match opt with 
+                                    | Some pt-> pt 
+                                    | None -> anonNode x.EndPoint
+                                buildTail ((x,endPt)::ac) xs)
+    scriptMonad { 
+        let! a = startNode edgePath
+        match a with
+        | None -> return None
+        | Some n1 -> 
+            let! rest = buildTail [] edgePath
+            return (Some { StartPoint = n1; Steps = rest})
+        }
+
+let allRoutesTree (pathTree:DbPathTree) : Script<DbRoute list> = 
+    fmapM (List.choose id) << mapM edgeRecordPathToDbRoute <| getEdgeRecordPaths pathTree
+
+let allRoutesForest (forest:DbPathForest) : Script<DbRoute list> = 
+    fmapM List.concat <| mapM allRoutesTree forest
+
+
+type DeriveRouteDict<'node,'edge> = 
+    { makeRouteNode: NodeRecord -> 'node
+      makeAnonNode: WGS84Point -> 'node
+      makeRouteEdge: EdgeRecord -> 'edge }
+
+
+let deriveRoute (dict:DeriveRouteDict<'node,'edge>) (dbRoute:DbRoute) : Route<'node,'edge> = 
+    let makeNode (dbNode:NodeRecord) : 'node = 
+        if isAnonNode dbNode then
+            dict.makeAnonNode dbNode.GridRef
+        else dict.makeRouteNode dbNode
+
+    { StartPoint = makeNode dbRoute.StartPoint
+    ; Steps = List.map (fun (e,n) -> (dict.makeRouteEdge e, makeNode n)) dbRoute.Steps } 
 
 
 
-let getSimpleRoutesFrom (startPt:WGS84Point) : Script<Route<EdgeRecord> list> = 
-    fmapM (List.collect allRoutes) <| buildForest startPt
+/// A route is really a node list, though we we can treat an edge as a node
+/// if we principally consider its start point.
+type RouteOld<'node> = RouteOld of 'node list
+
+
+/// An edge list must provide access to start and end 
+/// (e.g. as coordinates or ids).
+type EdgeList<'edge> = EdgeList of 'edge list
+
+    
+// A Path tree cannot have cycles (they have been identified beforehand)...
+let allRoutesTreeOld (pathTree:PathTree<'node>) : RouteOld<'node> list = 
+    let rec build (soFarRev:'a list) (currentTree:PathTree<'a>) : ('a list) list = 
+        match currentTree with
+        | PathTree(label,[]) -> [label :: soFarRev]
+        | PathTree(label,paths) -> 
+            List.collect (build (label::soFarRev)) paths
+    List.map (RouteOld << List.rev) <| build [] pathTree
+
+let allRoutesForestOld (allTrees:PathForest<'edge>) : RouteOld<'edge> list = 
+    List.collect allRoutesTreeOld allTrees
+
+let getSimpleRoutesFrom (startPt:WGS84Point) : Script<RouteOld<EdgeRecord> list> = 
+    fmapM allRoutesForestOld <| buildForest startPt
 
 
 
@@ -270,7 +358,7 @@ let getSimpleRoutesFrom (startPt:WGS84Point) : Script<Route<EdgeRecord> list> =
 type MakeEdgeDict<'node,'edge> = 
     { MakeEdgeFromRouteNodes: 'node -> 'node -> 'edge }
 
-let routeToEdgeList (dict:MakeEdgeDict<'node,'edge>) (route:Route<'node>) : EdgeList<'edge> = 
+let routeToEdgeList (dict:MakeEdgeDict<'node,'edge>) (route:RouteOld<'node>) : EdgeList<'edge> = 
     let rec work ac node1 nodes =
         match nodes with
         | [] -> List.rev ac     
@@ -281,7 +369,7 @@ let routeToEdgeList (dict:MakeEdgeDict<'node,'edge>) (route:Route<'node>) : Edge
             let edge1 = dict.MakeEdgeFromRouteNodes node1 node2
             work (edge1::ac) node2 ns
     match route with
-    | Route (x::xs) -> EdgeList <| work [] x xs
+    | RouteOld (x::xs) -> EdgeList <| work [] x xs
     | _ -> EdgeList []
 
 

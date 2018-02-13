@@ -106,11 +106,11 @@ let test01 () : unit =
         printfn "%s => %A" (showWktPoint pt) (Option.map showOSGB36Point <| wktPointToOSGB36 pt) 
     | None -> failwith "Grr!"
 
-let roseTree1 :PathTree<string> = 
+let roseTree1 : PathTree<string> = 
     PathTree("A",[PathTree("B",[PathTree("C",[PathTree("D",[]); PathTree("E",[])])])])
 
 let test02 () = 
-    allRoutes roseTree1
+    allRoutesTreeOld roseTree1
 
 let test03 (password:string) : unit = 
     let conn = pgsqlConnParamsTesting "spt_geo" password
@@ -127,7 +127,7 @@ let test03 (password:string) : unit =
 let test04 (password:string) : unit = 
     let conn = pgsqlConnParamsTesting "spt_geo" password
 
-    let change (route1:Route<EdgeRecord>) : EdgeList<GraphvizEdge> = routeToEdgeList edgeToGraphvizEdgeDict route1
+    let change (route1:RouteOld<EdgeRecord>) : EdgeList<GraphvizEdge> = routeToEdgeList edgeToGraphvizEdgeDict route1
     runConsoleScript (printfn "Success: %A") conn 
         <| scriptMonad { 
             let! startNode = findNode "Station" "Bradford Forster Square"
@@ -147,6 +147,6 @@ let test05 () =
                             LineColour = Some "red1"; 
                             EdgeLabel= None }
         }
-    let change (route1:Route<string>) : EdgeList<GraphvizEdge> = routeToEdgeList dict route1
-    let procM = generateDot "plan" << List.map change <| allRoutes roseTree1
+    let change (route1:RouteOld<string>) : EdgeList<GraphvizEdge> = routeToEdgeList dict route1
+    let procM = generateDot "plan" << List.map change <| allRoutesTreeOld roseTree1
     execGraphvizOutput procM
