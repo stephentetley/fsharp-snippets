@@ -110,8 +110,11 @@ let tupleM5 (ma:Answer<'a>) (mb:Answer<'b>) (mc:Answer<'c>) (md:Answer<'d>) (me:
 let mapM (fn:'a -> Answer<'b>) (xs:'a list) : Answer<'b list> = 
     let rec work ac ys = 
         match ys with
-        | [] -> unitM <| List.rev ac
-        | z :: zs -> bindM (fn z) (fun a -> work (a::ac) zs)
+        | [] -> Ok <| List.rev ac
+        | z :: zs -> 
+            match fn z with
+            | Err msg -> Err msg
+            | Ok a -> work (a :: ac) zs
     work [] xs
 
 let forM (xs:'a list) (fn:'a -> Answer<'b>) : Answer<'b list> = mapM fn xs
@@ -120,8 +123,12 @@ let mapMz (fn:'a -> Answer<'b>) (xs:'a list) : Answer<unit> =
     let rec work ys = 
         match ys with
         | [] -> unitM ()
-        | z :: zs -> bindM (fn z) (fun _ -> work zs)
+        | z :: zs -> 
+            match fn z with
+            | Err msg -> Err msg
+            | Ok _ -> work zs
     work xs
+
 
 let forMz (xs:'a list) (fn:'a -> Answer<'b>) : Answer<unit> = mapMz fn xs
 
@@ -129,7 +136,10 @@ let mapiM (fn:int -> 'a -> Answer<'b>) (xs:'a list) : Answer<'b list> =
     let rec work ix ac ys = 
         match ys with
         | [] -> unitM <| List.rev ac
-        | z :: zs -> bindM (fn ix z) (fun a -> work (ix+1) (a::ac) zs)
+        | z :: zs -> 
+            match fn ix z with
+            | Err msg -> Err msg
+            | Ok a -> work (ix+1) (a::ac) zs
     work 0 [] xs
 
 
@@ -137,7 +147,10 @@ let mapiMz (fn:int -> 'a -> Answer<'b>) (xs:'a list) : Answer<unit> =
     let rec work ix ys = 
         match ys with
         | [] -> unitM ()
-        | z :: zs -> bindM (fn ix z) (fun _ -> work (ix+1) zs)
+        | z :: zs -> 
+            match fn ix z with
+            | Err msg -> Err msg
+            | Ok _ -> work (ix+1) zs
     work 0 xs
 
 let foriM (xs:'a list) (fn:int -> 'a -> Answer<'b>)  : Answer<'b list> = mapiM fn xs
