@@ -16,50 +16,78 @@ open SL.ScriptMonad
 open Scripts.PostGIS
 
 
-// ***** Set up the database
-type EdgeDbRecord =
-    { Basetype: string
-      FunctionNode: string
+
+type EdgeRecord =
+    { UID: int
+      TypeTag: string
+      EdgeLabel: string
       StartPoint: WGS84Point
-      EndPoint: WGS84Point }
+      EndPoint: WGS84Point
+      DirectDistance: float<meter> }
+
+type NodeRecord =
+    { UID: int
+      NodeLabel: string
+      TypeTag: string 
+      GridRef: WGS84Point }
 
 
-type EdgeInsertDict<'inputrow> = 
-    { tryMakeEdgeDbRecord : 'inputrow -> EdgeDbRecord option }
+// ***** Set up the database
+
+/// Distance and UID are opaque to the user, so the record users have to 
+/// create from input omits them.
+type UserLandEdge =
+    { TypeTag: string
+      Label: string
+      EdgeStart: WGS84Point
+      EdgeEnd: WGS84Point }
+
+/// UID is opaque to the user, so the record users have to create from input 
+/// data omits it.
+type UserLandNode =
+    { NodeLabel: string
+      TypeTag: string 
+      NodeLocation: WGS84Point }
+
+
+type PathFindInsertDict<'node,'edge> = 
+    { tryMakeUserLandNode: 'node -> UserLandNode option 
+      tryMakeUserLandEdge : 'edge -> UserLandEdge option }
 
 
 let deleteAllData () : Script<int> = 
-    liftWithConnParams << runPGSQLConn <| deleteAllRowsRestartIdentity "spt_pathfind"
+    liftWithConnParams << runPGSQLConn <| deleteAllRowsRestartIdentity "spt_pathfind_edges"
 
 
 /// We have a prepared statement to do this in a nice way, but calling it generates 
 /// a error that I don't know how to fix.
-let private makeEdgeDbInsert (edge1:EdgeDbRecord) : string = 
+let private makeEdgeDbInsert (edge1:UserLandEdge) : string = 
     let makePointLit (pt:WGS84Point) : string = 
         sprintf "ST_GeogFromText('SRID=4326;%s')" (showWktPoint <| wgs84WktPoint pt)
     // Note the id column is PG's SERIAL type so it is inserted automatically
 
-    let makeDistanceLit (p1:WGS84Point) (p2:WGS84Point) : string = 
+    let makeDistanceProc (p1:WGS84Point) (p2:WGS84Point) : string = 
         sprintf "ST_Distance(%s,%s)"
                 (makePointLit p1) 
                 (makePointLit p2)
-    sqlINSERT "spt_pathfind" 
-            <|  [ stringValue       "basetype"          edge1.Basetype
-                ; stringValue       "function_node"     edge1.FunctionNode
-                ; literalValue      "start_point"       <| makePointLit edge1.StartPoint
-                ; literalValue      "end_point"         <| makePointLit edge1.EndPoint
-                ; literalValue      "distance_meters"   <| makeDistanceLit edge1.StartPoint edge1.EndPoint
+
+    sqlINSERT "spt_pathfind_edges" 
+            <|  [ stringValue       "type_tag"          edge1.TypeTag
+                ; stringValue       "edge_label"        edge1.Label
+                ; literalValue      "start_point"       <| makePointLit edge1.EdgeStart
+                ; literalValue      "end_point"         <| makePointLit edge1.EdgeEnd
+                ; literalValue      "distance_meters"   <| makeDistanceProc edge1.EdgeStart edge1.EdgeEnd
                 ]
 
-let insertEdges (dict:EdgeInsertDict<'inputrow>) (outfalls:seq<'inputrow>) : Script<int> = 
-    let proc1 (row:'inputrow) : PGSQLConn<int> = 
-        match dict.tryMakeEdgeDbRecord row with
-        | Some edge -> execNonQuery <|makeEdgeDbInsert edge
+let insertEdges (dict:PathFindInsertDict<'noderow,'edgerow>) (source:seq<'edgerow>) : Script<int> = 
+    let proc1 (row:'edgerow) : PGSQLConn<int> = 
+        match dict.tryMakeUserLandEdge row with
+        | Some edge -> execNonQuery <| makeEdgeDbInsert edge
         | None -> pgsqlConn.Return 0
     liftWithConnParams 
-        << runPGSQLConn << withTransaction <| SL.PGSQLConn.sumTraverseM proc1 outfalls
+        << runPGSQLConn << withTransaction <| SL.PGSQLConn.sumTraverseM proc1 source
 
-let SetupEdgesDB (dict:EdgeInsertDict<'inputrow>) (edges:seq<'inputrow>) : Script<int> = 
+let SetupPathsDB (dict:PathFindInsertDict<'noderow,'edgerow>) (edges:seq<'edgerow>) : Script<int> = 
     scriptMonad { 
         let! _ = deleteAllData () |> logScript (sprintf "%i rows deleted")
         let! count = insertEdges dict edges |> logScript (sprintf "%i rows inserted") 
@@ -74,6 +102,8 @@ let SetupEdgesDB (dict:EdgeInsertDict<'inputrow>) (edges:seq<'inputrow>) : Scrip
 /// if we principally consider its start point.
 type PathTree<'node> = 
     | PathTree of 'node * PathTree<'node> list
+
+type PathForest<'node> = PathTree<'node> list
 
 /// A route is really a node list, though we we can treat an edge as a node
 /// if we principally consider its start point.
@@ -103,13 +133,6 @@ let routeToEdgeList (dict:MakeEdgeDict<'node,'edge>) (route:Route<'node>) : Edge
 
 
 
-type Edge =
-    { UID: int
-      BaseType: string
-      FunctionNode: string
-      StartPoint: WGS84Point
-      EndPoint: WGS84Point
-      DirectDistance: float<meter> }
 
 type GraphvizEdge = 
     { StartId: string
@@ -127,7 +150,7 @@ type GraphvizNode =
 // Note - we have to use the Postgres UID if we want to get a
 // GraphvizEdge from an Edge without extra lookups...
 
-let EdgeToGraphvizEdgeDict:MakeEdgeDict<Edge,GraphvizEdge> = 
+let edgeToGraphvizEdgeDict:MakeEdgeDict<EdgeRecord,GraphvizEdge> = 
         let makeLabel (dist:float<meter>) : string = 
             if dist < 1000.0<meter> then
                 sprintf "%.0fm" (float dist)
@@ -147,9 +170,9 @@ let EdgeToGraphvizEdgeDict:MakeEdgeDict<Edge,GraphvizEdge> =
 let makeFindEdgesQUERY (startPt:WGS84Point) : string = 
     System.String.Format("""
         SELECT 
-            id, basetype, function_node, ST_AsText(end_point), distance_meters
+            id, type_tag, edge_label, ST_AsText(end_point), distance_meters
         FROM 
-            spt_pathfind
+            spt_pathfind_edges
         WHERE 
             start_point = ST_GeomFromText('{0}', 4326);
         """, showWktPoint <| wgs84WktPoint startPt)
@@ -157,23 +180,23 @@ let makeFindEdgesQUERY (startPt:WGS84Point) : string =
 
 
 
-let findOutwardEdges (startPt:WGS84Point) : Script<Edge list> = 
+let findOutwardEdges (startPt:WGS84Point) : Script<EdgeRecord list> = 
     let query = makeFindEdgesQUERY startPt
-    let procM (reader:NpgsqlDataReader) : Edge = 
+    let procM (reader:NpgsqlDataReader) : EdgeRecord = 
         let wgs84End = 
             match Option.bind wktPointToWGS84 <| tryReadWktPoint (reader.GetString(3)) with
             | Some pt -> pt
             | None -> failwith "findEdges - point not readable"
         { UID           = int <| reader.GetInt32(0)
-        ; BaseType      = reader.GetString(1)
-        ; FunctionNode  = reader.GetString(2)
+        ; TypeTag       = reader.GetString(1)
+        ; EdgeLabel     = reader.GetString(2)
         ; StartPoint    = startPt
         ; EndPoint      = wgs84End
         ; DirectDistance = 1.0<meter> * (float <| reader.GetDouble(4)) }
     liftWithConnParams << runPGSQLConn <| execReaderList query procM  
 
-let notVisited (visited:Edge list) (e1:Edge) = 
-    not <| List.exists (fun (e:Edge) -> e.UID = e1.UID) visited
+let notVisited (visited:EdgeRecord list) (e1:EdgeRecord) = 
+    not <| List.exists (fun (e:EdgeRecord) -> e.UID = e1.UID) visited
 
 
 
@@ -181,15 +204,15 @@ let notVisited (visited:Edge list) (e1:Edge) =
 /// Note - if we study the data we should be able to prune the searches 
 /// by looking at Function_link and only following paths that start with 
 /// a particular link type.
-let buildForest (startPt:WGS84Point) : Script<PathTree<Edge> list> = 
-    let rec recBuild (pt:WGS84Point) (visited:Edge list) : Script<PathTree<Edge> list> = 
+let buildForest (startPt:WGS84Point) : Script<PathForest<EdgeRecord>> = 
+    let rec recBuild (pt:WGS84Point) (visited:EdgeRecord list) : Script<PathForest<EdgeRecord>> = 
         scriptMonad { 
             // TO CHECK - Are we sure we are handling cyclic paths "wisely"?
-            let! (esNew:Edge list) = 
+            let! (esNew:EdgeRecord list) = 
                 fmapM (List.filter (notVisited visited)) <| findOutwardEdges pt
             let! branches = 
                 forM esNew <| 
-                    fun (e1:Edge) -> 
+                    fun (e1:EdgeRecord) -> 
                         scriptMonad { 
                             let! kids = recBuild e1.EndPoint (e1::visited)
                             return (PathTree(e1,kids))
@@ -210,7 +233,7 @@ let allRoutes (allPaths:PathTree<'edge>) : Route<'edge> list =
 
 
 
-let getSimpleRoutesFrom (startPt:WGS84Point) : Script<Route<Edge> list> = 
+let getSimpleRoutesFrom (startPt:WGS84Point) : Script<Route<EdgeRecord> list> = 
     fmapM (List.collect allRoutes) <| buildForest startPt
 
 /// EdgeCache is (from,to) names

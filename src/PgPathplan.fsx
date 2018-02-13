@@ -55,25 +55,26 @@ let getPathImportRows () : seq<PathImportRow> =
     (new PathImportTable ()).Rows |> Seq.cast<PathImportRow>
 
 
-let tryMakeEdge (row:PathImportRow) : EdgeDbRecord option = 
+let tryMakeEdge (row:PathImportRow) : UserLandEdge option = 
     let convert1 = 
         Option.bind wktPointToOSGB36 << tryReadWktPoint
     match convert1 row.StartPoint, convert1 row.EndPoint with
     | Some startPt, Some endPt -> 
-        Some <| { Basetype = row.BASETYPE
-                ; FunctionNode = row.FUNCTION_Link
-                ; StartPoint = osgb36ToWGS84 startPt
-                ; EndPoint = osgb36ToWGS84 endPt }
+        Some <| { TypeTag       = row.BASETYPE
+                ; Label         = row.FUNCTION_Link
+                ; EdgeStart     = osgb36ToWGS84 startPt
+                ; EdgeEnd       = osgb36ToWGS84 endPt }
     | _,_ -> None
 
-let edgeInsertDict : EdgeInsertDict<PathImportRow> = 
-    { tryMakeEdgeDbRecord = tryMakeEdge }
+let edgeInsertDict : PathFindInsertDict<'node,PathImportRow> = 
+    { tryMakeUserLandNode = fun _ -> failwith "TODO"
+      tryMakeUserLandEdge = tryMakeEdge }
 
 let SetupDB(password:string) : unit = 
     let conn = pgsqlConnParamsTesting "spt_geo" password
     let rows = getPathImportRows ()
     runConsoleScript (printfn "Success: %i modifications") conn 
-        <| SetupEdgesDB edgeInsertDict rows 
+        <| SetupPathsDB edgeInsertDict rows 
 
 // ***** Testing towards path finding...
 
@@ -106,7 +107,7 @@ let test04 (password:string) : unit =
     let startPt = 
         osgb36ToWGS84 { Easting = 389330.850<meter> ; Northing = 501189.852<meter> }
 
-    let change (route1:Route<Edge>) : EdgeList<GraphvizEdge> = routeToEdgeList EdgeToGraphvizEdgeDict route1
+    let change (route1:Route<EdgeRecord>) : EdgeList<GraphvizEdge> = routeToEdgeList edgeToGraphvizEdgeDict route1
     runConsoleScript (printfn "Success: %A") conn 
         <| scriptMonad { 
             let! routes = getSimpleRoutesFrom startPt

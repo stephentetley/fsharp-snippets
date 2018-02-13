@@ -72,8 +72,8 @@
     <Compile Include="SL\Tolerance.fs" />
     <Compile Include="SL\AnswerMonad.fs" />
     <Compile Include="SL\Coord.fs" />
-    <Compile Include="SL\WebMercator.fs" />
     <Compile Include="SL\WellKnownText.fs" />
+    <Compile Include="SL\WebMercator.fs" />
     <Compile Include="SL\ExcelProviderHelper.fs" />
     <Compile Include="SL\JsonExtractor.fs" />
     <Compile Include="SL\JsonOutput.fs" />
@@ -113,7 +113,7 @@
     <Compile Include="Scripts\NearestHospital.fs" />
     <Compile Include="Scripts\Grouping.fs" />
     <Compile Include="Scripts\TspRouting.fs" />
-    <Compile Include="Scripts\TotalOrder.fs" />	
+    <Compile Include="Scripts\TotalOrder.fs" />
     <None Include="CsvTrim.fsx" />
     <None Include="NearestNeighbour.fsx" />
     <None Include="GenLinestringWKT.fsx" />
