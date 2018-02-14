@@ -48,7 +48,7 @@ open Scripts.PathFinder
 
 // Read Node data
 type NodeImportTable = 
-    CsvProvider< @"G:\work\Projects\events2\pathfind\pathfind-mock-nodes.csv",
+    CsvProvider< @"..\data\pathfind\pathfind-mock-nodes.csv",
                  HasHeaders = true>
 
 type NodeImportRow = NodeImportTable.Row
@@ -69,7 +69,7 @@ let tryMakeNode (row:NodeImportRow) : UserLandNode option =
 
 // Read Edge data
 type EdgeImportTable = 
-    CsvProvider< @"G:\work\Projects\events2\pathfind\pathfind-mock-edges.csv",
+    CsvProvider< @"..\data\pathfind\pathfind-mock-edges.csv",
                  HasHeaders = true>
 
 type EdgeImportRow = EdgeImportTable.Row
