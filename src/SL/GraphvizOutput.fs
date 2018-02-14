@@ -246,5 +246,5 @@ let rankdir (dir:Rankdir) : Attribute =
     Unquoted("rankdir",dir1)
 
 let ranksep (sep:float) : Attribute             = Unquoted("ranksep", sprintf "%.2f" sep)
-let rank (mode:string) : Attribute              = Unquoted("ranksep", mode)
+let rank (mode:string) : Attribute              = Unquoted("rank", mode)
 

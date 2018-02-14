@@ -439,6 +439,8 @@ let graphvizDict : DeriveRouteDict<GraphvizNode, GraphvizEdge> =
     ; MakeRouteEdge = genEdge }
 
 
+let genDotNode (node1:GraphvizNode) : GraphvizOutput<unit> = 
+    SL.GraphvizOutput.node node1.NodeId [label node1.NodeLabel]
 
 /// EdgeCache is (from,to) names
 type EdgeCache = (string * string) list
@@ -476,11 +478,55 @@ let genDotEdges (allEdgeLists: (GraphvizEdge list) list) : GraphvizOutput<unit> 
             }
     work [] allEdgeLists
 
+type Rank = GraphvizNode list
+
+/// Note transpose supplied by FSarpx.Collections...
+let transpose (source: ('a list) list) : ('a list) list = 
+    let heads = 
+        List.choose (fun xs -> match xs with | [] -> None | (x::_) -> Some x)
+    let tails = 
+        List.choose (fun xs -> match xs with | [] -> None | (_::xs) -> Some xs)
+    let rec work zss = 
+        match zss with
+        | [] -> []
+        | [] :: xss -> work xss
+        | (x::xs) :: xss -> 
+            let front = x :: heads xss
+            let rest  = work <| xs :: tails xss
+            front::rest
+    work source
+
+let compactRank (rank:Rank) : Rank = 
+    let rec work (ac:GraphvizNode list) (input:GraphvizNode list) =
+        match input with
+        | [] -> List.rev ac
+        | x :: xs -> 
+            if List.exists (fun (a:GraphvizNode) -> x.NodeId = a.NodeId) ac then
+                work ac xs
+            else work (x::ac) xs
+    work [] rank
+
+let private rankRoutes (routes: Route<GraphvizNode, GraphvizEdge> list) : Rank list = 
+    List.map compactRank << transpose <| List.map nodeListFromRoute routes
+
+
+let genDotRanks (ranks:Rank list) : GraphvizOutput<unit> = 
+    let rankProc (rank1:Rank) : GraphvizOutput<unit> = 
+        anonSubgraph 
+            <| graphvizOutput { 
+                do! attrib <| rank "same"
+                do! SL.GraphvizOutput.mapMz genDotNode rank1
+                }
+    SL.GraphvizOutput.mapMz rankProc ranks
+    
+
 let generateDot (graphName:string) (routes: Route<GraphvizNode, GraphvizEdge> list) : GraphvizOutput<unit> = 
     let paths = List.map edgeListFromRoute routes
+    let ranks = rankRoutes routes
     digraph graphName
             <| graphvizOutput { 
                     do! attrib <| rankdir LR
+                    do! genDotRanks ranks
                     do! genDotEdges paths
                     return ()
                     }

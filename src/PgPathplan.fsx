@@ -4,6 +4,7 @@ open FSharp.Data
 
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
+open FSharpx.Collections
 
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 
@@ -110,8 +111,11 @@ let test01 () : unit =
 let roseTree1 : PathTree<string> = 
     PathTree("A",[PathTree("B",[PathTree("C",[PathTree("D",[]); PathTree("E",[])])])])
 
-//let test02 () = 
-//    allRoutesTreeOld roseTree1
+let test02 () = 
+    List.transpose  [ ['h';'e';'l';'l';'o']
+                    ; ['w';'o';'r';'l';'d']
+                    ; ['!']
+                    ]
 
 let test03 (password:string) : unit = 
     let conn = pgsqlConnParamsTesting "spt_geo" password
