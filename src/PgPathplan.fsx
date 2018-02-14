@@ -110,8 +110,8 @@ let test01 () : unit =
 let roseTree1 : PathTree<string> = 
     PathTree("A",[PathTree("B",[PathTree("C",[PathTree("D",[]); PathTree("E",[])])])])
 
-let test02 () = 
-    allRoutesTreeOld roseTree1
+//let test02 () = 
+//    allRoutesTreeOld roseTree1
 
 let test03 (password:string) : unit = 
     let conn = pgsqlConnParamsTesting "spt_geo" password
@@ -127,27 +127,26 @@ let test03 (password:string) : unit =
 
 let test04 (password:string) : unit = 
     let conn = pgsqlConnParamsTesting "spt_geo" password
-
-    let change (route1:RouteOld<EdgeRecord>) : EdgeList<GraphvizEdge> = routeToEdgeList edgeToGraphvizEdgeDict route1
     runConsoleScript (printfn "Success: %A") conn 
         <| scriptMonad { 
             let! startNode = findNode "Station" "Bradford Forster Square"
-            let! routes = getSimpleRoutesFrom startNode.GridRef
-            let procM  = generateDot "plan" <| List.map change routes
+            let! forest = buildForest startNode.GridRef
+            let! routes = extractAllRoutes graphvizDict forest
+            let procM  = generateDot "plan" routes
             do! liftAction (List.iter (printfn "Route: %A") routes)
             do! liftAction (runGraphvizOutputFile procM @"G:\work\working\output1.dot")
             }
 
 
-let test05 () = 
-    let dict:MakeEdgeDict<string,GraphvizEdge> = 
-        { MakeEdgeFromRouteNodes = 
-            fun n1 n2 -> { StartId = n1; 
-                            EndId = n2; 
-                            LineStyle = None;
-                            LineColour = Some "red1"; 
-                            EdgeLabel= None }
-        }
-    let change (route1:RouteOld<string>) : EdgeList<GraphvizEdge> = routeToEdgeList dict route1
-    let procM = generateDot "plan" << List.map change <| allRoutesTreeOld roseTree1
-    execGraphvizOutput procM
+//let test05 () = 
+//    let dict:MakeEdgeDict<string,GraphvizEdge> = 
+//        { MakeEdgeFromRouteNodes = 
+//            fun n1 n2 -> { StartId = n1; 
+//                            EndId = n2; 
+//                            LineStyle = None;
+//                            LineColour = Some "red1"; 
+//                            EdgeLabel= None }
+//        }
+//    let change (route1:RouteOld<string>) : EdgeList<GraphvizEdge> = routeToEdgeList dict route1
+//    let procM = generateDot "plan" << List.map change <| allRoutesTreeOld roseTree1
+//    execGraphvizOutput procM

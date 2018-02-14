@@ -5,6 +5,7 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 open Npgsql
 
 open SL.AnswerMonad
+open SL.NameGen
 open SL.SqlUtils
 open SL.PGSQLConn
 open SL.Geo.Coord
@@ -137,7 +138,7 @@ let findNode (typeTag:string) (nodeLabel:string) : Script<NodeRecord> =
         let gridRef = 
             match Option.bind wktPointToWGS84 <| tryReadWktPoint (reader.GetString(3)) with
             | Some pt -> pt
-            | None -> failwith "findEdges - point not readable"
+            | None -> failwith "findNode - point not readable"
         { UID           = int <| reader.GetInt32(0)
         ; TypeTag       = reader.GetString(1)
         ; NodeLabel     = reader.GetString(2)
@@ -300,10 +301,10 @@ let private edgeRecordPathToDbRoute (edgePath:EdgeRecordPath) : Script<DbRoute o
             return (Some { StartPoint = n1; Steps = rest})
         }
 
-let allRoutesTree (pathTree:DbPathTree) : Script<DbRoute list> = 
+let private allRoutesTree (pathTree:DbPathTree) : Script<DbRoute list> = 
     fmapM (List.choose id) << mapM edgeRecordPathToDbRoute <| getEdgeRecordPaths pathTree
 
-let allRoutesForest (forest:DbPathForest) : Script<DbRoute list> = 
+let private allRoutesForest (forest:DbPathForest) : Script<DbRoute list> = 
     fmapM List.concat <| mapM allRoutesTree forest
 
 // NOTE 
@@ -312,51 +313,64 @@ let allRoutesForest (forest:DbPathForest) : Script<DbRoute list> =
 // It only has a notion of node, which is actually and edge 
 // looked at from the start point. 
 
-/// TODO - EdgeRecord does not store much information, so to make
-/// an edge we may need to look at its start and end nodes.
-/// Also grid_ref may not be enough information to make an anon node
-/// e.g. for graphviz we need something that generates a good id.
+/// EdgeRecord does not store much information, so to make an 
+/// edge we need to look at its start and end nodes.
+/// Also grid_ref is not enough information to make an anon node
+/// e.g. for graphviz we need something that generates a good id 
+/// so we use NameGen.
 type DeriveRouteDict<'node,'edge> = 
-    { makeRouteNode: NodeRecord -> 'node
-      makeAnonNode: WGS84Point -> 'node
-      makeRouteEdge: EdgeRecord -> 'edge }
+    { MakeRouteNode: NodeRecord -> NameGen<'node>
+      MakeAnonNode: WGS84Point -> NameGen<'node>
+      MakeRouteEdge: 'node -> 'node -> EdgeRecord -> NameGen<'edge> }
 
-
-let translateRoute (dict:DeriveRouteDict<'node,'edge>) (dbRoute:DbRoute) : Route<'node,'edge> = 
-    let makeNode (dbNode:NodeRecord) : 'node = 
+/// This is wrong 
+/// A route may share a prefix with other routes, this method of
+/// fresh name generation does not account for the prefixes 
+/// sharing nodes...
+let private translateRoute (dict:DeriveRouteDict<'node,'edge>) (dbRoute:DbRoute) : NameGen<Route<'node,'edge>> = 
+    let makeNode (dbNode:NodeRecord) : NameGen<'node> = 
         if isAnonNode dbNode then
-            dict.makeAnonNode dbNode.GridRef
-        else dict.makeRouteNode dbNode
-
-    { StartPoint = makeNode dbRoute.StartPoint
-    ; Steps      = List.map (fun (e,n) -> (dict.makeRouteEdge e, makeNode n)) dbRoute.Steps } 
-
-
-
-/// A route is really a node list, though we we can treat an edge as a node
-/// if we principally consider its start point.
-type RouteOld<'node> = RouteOld of 'node list
-
-
-/// An edge list must provide access to start and end 
-/// (e.g. as coordinates or ids).
-type EdgeList<'edge> = EdgeList of 'edge list
-
+            dict.MakeAnonNode dbNode.GridRef
+        else dict.MakeRouteNode dbNode
     
-// A Path tree cannot have cycles (they have been identified beforehand)...
-let allRoutesTreeOld (pathTree:PathTree<'node>) : RouteOld<'node> list = 
-    let rec build (soFarRev:'a list) (currentTree:PathTree<'a>) : ('a list) list = 
-        match currentTree with
-        | PathTree(label,[]) -> [label :: soFarRev]
-        | PathTree(label,paths) -> 
-            List.collect (build (label::soFarRev)) paths
-    List.map (RouteOld << List.rev) <| build [] pathTree
+    let rec makeSteps prev ac steps =
+        match steps with
+        | [] -> nameGen.Return (List.rev ac)
+        | (e,n) :: zs -> 
+            nameGen.Bind ( makeNode n
+                         , fun next -> 
+                            nameGen.Bind ( dict.MakeRouteEdge prev next e,
+                                           fun edge -> makeSteps next ((edge,next)::ac) zs))
+    nameGen {
+        let! start = makeNode dbRoute.StartPoint
+        let! steps = makeSteps start [] dbRoute.Steps
+        return { StartPoint = start; Steps = steps } 
+        }
+    
 
-let allRoutesForestOld (allTrees:PathForest<'edge>) : RouteOld<'edge> list = 
-    List.collect allRoutesTreeOld allTrees
 
-let getSimpleRoutesFrom (startPt:WGS84Point) : Script<RouteOld<EdgeRecord> list> = 
-    fmapM allRoutesForestOld <| buildForest startPt
+let extractAllRoutes (dict:DeriveRouteDict<'node,'edge>) (forest:DbPathForest) : Script<Route<'node,'edge> list> = 
+    scriptMonad { 
+        let! dbRoutes   = fmapM List.concat <| mapM allRoutesTree forest
+        let userRoutes  = 
+            runNameGenOne (sprintf "node%i") <| SL.NameGen.mapM (translateRoute dict) dbRoutes
+        return userRoutes 
+        }
+
+
+let edgeListFromRoute(route:Route<'node,'edge>) : 'edge list = 
+    let rec work ac steps = 
+        match steps with 
+        | [] -> List.rev ac
+        | (edge,node) :: zs -> work (edge::ac) zs
+    work [] route.Steps
+
+let nodeListFromRoute(route:Route<'node,'edge>) : 'node list = 
+    let rec work ac steps = 
+        match steps with 
+        | [] -> List.rev ac
+        | (edge,node) :: zs -> work (node::ac) zs
+    work [route.StartPoint] route.Steps
 
 
 
@@ -377,53 +391,30 @@ type GraphvizNode =
       Shape: string
       FillColor: string option }
 
-// TODO
-// Is there enough information to make NodeIds from a NodeRecord
-// and Start and End Ids from an Edge Record?
+let makeEdgeLabel (dist:float<meter>) : string = sprintf "%.2fkm" (0.001*float dist)
 
 let graphvizDict : DeriveRouteDict<GraphvizNode, GraphvizEdge> = 
-    { makeRouteNode = fun _ -> failwith "err"
-      makeAnonNode = fun _ -> failwith "err"
-      makeRouteEdge = fun _ -> failwith "err" }
-
-
-
-type MakeEdgeDict<'node,'edge> = 
-    { MakeEdgeFromRouteNodes: 'node -> 'node -> 'edge }
-
-let routeToEdgeList (dict:MakeEdgeDict<'node,'edge>) (route:RouteOld<'node>) : EdgeList<'edge> = 
-    let rec work ac node1 nodes =
-        match nodes with
-        | [] -> List.rev ac     
-        | [node2] -> 
-            let edge1 = dict.MakeEdgeFromRouteNodes node1 node2
-            List.rev (edge1::ac)
-        | node2 ::ns -> 
-            let edge1 = dict.MakeEdgeFromRouteNodes node1 node2
-            work (edge1::ac) node2 ns
-    match route with
-    | RouteOld (x::xs) -> EdgeList <| work [] x xs
-    | _ -> EdgeList []
-
-
-
-
-
-
-// Note - we have to use the Postgres UID if we want to get a
-// GraphvizEdge from an Edge without extra lookups...
-
-let edgeToGraphvizEdgeDict:MakeEdgeDict<EdgeRecord,GraphvizEdge> = 
-        let makeLabel (dist:float<meter>) : string = sprintf "%.2fkm" (0.001*float dist)
- 
-        { MakeEdgeFromRouteNodes = 
-            fun n1 n2 -> { StartId = sprintf "node%i" n1.UID; 
-                            EndId = sprintf "node%i" n2.UID; 
-                            LineStyle = None;
-                            LineColour= Some "red1"; 
-                            EdgeLabel = Some <| makeLabel n1.DirectDistance }
-        }
-
+    let genNode (node:NodeRecord) = 
+        nameGen { 
+            let! nodeId = newName ()
+            return { NodeId = nodeId;
+                     NodeLabel = node.NodeLabel;
+                      Shape = "box"; FillColor = None }
+            }
+    let genAnonNode (gridRef:WGS84Point) = 
+        nameGen { 
+            let! nodeId = newName ()
+            return { NodeId = nodeId; 
+                     NodeLabel = gridRef.ToString(); 
+                     Shape = "box"; FillColor = None }
+            }
+    let genEdge (prev:GraphvizNode) (next:GraphvizNode) (edge:EdgeRecord) = 
+        nameGen.Return { StartId = prev.NodeId; EndId = next.NodeId;
+                         LineStyle = None; LineColour = None; 
+                         EdgeLabel = Some <| makeEdgeLabel edge.DirectDistance }
+    { MakeRouteNode = genNode
+    ; MakeAnonNode  = genAnonNode
+    ; MakeRouteEdge = genEdge }
 
 
 
@@ -431,7 +422,7 @@ let edgeToGraphvizEdgeDict:MakeEdgeDict<EdgeRecord,GraphvizEdge> =
 type EdgeCache = (string * string) list
 
 
-let genDotEdges1 (path1: EdgeList<GraphvizEdge>) (edgeCache:EdgeCache) : GraphvizOutput<EdgeCache> = 
+let genDotEdges1 (edgeCache:EdgeCache) (edges: GraphvizEdge list)  : GraphvizOutput<EdgeCache> = 
     let rec work (cache:EdgeCache) (edges:GraphvizEdge list) = 
         match edges with 
         | x :: xs -> 
@@ -449,22 +440,25 @@ let genDotEdges1 (path1: EdgeList<GraphvizEdge>) (edgeCache:EdgeCache) : Graphvi
                     return cache1
                 }
         | [] -> graphvizOutput.Return cache
-    match path1 with 
-    | EdgeList xs -> work edgeCache xs 
+    work edgeCache edges 
 
 
-let genDotEdges (paths: EdgeList<GraphvizEdge> list) : GraphvizOutput<unit> = 
-    let rec work cache xs = 
+let genDotEdges (allEdgeLists: (GraphvizEdge list) list) : GraphvizOutput<unit> = 
+    let rec work cache xs =
+        printfn "////////////////////////////////////////////// %i" (List.length xs)
         match xs with
         | [] -> graphvizOutput.Return ()
         | x :: xs -> 
             graphvizOutput { 
-                let! cache1 = genDotEdges1 x cache
+                printfn "EdgeList: %A" x
+                let! cache1 = genDotEdges1 cache x
                 do! work cache1 xs 
             }
-    work [] paths
+    work [] allEdgeLists
 
-let generateDot  (graphName:string) (paths: EdgeList<GraphvizEdge> list) : GraphvizOutput<unit> = 
+let generateDot (graphName:string) (routes: Route<GraphvizNode, GraphvizEdge> list) : GraphvizOutput<unit> = 
+    let paths = List.map edgeListFromRoute routes
+    printfn "Path count: %i" (List.length paths)
     digraph graphName
             <| graphvizOutput { 
                     do! attrib <| rankdir LR
