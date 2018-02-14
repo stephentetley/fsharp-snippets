@@ -1,6 +1,9 @@
 ﻿module Scripts.PathFinder
 
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
+open System.Collections.Generic
+
+open FSharpx.Collections
 
 open Npgsql
 
@@ -327,11 +330,29 @@ type DeriveRouteDict<'node,'edge> =
 /// A route may share a prefix with other routes, this method of
 /// fresh name generation does not account for the prefixes 
 /// sharing nodes...
-let private translateRoute (dict:DeriveRouteDict<'node,'edge>) (dbRoute:DbRoute) : NameGen<Route<'node,'edge>> = 
+
+type private NodeCache<'node> = Dictionary<int,'node>
+
+let private cacheLookup(cache:NodeCache<'node>) (ix:int) : 'node option = 
+    Dictionary.tryFind ix cache
+
+/// Mutable!
+let private cacheAdd(cache:NodeCache<'node>) (ix:int) (node:'node) : unit =    
+    cache.Add(ix,node) 
+
+
+let private translateRoute (dict:DeriveRouteDict<'node,'edge>) (cache:NodeCache<'node>) (dbRoute:DbRoute) : NameGen<Route<'node,'edge>> = 
     let makeNode (dbNode:NodeRecord) : NameGen<'node> = 
-        if isAnonNode dbNode then
-            dict.MakeAnonNode dbNode.GridRef
-        else dict.MakeRouteNode dbNode
+        match cacheLookup cache dbNode.UID with
+        | Some node -> nameGen.Return node
+        | None ->
+            nameGen 
+                { let! node =   
+                    if isAnonNode dbNode then
+                        dict.MakeAnonNode dbNode.GridRef
+                    else dict.MakeRouteNode dbNode
+                  let _ = cacheAdd cache dbNode.UID node
+                  return node }
     
     let rec makeSteps prev ac steps =
         match steps with
@@ -350,10 +371,11 @@ let private translateRoute (dict:DeriveRouteDict<'node,'edge>) (dbRoute:DbRoute)
 
 
 let extractAllRoutes (dict:DeriveRouteDict<'node,'edge>) (forest:DbPathForest) : Script<Route<'node,'edge> list> = 
+    let cache = new Dictionary<int,'node> ()
     scriptMonad { 
         let! dbRoutes   = fmapM List.concat <| mapM allRoutesTree forest
         let userRoutes  = 
-            runNameGenOne (sprintf "node%i") <| SL.NameGen.mapM (translateRoute dict) dbRoutes
+            runNameGenOne (sprintf "node%i") <| SL.NameGen.mapM (translateRoute dict cache) dbRoutes
         return userRoutes 
         }
 
@@ -445,12 +467,10 @@ let genDotEdges1 (edgeCache:EdgeCache) (edges: GraphvizEdge list)  : GraphvizOut
 
 let genDotEdges (allEdgeLists: (GraphvizEdge list) list) : GraphvizOutput<unit> = 
     let rec work cache xs =
-        printfn "////////////////////////////////////////////// %i" (List.length xs)
         match xs with
         | [] -> graphvizOutput.Return ()
         | x :: xs -> 
             graphvizOutput { 
-                printfn "EdgeList: %A" x
                 let! cache1 = genDotEdges1 cache x
                 do! work cache1 xs 
             }
@@ -458,7 +478,6 @@ let genDotEdges (allEdgeLists: (GraphvizEdge list) list) : GraphvizOutput<unit> 
 
 let generateDot (graphName:string) (routes: Route<GraphvizNode, GraphvizEdge> list) : GraphvizOutput<unit> = 
     let paths = List.map edgeListFromRoute routes
-    printfn "Path count: %i" (List.length paths)
     digraph graphName
             <| graphvizOutput { 
                     do! attrib <| rankdir LR

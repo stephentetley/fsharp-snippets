@@ -208,5 +208,5 @@ let runNameGenZero (genName: int -> string) (ma:NameGen<'a>) : 'a =
 let runNameGenOne (genName: int -> string) (ma:NameGen<'a>) : 'a = 
     snd <| apply1 ma genName 1
 
-let newName : NameGen<string> = 
+let newName () : NameGen<string> = 
     NameGen <| fun mk i -> (i+1, mk i)
