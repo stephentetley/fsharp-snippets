@@ -250,6 +250,13 @@ let buildLinkForest (startPt:WGS84Point) : Script<LinkForest> =
 
 // ***** User land representations of paths
 
+
+// An internal represention of Node lookup from the database.
+type DbNode = 
+    | AnonNode of WGS84Point
+    | ExtantNode of NodeRecord
+
+
 // A LinkTree (LinkForest) is not user-friendly, nodes are fixed 
 // to the DB representation.
 //
@@ -263,15 +270,6 @@ let buildLinkForest (startPt:WGS84Point) : Script<LinkForest> =
 /// edges so we cannot represent distances for example.
 type PathTree<'node> = 
     | PathTree of 'node * PathTree<'node> list
-
-/// TODO - confirm that we don't need a PathForest
-/// A source node may have more than one outgoing routes.
-/// type PathForest<'node> = PathTree<'node> list
-
-
-type DbNode = 
-    | AnonNode of WGS84Point
-    | ExtantNode of NodeRecord
 
 
 let makePathTree (linkTrees:LinkForest) : Script<PathTree<DbNode> option> =
@@ -310,29 +308,50 @@ let makePathTree (linkTrees:LinkForest) : Script<PathTree<DbNode> option> =
             return (Some tree)
         }
 
+/// Not tail-recursive...
+let mapPathTree (fn:'a -> 'b) (pathTree:PathTree<'a>) : PathTree<'b> =
+    let rec work tree = 
+        match tree with
+        | PathTree(node,[]) -> PathTree (fn node, [])
+        | PathTree(node,kids) -> PathTree(fn node, List.map work kids)
+    work pathTree
+    
 
+/// A Route is a so-called "Fence post list":
+/// node
+/// node-edge-node
+/// node-edge-node-edge-node
+/// etc.
+type Route<'node,'edge> = 
+    { StartPoint: 'node
+      Steps: ('edge * 'node) list }
+
+type InternalRoute = Route<DbNode,EdgeRecord>
+
+
+// Below is old code...
 
 // Note - we could recover a PathTree<'realNode> from DbPathForest 
 // because DbPathForest stores edges in the node position. 
 // Each initial edge should have the same start point
 
-let private anonTag : string = "###ANON"
+//let private anonTag : string = "###ANON"
 
-let private isAnonNode (node:NodeRecord) : bool =
-    node.UID = -1 && node.TypeTag = anonTag
+//let private isAnonNode (node:NodeRecord) : bool =
+//    node.UID = -1 && node.TypeTag = anonTag
 
-let private anonNode (gridRef:WGS84Point) : NodeRecord =
-    { UID       = -1
-      NodeLabel = ""
-      TypeTag   = anonTag
-      GridRef   = gridRef }
+//let private anonNode (gridRef:WGS84Point) : NodeRecord =
+//    { UID       = -1
+//      NodeLabel = ""
+//      TypeTag   = anonTag
+//      GridRef   = gridRef }
 
 
-type Route<'node,'edge> = 
-    { StartPoint: 'node
-      Steps: ('edge * 'node) list }
 
-type DbRoute = Route<NodeRecord,EdgeRecord>
+
+
+
+
 
 type EdgeRecordPath = EdgeRecord list
 
@@ -345,9 +364,9 @@ let private getEdgeRecordPaths (linkTree:LinkTree) : EdgeRecordPath list =
             List.collect (build (label::soFarRev)) paths
     List.map (List.rev) <| build [] linkTree
 
-type private DbTail = (EdgeRecord * NodeRecord) list
+type private DbTail = (EdgeRecord * DbNode) list
 
-let private edgeRecordPathToDbRoute (edgePath:EdgeRecordPath) : Script<DbRoute option> = 
+let private edgeRecordPathToDbRoute (edgePath:EdgeRecordPath) : Script<InternalRoute option> = 
     let startNode (edges:EdgeRecordPath) : Script<NodeRecord option> = 
         match edges with
         | x :: _ -> findNearestNode x.StartPoint 1.0<meter>
@@ -361,8 +380,8 @@ let private edgeRecordPathToDbRoute (edgePath:EdgeRecordPath) : Script<DbRoute o
                              , fun opt -> 
                                 let endPt = 
                                     match opt with 
-                                    | Some pt-> pt 
-                                    | None -> anonNode x.EndPoint
+                                    | Some pt-> ExtantNode pt 
+                                    | None -> AnonNode x.EndPoint
                                 buildTail ((x,endPt)::ac) xs)
     scriptMonad { 
         let! a = startNode edgePath
@@ -370,13 +389,13 @@ let private edgeRecordPathToDbRoute (edgePath:EdgeRecordPath) : Script<DbRoute o
         | None -> return None
         | Some n1 -> 
             let! rest = buildTail [] edgePath
-            return (Some { StartPoint = n1; Steps = rest})
+            return (Some { StartPoint = ExtantNode n1; Steps = rest})
         }
 
-let private allRoutesTree (pathTree:LinkTree) : Script<DbRoute list> = 
+let private allRoutesTree (pathTree:LinkTree) : Script<InternalRoute list> = 
     fmapM (List.choose id) << mapM edgeRecordPathToDbRoute <| getEdgeRecordPaths pathTree
 
-let private allRoutesForest (forest:LinkForest) : Script<DbRoute list> = 
+let allRoutes (forest:LinkForest) : Script<InternalRoute list> = 
     fmapM List.concat <| mapM allRoutesTree forest
 
 // NOTE 
@@ -395,10 +414,7 @@ type DeriveRouteDict<'node,'edge> =
       MakeAnonNode: WGS84Point -> NameGen<'node>
       MakeRouteEdge: 'node -> 'node -> EdgeRecord -> NameGen<'edge> }
 
-/// This is wrong 
-/// A route may share a prefix with other routes, this method of
-/// fresh name generation does not account for the prefixes 
-/// sharing nodes...
+
 
 type private NodeCache<'node> = Dictionary<int,'node>
 
@@ -410,17 +426,17 @@ let private cacheAdd(cache:NodeCache<'node>) (ix:int) (node:'node) : unit =
     cache.Add(ix,node) 
 
 
-let private translateRoute (dict:DeriveRouteDict<'node,'edge>) (cache:NodeCache<'node>) (dbRoute:DbRoute) : NameGen<Route<'node,'edge>> = 
-    let makeNode (dbNode:NodeRecord) : NameGen<'node> = 
-        match cacheLookup cache dbNode.UID with
+let private translateRoute (dict:DeriveRouteDict<'node,'edge>) (cache:NodeCache<'node>) (dbRoute:InternalRoute) : NameGen<Route<'node,'edge>> = 
+    let makeNode (dbNode:DbNode) : NameGen<'node> = 
+        match None with    // match cacheLookup cache dbNode.UID with
         | Some node -> nameGen.Return node
         | None ->
             nameGen 
                 { let! node =   
-                    if isAnonNode dbNode then
-                        dict.MakeAnonNode dbNode.GridRef
-                    else dict.MakeRouteNode dbNode
-                  let _ = cacheAdd cache dbNode.UID node
+                    match dbNode with
+                    | AnonNode pt -> dict.MakeAnonNode pt
+                    | ExtantNode node -> dict.MakeRouteNode node
+                  // let _ = cacheAdd cache dbNode.UID node
                   return node }
     
     let rec makeSteps prev ac steps =
