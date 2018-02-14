@@ -131,13 +131,15 @@ let test03 (password:string) : unit =
 
 let test04 (password:string) : unit = 
     let conn = pgsqlConnParamsTesting "spt_geo" password
-    runConsoleScript (printfn "Success: %A") conn 
+    runConsoleScript (fun a -> printfn "Success!") conn 
         <| scriptMonad { 
             let! startNode = findNode "Station" "Bradford Forster Square"
-            let! forest = buildForest startNode.GridRef
+            let! forest = buildLinkForest startNode.GridRef
+            let! dbTree = makePathTree forest
+            do! liftAction (printfn "%A" dbTree)
             let! routes = extractAllRoutes graphvizDict forest
             let procM  = generateDot "plan" routes
-            do! liftAction (List.iter (printfn "Route: %A") routes)
+            // do! liftAction (List.iter (printfn "Route: %A") routes)
             do! liftAction (runGraphvizOutputFile procM @"G:\work\working\output1.dot")
             }
 

@@ -181,16 +181,16 @@ let findNearestNode (origin:WGS84Point) (proximity:float<meter>) : Script<NodeRe
 // ***** Path finding
 
 
-/// A PathTree is a branching route from a single source 
-type PathTree<'node> = 
-    | PathTree of 'node * PathTree<'node> list
+/// A LinkTree is a branching route from a single source 
+/// It actually stores edges (with start and end labels) rather
+/// than nodes (with some unique id). 
+/// Hence we also need a LinkForest to model multiple paths from 
+/// the start node.
+type LinkTree = 
+    | LinkTree of EdgeRecord * LinkTree list
 
 /// A source node may have more than one outgoing routes.
-type PathForest<'node> = PathTree<'node> list
-
-
-type DbPathTree     = PathTree<EdgeRecord>
-type DbPathForest   = PathForest<EdgeRecord>
+type LinkForest = LinkTree list
 
 
 let makeFindEdgesQUERY (startPt:WGS84Point) : string = 
@@ -230,8 +230,8 @@ let notVisited (visited:EdgeRecord list) (e1:EdgeRecord) =
 /// Note - if we study the data we should be able to prune the searches 
 /// by looking at Function_link and only following paths that start with 
 /// a particular link type.
-let buildForest (startPt:WGS84Point) : Script<DbPathForest> = 
-    let rec recBuild (pt:WGS84Point) (visited:EdgeRecord list) : Script<DbPathForest> = 
+let buildLinkForest (startPt:WGS84Point) : Script<LinkForest> = 
+    let rec recBuild (pt:WGS84Point) (visited:EdgeRecord list) : Script<LinkForest> = 
         scriptMonad { 
             // TO CHECK - Are we sure we are handling cyclic paths "wisely"?
             let! (esNew:EdgeRecord list) = 
@@ -241,11 +241,80 @@ let buildForest (startPt:WGS84Point) : Script<DbPathForest> =
                     fun (e1:EdgeRecord) -> 
                         scriptMonad { 
                             let! kids = recBuild e1.EndPoint (e1::visited)
-                            return (PathTree(e1,kids))
+                            return (LinkTree(e1,kids))
                         }
             return branches
         }
     recBuild startPt []      
+
+
+// ***** User land representations of paths
+
+// A LinkTree (LinkForest) is not user-friendly, nodes are fixed 
+// to the DB representation.
+//
+// Two friendlier representations are a PathTree which stores 
+// genuine nodes on its brances and a Route list that stores 
+// linear routes.
+
+
+/// A PathTree is a branching route from a single source.
+/// Note this is a very "node-centric" view. We have no idea of 
+/// edges so we cannot represent distances for example.
+type PathTree<'node> = 
+    | PathTree of 'node * PathTree<'node> list
+
+/// TODO - confirm that we don't need a PathForest
+/// A source node may have more than one outgoing routes.
+/// type PathForest<'node> = PathTree<'node> list
+
+
+type DbNode = 
+    | AnonNode of WGS84Point
+    | ExtantNode of NodeRecord
+
+
+let makePathTree (linkTrees:LinkForest) : Script<PathTree<DbNode> option> =
+    let assertStart (trees:LinkTree list) : EdgeRecord option = 
+        match trees with
+        | [] -> None
+        | LinkTree(start,kids)  :: xs -> 
+            if List.forall (fun (LinkTree(s1,_)) -> start.UID = s1.UID ) xs then
+                Some start
+            else None
+
+    let findDbNode (pt:WGS84Point) : Script<DbNode> = 
+        scriptMonad { 
+            let! opt = findNearestNode pt 1.0<meter>
+            match opt with
+            | None -> return (AnonNode pt)
+            | Some node -> return (ExtantNode node) 
+            }
+
+    let rec buildTree (pt:WGS84Point) (kids:LinkTree list) : Script<PathTree<DbNode>> = 
+        scriptMonad {
+            let! node1 = findDbNode pt
+            let! kids1 = 
+                forM kids 
+                    (fun (tree:LinkTree) ->
+                        match tree with
+                        | LinkTree(edge,children) -> buildTree edge.EndPoint children)                      
+            return PathTree(node1,kids1)
+            }
+    scriptMonad { 
+        let start = assertStart linkTrees
+        match start with
+        | None -> return None
+        | Some node1 -> 
+            let! tree = buildTree node1.StartPoint linkTrees
+            return (Some tree)
+        }
+
+
+
+// Note - we could recover a PathTree<'realNode> from DbPathForest 
+// because DbPathForest stores edges in the node position. 
+// Each initial edge should have the same start point
 
 let private anonTag : string = "###ANON"
 
@@ -268,13 +337,13 @@ type DbRoute = Route<NodeRecord,EdgeRecord>
 type EdgeRecordPath = EdgeRecord list
 
 //// A Path tree cannot have cycles (they have been identified beforehand)...
-let private getEdgeRecordPaths (pathTree:DbPathTree) : EdgeRecordPath list = 
-    let rec build (soFarRev:'a list) (currentTree:PathTree<'a>) : ('a list) list = 
+let private getEdgeRecordPaths (linkTree:LinkTree) : EdgeRecordPath list = 
+    let rec build (soFarRev:EdgeRecord list) (currentTree:LinkTree) : (EdgeRecord list) list = 
         match currentTree with
-        | PathTree(label,[]) -> [label :: soFarRev]
-        | PathTree(label,paths) -> 
+        | LinkTree(label,[]) -> [label :: soFarRev]
+        | LinkTree(label,paths) -> 
             List.collect (build (label::soFarRev)) paths
-    List.map (List.rev) <| build [] pathTree
+    List.map (List.rev) <| build [] linkTree
 
 type private DbTail = (EdgeRecord * NodeRecord) list
 
@@ -304,17 +373,17 @@ let private edgeRecordPathToDbRoute (edgePath:EdgeRecordPath) : Script<DbRoute o
             return (Some { StartPoint = n1; Steps = rest})
         }
 
-let private allRoutesTree (pathTree:DbPathTree) : Script<DbRoute list> = 
+let private allRoutesTree (pathTree:LinkTree) : Script<DbRoute list> = 
     fmapM (List.choose id) << mapM edgeRecordPathToDbRoute <| getEdgeRecordPaths pathTree
 
-let private allRoutesForest (forest:DbPathForest) : Script<DbRoute list> = 
+let private allRoutesForest (forest:LinkForest) : Script<DbRoute list> = 
     fmapM List.concat <| mapM allRoutesTree forest
 
 // NOTE 
-// We can't translate the PathTree, as it does not carry enough 
-// information.
-// It only has a notion of node, which is actually and edge 
-// looked at from the start point. 
+// We can't translate the PathTree (without querying the 
+// database), as it does not carry enough information.
+// It only has a notion of node, although to build the tree from 
+// the database we actually store edges.
 
 /// EdgeRecord does not store much information, so to make an 
 /// edge we need to look at its start and end nodes.
@@ -370,7 +439,7 @@ let private translateRoute (dict:DeriveRouteDict<'node,'edge>) (cache:NodeCache<
     
 
 
-let extractAllRoutes (dict:DeriveRouteDict<'node,'edge>) (forest:DbPathForest) : Script<Route<'node,'edge> list> = 
+let extractAllRoutes (dict:DeriveRouteDict<'node,'edge>) (forest:LinkForest) : Script<Route<'node,'edge> list> = 
     let cache = new Dictionary<int,'node> ()
     scriptMonad { 
         let! dbRoutes   = fmapM List.concat <| mapM allRoutesTree forest
@@ -505,6 +574,8 @@ let compactRank (rank:Rank) : Rank =
                 work ac xs
             else work (x::ac) xs
     work [] rank
+
+
 
 let private rankRoutes (routes: Route<GraphvizNode, GraphvizEdge> list) : Rank list = 
     List.map compactRank << transpose <| List.map nodeListFromRoute routes
