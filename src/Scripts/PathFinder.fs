@@ -15,8 +15,7 @@ open SL.ScriptMonad
 
 open Scripts.PostGIS
 
-
-
+/// This is the representation of an edge that is stored in the DB.
 type EdgeRecord =
     { UID: int
       TypeTag: string
@@ -25,6 +24,7 @@ type EdgeRecord =
       EndPoint: WGS84Point
       DirectDistance: float<meter> }
 
+/// This is the representation of an node that is stored in the DB.
 type NodeRecord =
     { UID: int
       NodeLabel: string
@@ -306,21 +306,30 @@ let allRoutesTree (pathTree:DbPathTree) : Script<DbRoute list> =
 let allRoutesForest (forest:DbPathForest) : Script<DbRoute list> = 
     fmapM List.concat <| mapM allRoutesTree forest
 
+// NOTE 
+// We can't translate the PathTree, as it does not carry enough 
+// information.
+// It only has a notion of node, which is actually and edge 
+// looked at from the start point. 
 
+/// TODO - EdgeRecord does not store much information, so to make
+/// an edge we may need to look at its start and end nodes.
+/// Also grid_ref may not be enough information to make an anon node
+/// e.g. for graphviz we need something that generates a good id.
 type DeriveRouteDict<'node,'edge> = 
     { makeRouteNode: NodeRecord -> 'node
       makeAnonNode: WGS84Point -> 'node
       makeRouteEdge: EdgeRecord -> 'edge }
 
 
-let deriveRoute (dict:DeriveRouteDict<'node,'edge>) (dbRoute:DbRoute) : Route<'node,'edge> = 
+let translateRoute (dict:DeriveRouteDict<'node,'edge>) (dbRoute:DbRoute) : Route<'node,'edge> = 
     let makeNode (dbNode:NodeRecord) : 'node = 
         if isAnonNode dbNode then
             dict.makeAnonNode dbNode.GridRef
         else dict.makeRouteNode dbNode
 
     { StartPoint = makeNode dbRoute.StartPoint
-    ; Steps = List.map (fun (e,n) -> (dict.makeRouteEdge e, makeNode n)) dbRoute.Steps } 
+    ; Steps      = List.map (fun (e,n) -> (dict.makeRouteEdge e, makeNode n)) dbRoute.Steps } 
 
 
 
@@ -351,8 +360,32 @@ let getSimpleRoutesFrom (startPt:WGS84Point) : Script<RouteOld<EdgeRecord> list>
 
 
 
-
 // ***** Graphviz
+
+
+type GraphvizEdge = 
+    { StartId: string
+      EndId: string
+      LineStyle: string option
+      LineColour:string option
+      EdgeLabel: string option }
+
+
+type GraphvizNode = 
+    { NodeId: string
+      NodeLabel: string
+      Shape: string
+      FillColor: string option }
+
+// TODO
+// Is there enough information to make NodeIds from a NodeRecord
+// and Start and End Ids from an Edge Record?
+
+let graphvizDict : DeriveRouteDict<GraphvizNode, GraphvizEdge> = 
+    { makeRouteNode = fun _ -> failwith "err"
+      makeAnonNode = fun _ -> failwith "err"
+      makeRouteEdge = fun _ -> failwith "err" }
+
 
 
 type MakeEdgeDict<'node,'edge> = 
@@ -375,19 +408,6 @@ let routeToEdgeList (dict:MakeEdgeDict<'node,'edge>) (route:RouteOld<'node>) : E
 
 
 
-type GraphvizEdge = 
-    { StartId: string
-      EndId: string
-      LineStyle: string option
-      LineColour:string option
-      EdgeLabel: string option }
-
-
-type GraphvizNode = 
-    { NodeId: string
-      NodeLabel: string
-      Shape: string
-      FillColor: string option }
 
 
 // Note - we have to use the Postgres UID if we want to get a

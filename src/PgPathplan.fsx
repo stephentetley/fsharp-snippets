@@ -18,6 +18,7 @@ open Npgsql
 
 
 #load @"SL\AnswerMonad.fs"
+#load @"SL\NameGen.fs"
 #load @"SL\Tolerance.fs"
 #load @"SL\SqlUtils.fs"
 #load @"SL\PGSQLConn.fs"

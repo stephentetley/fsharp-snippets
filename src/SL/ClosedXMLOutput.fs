@@ -19,13 +19,13 @@ let runClosedXMLOutput (ma:ClosedXMLOutput<'a>) (sheet:ClosedXMLSheet) : 'a =
     | ClosedXMLOutput(f) -> snd <| f sheet 1
 
 
-let inline apply1 (ma : ClosedXMLOutput<'a>) (sheet:ClosedXMLSheet) (rowIx:RowIx) : (RowIx * 'a) = 
+let inline private apply1 (ma : ClosedXMLOutput<'a>) (sheet:ClosedXMLSheet) (rowIx:RowIx) : (RowIx * 'a) = 
     let (ClosedXMLOutput f) = ma in f sheet rowIx
 
-let private unitM (x:'a) : ClosedXMLOutput<'a> = 
+let inline private unitM (x:'a) : ClosedXMLOutput<'a> = 
     ClosedXMLOutput <| fun r s -> (s,x)
 
-let private bindM (ma:ClosedXMLOutput<'a>) (f : 'a -> ClosedXMLOutput<'b>) : ClosedXMLOutput<'b> =
+let inline private bindM (ma:ClosedXMLOutput<'a>) (f : 'a -> ClosedXMLOutput<'b>) : ClosedXMLOutput<'b> =
     ClosedXMLOutput <| fun r s -> 
         let (s1,a) = apply1 ma r s in apply1 (f a) r s1
 
