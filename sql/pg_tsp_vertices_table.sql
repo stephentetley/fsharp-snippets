@@ -7,9 +7,13 @@
 DROP TABLE spt_tsp_vertices;
 
 
+-- Should id be generate by the database?, e.g.
+-- id SERIAL PRIMARY KEY,
+-- or:
+-- id INTEGER PRIMARY KEY,
 
 CREATE TABLE spt_tsp_vertices (
-    id INTEGER PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     x FLOAT NOT NULL, 
     y FLOAT NOT NULL,
     label VARCHAR(200) NOT NULL

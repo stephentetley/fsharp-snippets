@@ -30,10 +30,9 @@ let deleteAllData () : Script<int> =
 /// wgs84:Longitude is x, wgs84:Latitude is y
 /// We have a label in the vertex table so we can interpret the data after the route 
 /// is generated.
-let private makeVertexINSERT (serialNum:int) (vertex:WGS84Point) (label:string) : string = 
+let private makeVertexINSERT (vertex:WGS84Point) (label:string) : string = 
     sqlINSERT "spt_tsp_vertices" 
-            <|  [ intValue      "id"        serialNum
-                ; floatValue    "x"         <| float vertex.Longitude
+            <|  [ floatValue    "x"         <| float vertex.Longitude
                 ; floatValue    "y"         <| float vertex.Latitude
                 ; stringValue   "label"     label
                 ]
@@ -48,8 +47,8 @@ type TspVertexInsertDict<'row> =
 /// to the user when it is returned from pgr_tsp, hence I think we need label 
 /// and a join.
 let insertVertices (dict:TspVertexInsertDict<'row>) (vertices:seq<'row>) : Script<int> = 
-    let proc1 (ix:int) (point:WGS84Point, label:string) : PGSQLConn<int> = 
-        execNonQuery <| makeVertexINSERT ix point label
+    let proc1 (point:WGS84Point, label:string) : PGSQLConn<int> = 
+        execNonQuery <| makeVertexINSERT point label
     
     let good1 (row:'row) : (WGS84Point * string) option = 
          Option.map (fun pt -> (pt, dict.MakeVertexLabel row)) 
@@ -58,7 +57,7 @@ let insertVertices (dict:TspVertexInsertDict<'row>) (vertices:seq<'row>) : Scrip
     let goodData = Seq.choose id <| Seq.map good1 vertices 
 
     liftWithConnParams 
-        << runPGSQLConn << withTransaction <| SL.PGSQLConn.sumTraverseiM proc1 goodData
+        << runPGSQLConn << withTransaction <| SL.PGSQLConn.sumTraverseM proc1 goodData
 
 let SetupTspVertexDB (dict:TspVertexInsertDict<'row>) (vertices:seq<'row>) : Script<int> = 
     scriptMonad { 
@@ -72,7 +71,7 @@ let makeEucledianTSPQUERY (startId:int) (endId:int) : string =
     System.String.Format("""
         SELECT r.seq, r.node, v.label, v.x, v.y, r.cost, r.agg_cost
         FROM 
-            pgr_eucledianTSP( 'SELECT id,x,y FROM spt_tsp_vertices', 
+            pgr_eucledianTSP( 'SELECT id, x, y FROM spt_tsp_vertices', 
                     start_id := {0},
                     end_id := {1}
                    ) AS r
