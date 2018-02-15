@@ -37,6 +37,7 @@ open Newtonsoft.Json
 open SL.AnswerMonad
 open SL.PGSQLConn
 open SL.Geo.Coord
+open SL.Geo.WellKnownText
 open SL.JsonExtractor
 open SL.JsonOutput
 open SL.CsvOutput
@@ -66,10 +67,10 @@ let getImportRows () : seq<ImportRow> =
 let test01 () = 
     groupingBy (fun (x:ImportRow) -> x.operational_contact ) <| getImportRows ()
 
-let concaveHullOutput (ix:int) (key:string) (wtk:WKText) (elts:seq<ImportRow>) : RowWriter = 
+let concaveHullOutput (ix:int) (key:string) (wtk:WellKnownText<_>) (elts:seq<ImportRow>) : RowWriter = 
     [ tellQuotedString key
     ; tellInt <| Seq.length elts
-    ; tellQuotedString wtk
+    ; tellQuotedString <| unwrapWellKnownText wtk
     ]
 
 

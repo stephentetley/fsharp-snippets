@@ -407,6 +407,7 @@ let private getEdgeLists (linkTree:LinkTree) : EdgeList list =
             List.collect (build (label::soFarRev)) paths
     List.map (List.rev) <| build [] linkTree
 
+
 type private DbTail = (EdgeRecord * DbNode) list
 
 let private edgeListToDbRoute (edgeList:EdgeList) : Script<InternalDbRoute option> = 

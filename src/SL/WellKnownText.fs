@@ -38,8 +38,10 @@ module WellKnownText =
     // Probably need: 
     // type WellKnownText<'a> = WKT of string
     // Represent answers from PostGIS
-    type WellKnowntText<'a> = WellKnowntText of string
+    type WellKnownText<'a> = WellKnownText of string
 
+    let inline unwrapWellKnownText (text:WellKnownText<'a>) : string = 
+        match text with | WellKnownText ss -> ss
 
     /// The base point type does not have a phantom type wrapper.
     /// This means the phantom param is only wrapped once for LINESTRING etc.

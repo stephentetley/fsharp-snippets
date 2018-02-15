@@ -3,11 +3,10 @@
 open Npgsql
 
 open SL.AnswerMonad
-open SL.ScriptMonad
 open SL.Geo.Coord
 open SL.Geo.WellKnownText
 open SL.PGSQLConn
-
+open SL.ScriptMonad
 
 // Common Script type for working with PGSQL connections
 type Script<'a> = ScriptMonad<PGSQLConnParams,'a>
@@ -85,8 +84,8 @@ let private makeConvexHullQUERY (points:WGS84Point list) : string =
 /// One point - POINT
 /// Two points - LINESTRING
 /// Three or more points - POLYGON
-let pgConvexHull (points:WGS84Point list) : Script<string> = 
-    singletonAsText1 <| makeConvexHullQUERY points
+let pgConvexHull (points:WGS84Point list) : Script<WellKnownText<WGS84>> = 
+    fmapM WellKnownText << singletonAsText1 <| makeConvexHullQUERY points
     
 
 // Note TargetPercent of 1.0 gives a convex hull (0.9 seems okay)
@@ -104,8 +103,10 @@ let private makeConcaveHullQUERY (points:WGS84Point list) (targetPercent:float) 
 /// One point - POINT
 /// Two points - LINESTRING
 /// Three or more points - POLYGON
-let pgConcaveHull (points:WGS84Point list) (targetPercent:float) : Script<string> = 
-    singletonAsText1 <| makeConcaveHullQUERY points targetPercent
+///
+/// TODO - need to return a composite geometry type rather then WellKnownText<WGS84>
+let pgConcaveHull (points:WGS84Point list) (targetPercent:float) : Script<WellKnownText<WGS84>> = 
+    fmapM WellKnownText << singletonAsText1 <| makeConcaveHullQUERY points targetPercent
 
 
 // ***** Centroid
