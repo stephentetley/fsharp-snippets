@@ -521,6 +521,7 @@ type GraphvizEdge =
       EdgeLabel: string option }
 
 
+[<StructuredFormatDisplay("{NodeId} {NodeLabel}")>]
 type GraphvizNode = 
     { NodeId: string
       NodeLabel: string
@@ -597,23 +598,6 @@ let genDotEdges (allEdgeLists: (GraphvizEdge list) list) : GraphvizOutput<unit> 
             }
     work [] allEdgeLists
 
-type Rank = GraphvizNode list
-
-
-let compactRank (rank:Rank) : Rank = 
-    let rec work (ac:GraphvizNode list) (input:GraphvizNode list) =
-        match input with
-        | [] -> List.rev ac
-        | x :: xs -> 
-            if List.exists (fun (a:GraphvizNode) -> x.NodeId = a.NodeId) ac then
-                work ac xs
-            else work (x::ac) xs
-    work [] rank
-
-
-
-
-
 
 type private RankDict = Dictionary<string, (int * GraphvizNode)>
 
@@ -639,25 +623,25 @@ let private buildRankDict (pathTree:PathTree<GraphvizNode>) : RankDict =
     work 1 pathTree
     rankDict
 
+type Rank = int * GraphvizNode list
+
 let private extractRanks (dict:RankDict) : Rank list = 
     dict.Values
+        |> Seq.groupBy fst
         |> Seq.toList
-        |> List.groupNeighboursBy fst
-        |> List.map (fun (rank,xs) -> (rank, List.map snd xs))
+        |> List.map (fun (rank,seq1) -> (rank, Seq.map snd seq1 |> Seq.toList))
         |> List.sortBy fst
-        |> List.map snd
 
 let private extractRanksFromPathTree (pathTree:PathTree<GraphvizNode>) : Rank list =
-    let ans = extractRanks <| buildRankDict pathTree
-    List.iter (printfn "RANK: %A") ans
-    ans
+    extractRanks <| buildRankDict pathTree
+
 
 let genDotRanks (ranks:Rank list) : GraphvizOutput<unit> = 
     let rankProc (rank1:Rank) : GraphvizOutput<unit> = 
         anonSubgraph 
             <| graphvizOutput { 
                 do! attrib <| rank "same"
-                do! SL.GraphvizOutput.mapMz genDotNode rank1
+                do! SL.GraphvizOutput.mapMz genDotNode (snd rank1)
                 }
     SL.GraphvizOutput.mapMz rankProc ranks
 
