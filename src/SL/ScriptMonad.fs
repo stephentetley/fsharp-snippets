@@ -42,6 +42,8 @@ type ScriptBuilder() =
     member self.Return x = unitM x
     member self.Bind (p,f) = bindM p f
     member self.Zero () = unitM ()
+    // TODO member self.ReturnFrom 
+
 
 let (scriptMonad:ScriptBuilder) = new ScriptBuilder()
 

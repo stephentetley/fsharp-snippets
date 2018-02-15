@@ -90,8 +90,8 @@ let tryMakeEdge (row:EdgeImportRow) : UserLandEdge option =
     | _,_ -> None
 
 let pathFindInsertDict : PathFindInsertDict<NodeImportRow,EdgeImportRow> = 
-    { tryMakeUserLandNode = tryMakeNode
-      tryMakeUserLandEdge = tryMakeEdge }
+    { TryMakeUserLandNode = tryMakeNode
+      TryMakeUserLandEdge = tryMakeEdge }
 
 let SetupDB(password:string) : unit = 
     let conn = pgsqlConnParamsTesting "spt_geo" password
@@ -135,12 +135,7 @@ let test04 (password:string) : unit =
         <| scriptMonad { 
             let! startNode = findNode "Station" "Bradford Forster Square"
             let! forest = buildLinkForest startNode.GridRef
-            let! dbTree = makePathTree forest
-            do! liftAction (printfn "%A" dbTree)
-            let! routes = extractAllRoutes graphvizDict forest
-            let procM  = generateDot "plan" routes
-            // do! liftAction (List.iter (printfn "Route: %A") routes)
-            do! liftAction (runGraphvizOutputFile procM @"G:\work\working\output1.dot")
+            do! outputDot "plan" forest @"G:\work\working\output1.dot"
             }
 
 

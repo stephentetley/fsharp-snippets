@@ -55,8 +55,8 @@ type UserLandNode =
 
 
 type PathFindInsertDict<'node,'edge> = 
-    { tryMakeUserLandNode: 'node -> UserLandNode option 
-      tryMakeUserLandEdge: 'edge -> UserLandEdge option }
+    { TryMakeUserLandNode: 'node -> UserLandNode option 
+      TryMakeUserLandEdge: 'edge -> UserLandEdge option }
 
 
 let deleteAllData () : Script<int> = 
@@ -98,7 +98,7 @@ let private makeEdgeInsertStmt (edge1:UserLandEdge) : string =
 
 let insertNodes (dict:PathFindInsertDict<'noderow,'edgerow>) (source:seq<'noderow>) : Script<int> = 
     let proc1 (row:'noderow) : PGSQLConn<int> = 
-        match dict.tryMakeUserLandNode row with
+        match dict.TryMakeUserLandNode row with
         | Some node -> execNonQuery <| makeNodeInsertStmt node
         | None -> pgsqlConn.Return 0
     liftWithConnParams 
@@ -106,7 +106,7 @@ let insertNodes (dict:PathFindInsertDict<'noderow,'edgerow>) (source:seq<'nodero
 
 let insertEdges (dict:PathFindInsertDict<'noderow,'edgerow>) (source:seq<'edgerow>) : Script<int> = 
     let proc1 (row:'edgerow) : PGSQLConn<int> = 
-        match dict.tryMakeUserLandEdge row with
+        match dict.TryMakeUserLandEdge row with
         | Some edge -> execNonQuery <| makeEdgeInsertStmt edge
         | None -> pgsqlConn.Return 0
     liftWithConnParams 
@@ -257,22 +257,31 @@ type DbNode =
     | ExtantNode of NodeRecord
 
 
-// A LinkTree (LinkForest) is not user-friendly, nodes are fixed 
-// to the DB representation.
+// A LinkForest is not user-friendly, nodes are fixed to the DB 
+// representation.
 //
 // Two friendlier representations are a PathTree which stores 
-// genuine nodes on its brances and a Route list that stores 
+// genuine nodes on its brances and a RouteList that stores 
 // linear routes.
 
 
+// ****************************************************************************
+// ***** PATH TREE
+
 /// A PathTree is a branching route from a single source.
 /// Note this is a very "node-centric" view. We have no idea of 
-/// edges so we cannot represent distances for example.
+/// edges so we cannot represent edge labels, distances etc.
 type PathTree<'node> = 
     | PathTree of 'node * PathTree<'node> list
 
 
-let makePathTree (linkTrees:LinkForest) : Script<PathTree<DbNode> option> =
+/// User must supply a dictionary to translate individual nodes.
+type ExtractPathTreeDict<'node> = 
+    { MakePathTreeNode: NodeRecord -> NameGen<'node>
+      MakePathTreeAnonNode: WGS84Point -> NameGen<'node> }
+
+
+let private makePathTree (forest:LinkForest) : Script<PathTree<DbNode>> =
     let assertStart (trees:LinkTree list) : EdgeRecord option = 
         match trees with
         | [] -> None
@@ -300,22 +309,42 @@ let makePathTree (linkTrees:LinkForest) : Script<PathTree<DbNode> option> =
             return PathTree(node1,kids1)
             }
     scriptMonad { 
-        let start = assertStart linkTrees
+        let start = assertStart forest
         match start with
-        | None -> return None
+        | None -> return (failwith "makePathTree - cahnge this to throwError")
         | Some node1 -> 
-            let! tree = buildTree node1.StartPoint linkTrees
-            return (Some tree)
+            let! tree = buildTree node1.StartPoint forest
+            return tree
         }
 
 /// Not tail-recursive...
-let mapPathTree (fn:'a -> 'b) (pathTree:PathTree<'a>) : PathTree<'b> =
+let private mapPathTreeM (fn:'a -> NameGen<'b>) (pathTree:PathTree<'a>) : NameGen<PathTree<'b>> =
     let rec work tree = 
-        match tree with
-        | PathTree(node,[]) -> PathTree (fn node, [])
-        | PathTree(node,kids) -> PathTree(fn node, List.map work kids)
+        nameGen { 
+            match tree with
+            | PathTree(node,[]) -> 
+                let! node1 = fn node
+                return PathTree (node1, [])
+            | PathTree(node,kids) -> 
+                let! node1 = fn node
+                let! kids1 = SL.NameGen.mapM work kids
+                return PathTree(node1,kids1)
+            }
     work pathTree
+
     
+let extractPathTree (dict:ExtractPathTreeDict<'node>) (forest:LinkForest) : Script<PathTree<'node>> =
+    let convertNode (dbNode:DbNode) : NameGen<'node> = 
+        match dbNode with
+        | AnonNode pt -> dict.MakePathTreeAnonNode pt 
+        | ExtantNode node -> dict.MakePathTreeNode node
+    scriptMonad {
+        let! dbPathTree = makePathTree forest
+        let pathTree    = runNameGenOne (sprintf "node%i") (mapPathTreeM convertNode dbPathTree)
+        return pathTree
+        }
+
+// ***** ROUTE / ROUTE LIST
 
 /// A Route is a so-called "Fence post list":
 /// node
@@ -326,37 +355,51 @@ type Route<'node,'edge> =
     { StartPoint: 'node
       Steps: ('edge * 'node) list }
 
-type InternalRoute = Route<DbNode,EdgeRecord>
-
-
-// Below is old code...
-
-// Note - we could recover a PathTree<'realNode> from DbPathForest 
-// because DbPathForest stores edges in the node position. 
-// Each initial edge should have the same start point
-
-//let private anonTag : string = "###ANON"
-
-//let private isAnonNode (node:NodeRecord) : bool =
-//    node.UID = -1 && node.TypeTag = anonTag
-
-//let private anonNode (gridRef:WGS84Point) : NodeRecord =
-//    { UID       = -1
-//      NodeLabel = ""
-//      TypeTag   = anonTag
-//      GridRef   = gridRef }
 
 
 
 
+// NOTE 
+// We can't directly translate the LinkForest (we have to query
+// the database as we go).
+
+// This is because the LinkForest does not carry enough 
+// information. It only has a notion of node, although to build 
+// the tree from the database we actually store edges (at the 
+// node position).
 
 
 
+/// We have to make the route from the LinkForest and the
+/// database. Unfortunately we can't make it from a PathTree
+/// because PathTree has lost some important link information.
+/// This has can introduce consistency problems for operations
+/// that use both representations (e.g. generating Graphviz)
+/// where we have to be careful to use the same method to 
+/// generate node names.
 
-type EdgeRecordPath = EdgeRecord list
+type InternalDbRoute = Route<DbNode,EdgeRecord>
 
-//// A Path tree cannot have cycles (they have been identified beforehand)...
-let private getEdgeRecordPaths (linkTree:LinkTree) : EdgeRecordPath list = 
+
+/// ExtractRouteDict
+/// EdgeRecord does not store much information, so to make an 
+/// edge we need to look at its start and end nodes.
+/// Also grid_ref is not enough information to make an anon node
+/// e.g. for graphviz we need something that generates a good id 
+/// so we use NameGen.
+
+/// User must supply a dictionary to translate individual nodes.
+type ExtractRouteDict<'node,'edge> = 
+    { MakeRouteNode: NodeRecord -> NameGen<'node>
+      MakeRouteAnonNode: WGS84Point -> NameGen<'node>
+      MakeRouteEdge: 'node -> 'node -> EdgeRecord -> NameGen<'edge> }
+
+
+
+type EdgeList = EdgeRecord list
+
+//// A Link tree cannot have cycles (they have been identified beforehand)...
+let private getEdgeLists (linkTree:LinkTree) : EdgeList list = 
     let rec build (soFarRev:EdgeRecord list) (currentTree:LinkTree) : (EdgeRecord list) list = 
         match currentTree with
         | LinkTree(label,[]) -> [label :: soFarRev]
@@ -366,13 +409,13 @@ let private getEdgeRecordPaths (linkTree:LinkTree) : EdgeRecordPath list =
 
 type private DbTail = (EdgeRecord * DbNode) list
 
-let private edgeRecordPathToDbRoute (edgePath:EdgeRecordPath) : Script<InternalRoute option> = 
-    let startNode (edges:EdgeRecordPath) : Script<NodeRecord option> = 
+let private edgeListToDbRoute (edgeList:EdgeList) : Script<InternalDbRoute option> = 
+    let startNode (edges:EdgeList) : Script<NodeRecord option> = 
         match edges with
         | x :: _ -> findNearestNode x.StartPoint 1.0<meter>
         | _ -> scriptMonad.Return None
     
-    let rec buildTail (ac:DbTail) (edges:EdgeRecordPath) : Script<DbTail> = 
+    let rec buildTail (ac:DbTail) (edges:EdgeList) : Script<DbTail> = 
         match edges with 
         | [] -> scriptMonad.Return (List.rev ac)
         | x :: xs -> 
@@ -384,36 +427,19 @@ let private edgeRecordPathToDbRoute (edgePath:EdgeRecordPath) : Script<InternalR
                                     | None -> AnonNode x.EndPoint
                                 buildTail ((x,endPt)::ac) xs)
     scriptMonad { 
-        let! a = startNode edgePath
+        let! a = startNode edgeList
         match a with
         | None -> return None
         | Some n1 -> 
-            let! rest = buildTail [] edgePath
+            let! rest = buildTail [] edgeList
             return (Some { StartPoint = ExtantNode n1; Steps = rest})
         }
 
-let private allRoutesTree (pathTree:LinkTree) : Script<InternalRoute list> = 
-    fmapM (List.choose id) << mapM edgeRecordPathToDbRoute <| getEdgeRecordPaths pathTree
+let private linkTreeRoutes (linkTree:LinkTree) : Script<InternalDbRoute list> = 
+    fmapM (List.choose id) << mapM edgeListToDbRoute <| getEdgeLists linkTree
 
-let allRoutes (forest:LinkForest) : Script<InternalRoute list> = 
-    fmapM List.concat <| mapM allRoutesTree forest
-
-// NOTE 
-// We can't translate the PathTree (without querying the 
-// database), as it does not carry enough information.
-// It only has a notion of node, although to build the tree from 
-// the database we actually store edges.
-
-/// EdgeRecord does not store much information, so to make an 
-/// edge we need to look at its start and end nodes.
-/// Also grid_ref is not enough information to make an anon node
-/// e.g. for graphviz we need something that generates a good id 
-/// so we use NameGen.
-type DeriveRouteDict<'node,'edge> = 
-    { MakeRouteNode: NodeRecord -> NameGen<'node>
-      MakeAnonNode: WGS84Point -> NameGen<'node>
-      MakeRouteEdge: 'node -> 'node -> EdgeRecord -> NameGen<'edge> }
-
+let private linkForestRoutes (forest:LinkForest) : Script<InternalDbRoute list> = 
+    fmapM List.concat <| mapM linkTreeRoutes forest
 
 
 type private NodeCache<'node> = Dictionary<int,'node>
@@ -426,7 +452,7 @@ let private cacheAdd(cache:NodeCache<'node>) (ix:int) (node:'node) : unit =
     cache.Add(ix,node) 
 
 
-let private translateRoute (dict:DeriveRouteDict<'node,'edge>) (cache:NodeCache<'node>) (dbRoute:InternalRoute) : NameGen<Route<'node,'edge>> = 
+let private translateRoute (dict:ExtractRouteDict<'node,'edge>) (cache:NodeCache<'node>) (dbRoute:InternalDbRoute) : NameGen<Route<'node,'edge>> = 
     let makeNode (dbNode:DbNode) : NameGen<'node> = 
         match None with    // match cacheLookup cache dbNode.UID with
         | Some node -> nameGen.Return node
@@ -434,7 +460,7 @@ let private translateRoute (dict:DeriveRouteDict<'node,'edge>) (cache:NodeCache<
             nameGen 
                 { let! node =   
                     match dbNode with
-                    | AnonNode pt -> dict.MakeAnonNode pt
+                    | AnonNode pt -> dict.MakeRouteAnonNode pt
                     | ExtantNode node -> dict.MakeRouteNode node
                   // let _ = cacheAdd cache dbNode.UID node
                   return node }
@@ -455,24 +481,27 @@ let private translateRoute (dict:DeriveRouteDict<'node,'edge>) (cache:NodeCache<
     
 
 
-let extractAllRoutes (dict:DeriveRouteDict<'node,'edge>) (forest:LinkForest) : Script<Route<'node,'edge> list> = 
+let extractAllRoutes (dict:ExtractRouteDict<'node,'edge>) (forest:LinkForest) : Script<Route<'node,'edge> list> = 
     let cache = new Dictionary<int,'node> ()
     scriptMonad { 
-        let! dbRoutes   = fmapM List.concat <| mapM allRoutesTree forest
+        let! dbRoutes   = linkForestRoutes forest
         let userRoutes  = 
             runNameGenOne (sprintf "node%i") <| SL.NameGen.mapM (translateRoute dict cache) dbRoutes
         return userRoutes 
         }
 
 
-let edgeListFromRoute(route:Route<'node,'edge>) : 'edge list = 
+// TODO - Maybe these should be in a user API but at the moment
+// exposing them is confusing...
+
+let private edgeListFromRoute(route:Route<'node,'edge>) : 'edge list = 
     let rec work ac steps = 
         match steps with 
         | [] -> List.rev ac
         | (edge,node) :: zs -> work (edge::ac) zs
     work [] route.Steps
 
-let nodeListFromRoute(route:Route<'node,'edge>) : 'node list = 
+let private nodeListFromRoute(route:Route<'node,'edge>) : 'node list = 
     let rec work ac steps = 
         match steps with 
         | [] -> List.rev ac
@@ -480,7 +509,7 @@ let nodeListFromRoute(route:Route<'node,'edge>) : 'node list =
     work [route.StartPoint] route.Steps
 
 
-
+// ****************************************************************************
 // ***** Graphviz
 
 
@@ -497,19 +526,24 @@ type GraphvizNode =
       NodeLabel: string
       Shape: string
       FillColor: string option }
+    
 
 let makeEdgeLabel (dist:float<meter>) : string = sprintf "%.2fkm" (0.001*float dist)
 
-let graphvizDict : DeriveRouteDict<GraphvizNode, GraphvizEdge> = 
+let graphvizDict : ExtractRouteDict<GraphvizNode, GraphvizEdge> = 
     let genNode (node:NodeRecord) = 
         nameGen { 
-            let! nodeId = newName ()
+            // let! nodeId = newName ()
+            let nodeId = sprintf "node%i" node.UID
             return { NodeId = nodeId;
                      NodeLabel = node.NodeLabel;
                       Shape = "box"; FillColor = None }
             }
     let genAnonNode (gridRef:WGS84Point) = 
         nameGen { 
+            // Warning - this is not reliable for graphviz as 
+            // we have different traversals to make nodes in 
+            // the Path Tree and the Route List
             let! nodeId = newName ()
             return { NodeId = nodeId; 
                      NodeLabel = gridRef.ToString(); 
@@ -519,9 +553,9 @@ let graphvizDict : DeriveRouteDict<GraphvizNode, GraphvizEdge> =
         nameGen.Return { StartId = prev.NodeId; EndId = next.NodeId;
                          LineStyle = None; LineColour = None; 
                          EdgeLabel = Some <| makeEdgeLabel edge.DirectDistance }
-    { MakeRouteNode = genNode
-    ; MakeAnonNode  = genAnonNode
-    ; MakeRouteEdge = genEdge }
+    { MakeRouteNode     = genNode
+    ; MakeRouteAnonNode = genAnonNode
+    ; MakeRouteEdge     = genEdge }
 
 
 let genDotNode (node1:GraphvizNode) : GraphvizOutput<unit> = 
@@ -565,21 +599,6 @@ let genDotEdges (allEdgeLists: (GraphvizEdge list) list) : GraphvizOutput<unit> 
 
 type Rank = GraphvizNode list
 
-/// Note transpose supplied by FSarpx.Collections...
-let transpose (source: ('a list) list) : ('a list) list = 
-    let heads = 
-        List.choose (fun xs -> match xs with | [] -> None | (x::_) -> Some x)
-    let tails = 
-        List.choose (fun xs -> match xs with | [] -> None | (_::xs) -> Some xs)
-    let rec work zss = 
-        match zss with
-        | [] -> []
-        | [] :: xss -> work xss
-        | (x::xs) :: xss -> 
-            let front = x :: heads xss
-            let rest  = work <| xs :: tails xss
-            front::rest
-    work source
 
 let compactRank (rank:Rank) : Rank = 
     let rec work (ac:GraphvizNode list) (input:GraphvizNode list) =
@@ -593,9 +612,45 @@ let compactRank (rank:Rank) : Rank =
 
 
 
-let private rankRoutes (routes: Route<GraphvizNode, GraphvizEdge> list) : Rank list = 
-    List.map compactRank << transpose <| List.map nodeListFromRoute routes
 
+
+
+type private RankDict = Dictionary<string, (int * GraphvizNode)>
+
+/// Mutable!
+let private addBestRank (node:GraphvizNode) (rank:int) (dict:RankDict) : unit =
+    let nodeId = node.NodeId
+    match Dictionary.tryFind nodeId dict with
+    | None -> dict.Add(nodeId,(rank,node))
+    | Some (rank2,_) -> 
+        if rank < rank2 then
+            dict.[nodeId] <- (rank,node)
+        else ()
+
+let private buildRankDict (pathTree:PathTree<GraphvizNode>) : RankDict = 
+    let rankDict = new RankDict ()
+    let rec work rank tree =
+        match tree with
+        | PathTree(node,[]) -> 
+            addBestRank node rank rankDict
+        | PathTree(node,kids) ->
+            addBestRank node rank rankDict
+            List.iter (work (rank+1)) kids
+    work 1 pathTree
+    rankDict
+
+let private extractRanks (dict:RankDict) : Rank list = 
+    dict.Values
+        |> Seq.toList
+        |> List.groupNeighboursBy fst
+        |> List.map (fun (rank,xs) -> (rank, List.map snd xs))
+        |> List.sortBy fst
+        |> List.map snd
+
+let private extractRanksFromPathTree (pathTree:PathTree<GraphvizNode>) : Rank list =
+    let ans = extractRanks <| buildRankDict pathTree
+    List.iter (printfn "RANK: %A") ans
+    ans
 
 let genDotRanks (ranks:Rank list) : GraphvizOutput<unit> = 
     let rankProc (rank1:Rank) : GraphvizOutput<unit> = 
@@ -605,11 +660,10 @@ let genDotRanks (ranks:Rank list) : GraphvizOutput<unit> =
                 do! SL.GraphvizOutput.mapMz genDotNode rank1
                 }
     SL.GraphvizOutput.mapMz rankProc ranks
-    
 
-let generateDot (graphName:string) (routes: Route<GraphvizNode, GraphvizEdge> list) : GraphvizOutput<unit> = 
+let generateDot (graphName:string) (pathTree: PathTree<GraphvizNode>) (routes: Route<GraphvizNode, GraphvizEdge> list) : GraphvizOutput<unit> = 
+    let ranks = extractRanksFromPathTree pathTree
     let paths = List.map edgeListFromRoute routes
-    let ranks = rankRoutes routes
     digraph graphName
             <| graphvizOutput { 
                     do! attrib <| rankdir LR
@@ -618,5 +672,16 @@ let generateDot (graphName:string) (routes: Route<GraphvizNode, GraphvizEdge> li
                     return ()
                     }
 
-    
+let outputDot (graphName:string) (forest:LinkForest) (fileName:string) : Script<unit> = 
+    let pathTreeDict : ExtractPathTreeDict<GraphvizNode> = 
+        { MakePathTreeNode = graphvizDict.MakeRouteNode
+        ; MakePathTreeAnonNode = graphvizDict.MakeRouteAnonNode } 
+ 
+    scriptMonad { 
+        let! tree       = extractPathTree pathTreeDict forest
+        let! routes     = extractAllRoutes graphvizDict forest
+        let gvProc      = generateDot graphName tree routes
+        let gvAction    = runGraphvizOutputFile gvProc fileName
+        do! (liftAction gvAction)
+        }
             
