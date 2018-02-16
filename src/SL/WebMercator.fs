@@ -24,6 +24,18 @@ module WebMercator =
     type WebMercator = class end
 
     // ***** construction / Conversion *****
+    let wktIsoWebMercator:WktCoordIso<WMPoint,WebMercator> = 
+        { ToWktCoord = 
+            fun point -> 
+                { WktLon = decimal point.WmEasting
+                ; WktLat = decimal point.WmNorthing }
+          FromWktCoord = 
+            fun coord -> 
+                { WmEasting = 1.0<meter> * float coord.WktLon
+                ; WmNorthing = 1.0<meter> * float coord.WktLat }
+        }
+
+
     let wmWktCoord (point:WMPoint) : WktCoord =
         { WktLon = decimal point.WmEasting; WktLat = decimal point.WmNorthing }
 

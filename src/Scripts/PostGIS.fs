@@ -111,10 +111,28 @@ let pgConcaveHull (points:WGS84Point list) (targetPercent:float) : Script<WellKn
 
 // ***** Centroid
 
-let private makeCentroidQUERY (points:WGS84Point list) : string = 
+//let private makeCentroidQUERY (points:WGS84Point list) : string = 
+//    System.String.Format("""
+//        SELECT ST_AsText(ST_Centroid('{0}'));
+//        """, showWktMultiPoint << WktMultiPoint <| wgs84WktCoordList points)
+
+let private makeCentroidQUERY (dict:WktCoordIso<'point,'srid>) (points:'point list) : string = 
     System.String.Format("""
         SELECT ST_AsText(ST_Centroid('{0}'));
-        """, showWktMultiPoint << WktMultiPoint <| wgs84WktCoordList points)
+        """, showWktMultiPoint <| makeWktMultiPoint dict points)
 
-let pgCentroid (points:WGS84Point list) : Script<string> = 
-    singletonAsText1 <| makeCentroidQUERY points 
+
+// TODO - pgCentroid should obviously return a point...
+// Which in reality probably needs to be ``point option``.
+// Ideally we shouldn't be fixed to WGS84Points.
+
+let pgCentroidOld (points:WGS84Point list) : Script<string> = 
+    singletonAsText1 <| makeCentroidQUERY wktIsoWGS84 points 
+
+let pgCentroid (dict:WktCoordIso<'point,'srid>) (points:'point list) : Script<'point option> = 
+    scriptMonad {
+        let! wkt = singletonAsText1 <| makeCentroidQUERY dict points 
+        let optPoint = Option.bind (wktExtractPoint dict) <| tryReadWktPoint wkt
+        return optPoint
+        }
+

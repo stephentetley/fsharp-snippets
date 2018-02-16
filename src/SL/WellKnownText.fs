@@ -19,6 +19,8 @@ module WellKnownText =
     // Other spatial references with "Lon" & "Lat" are possible.
     
     
+
+
     // ** SRIDs for Phantom types
 
 
@@ -48,6 +50,8 @@ module WellKnownText =
     type WktCoord = 
         { WktLon: decimal      
           WktLat: decimal }
+
+
 
 
     /// Encode coordinate reference system as a phantom type.
@@ -123,6 +127,74 @@ module WellKnownText =
 
 
     // ***** construction / Conversion *****
+
+    /// Does dictionary passing let us usefully generalize things?
+    /// Initial results seem very positive!
+    type WktCoordIso<'T,'srid> =  
+        { ToWktCoord : 'T -> WktCoord
+          FromWktCoord: WktCoord -> 'T }
+
+    let wktIsoWGS84:WktCoordIso<WGS84Point,WGS84> = 
+        { ToWktCoord = 
+            fun point -> 
+                { WktLon = decimal point.Longitude
+                ; WktLat = decimal point.Latitude }
+          FromWktCoord = 
+            fun coord -> 
+                { Longitude = 1.0<degree> * float coord.WktLon
+                ; Latitude = 1.0<degree> * float coord.WktLat }
+        }
+
+    let wktIsoOSGB36:WktCoordIso<OSGB36Point,OSGB36> = 
+        { ToWktCoord = 
+            fun point -> 
+                { WktLon = decimal point.Easting
+                ; WktLat = decimal point.Northing }
+          FromWktCoord = 
+            fun coord -> 
+                { Easting = 1.0<meter> * float coord.WktLon
+                ; Northing = 1.0<meter> * float coord.WktLat }
+        }
+
+
+    let inline makeWktCoordList (dict:WktCoordIso<'point,'srid>) (points:seq<'point>) : WktCoord list =
+        Seq.map dict.ToWktCoord points |> Seq.toList
+
+    let inline wktExtractCoordList (dict:WktCoordIso<'point,'srid>) (coords:WktCoord list) : 'point list =
+        List.map dict.FromWktCoord coords 
+
+    let inline wktExtractCoordSeq (dict:WktCoordIso<'point,'srid>) (coords:WktCoord list) : seq<'point> =
+        List.map dict.FromWktCoord coords |> List.toSeq
+
+    let makeWktPoint (dict:WktCoordIso<'point,'srid>) (point:'point) : WktPoint<'srid> =
+        WktPoint << Some <| dict.ToWktCoord point
+
+    let wktExtractPoint (dict:WktCoordIso<'point,'srid>) (point:WktPoint<'srid>) : 'point option =
+        Option.map dict.FromWktCoord <| unwrapWktPoint point 
+
+    let makeWktLineString (dict:WktCoordIso<'point,'srid>) (points:seq<'point>) : WktLineString<'srid> =
+        WktLineString <| makeWktCoordList dict points
+
+    let wtkExtractLineString (dict:WktCoordIso<'point,'srid>) (lineString:WktLineString<'srid>) : seq<'point> = 
+        Seq.map dict.FromWktCoord <| unwrapWktLineString lineString 
+
+    let makeWktSurface (dict:WktCoordIso<'point,'srid>) (exterior:seq<'point>) (interiors:seq<seq<'point>>) : WktSurface = 
+        { ExteriorBoundary = makeWktCoordList dict exterior
+          InteriorBoundaries = Seq.map (makeWktCoordList dict) interiors |> Seq.toList } 
+
+
+    let makeWktPolygon (dict:WktCoordIso<'point,'srid>) (exterior:seq<'point>) (interiors:seq<seq<'point>>) : WktPolygon<'srid> =
+        WktPolygon <| makeWktSurface dict exterior interiors
+
+    let makeWktMultiPoint (dict:WktCoordIso<'point,'srid>) (points:seq<'point>) : WktMultiPoint<'srid> = 
+        WktMultiPoint <| makeWktCoordList dict points
+
+    let wtkExtractMultiPoint (dict:WktCoordIso<'point,'srid>) (multiPoint:WktMultiPoint<'srid>) : seq<'point> = 
+        Seq.map dict.FromWktCoord <| unwrapWktMultiPoint multiPoint 
+
+    // Older - API to think about...
+    // Do we still need it?
+        
     let wgs84WktCoord (point:WGS84Point) : WktCoord =
         { WktLon = decimal point.Longitude; WktLat = decimal point.Latitude }
 
