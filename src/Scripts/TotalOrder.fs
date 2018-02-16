@@ -5,10 +5,9 @@ open SL.AnswerMonad
 open SL.ScriptMonad
 
 
-// Need sorted input.
+// Need sorted input then we can compare.
 // List.sortWith is equivalent to Haskell's List.sortBy
 
-let temp () = List.sortWith
 
 type TotalOrderDict<'a,'b,'r,'out> = 
     { CompareLeft: 'a -> 'a -> int
@@ -19,6 +18,7 @@ type TotalOrderDict<'a,'b,'r,'out> =
       ProcessBoth: 'a ->'b -> ScriptMonad<'r,'out> }
 
 
+// (Not quite?) tail recursive?
 let private tailRecMapM (mf:'a -> ScriptMonad<'r,'b>) (accum:'b list) (source:'a list) : ScriptMonad<'r, 'b list> =
     let rec go ac xs = 
         match xs with

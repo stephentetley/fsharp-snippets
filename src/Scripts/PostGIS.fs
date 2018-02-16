@@ -111,12 +111,7 @@ let pgConcaveHull (points:WGS84Point list) (targetPercent:float) : Script<WellKn
 
 // ***** Centroid
 
-//let private makeCentroidQUERY (points:WGS84Point list) : string = 
-//    System.String.Format("""
-//        SELECT ST_AsText(ST_Centroid('{0}'));
-//        """, showWktMultiPoint << WktMultiPoint <| wgs84WktCoordList points)
-
-let private makeCentroidQUERY (dict:WktCoordIso<'point,'srid>) (points:'point list) : string = 
+let private makeCentroidQUERY (dict:WktCoordIso<'point,'srid>) (points:seq<'point>) : string = 
     System.String.Format("""
         SELECT ST_AsText(ST_Centroid('{0}'));
         """, showWktMultiPoint <| makeWktMultiPoint dict points)
@@ -129,7 +124,11 @@ let private makeCentroidQUERY (dict:WktCoordIso<'point,'srid>) (points:'point li
 let pgCentroidOld (points:WGS84Point list) : Script<string> = 
     singletonAsText1 <| makeCentroidQUERY wktIsoWGS84 points 
 
-let pgCentroid (dict:WktCoordIso<'point,'srid>) (points:'point list) : Script<'point option> = 
+/// TODO - generalizing...
+/// The input should not need to be a point list it should be a 
+/// geometry like a polygon or a multipoint.
+/// (or even a list of geometries?)
+let pgCentroid (dict:WktCoordIso<'point,'srid>) (points:seq<'point>) : Script<'point option> = 
     scriptMonad {
         let! wkt = singletonAsText1 <| makeCentroidQUERY dict points 
         let optPoint = Option.bind (wktExtractPoint dict) <| tryReadWktPoint wkt

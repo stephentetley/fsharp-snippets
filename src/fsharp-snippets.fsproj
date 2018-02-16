@@ -114,6 +114,7 @@
     <Compile Include="Scripts\NearestHospital.fs" />
     <Compile Include="Scripts\Grouping.fs" />
     <Compile Include="Scripts\TspRouting.fs" />
+    <Compile Include="Scripts\SiteOrder.fs" />
     <Compile Include="Scripts\TotalOrder.fs" />
     <None Include="CsvTrim.fsx" />
     <None Include="NearestNeighbour.fsx" />

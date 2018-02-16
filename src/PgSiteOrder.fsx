@@ -30,8 +30,9 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 #load @"SL\ExcelProviderHelper.fs"
 #load @"SL\WellKnownText.fs"
 #load @"SL\ScriptMonad.fs"
-open SL.Geo.Coord
 open SL.AnswerMonad
+open SL.Geo.Coord
+open SL.Geo.WellKnownText
 open SL.SqlUtils
 open SL.PGSQLConn
 open SL.CsvOutput
@@ -40,9 +41,12 @@ open SL.ScriptMonad
 
 #load @"Scripts\PostGIS.fs"
 #load @"Scripts\Grouping.fs"
+#load @"Scripts\TspRouting.fs"
+#load @"Scripts\SiteOrder.fs"
 open Scripts.PostGIS
 open Scripts.Grouping
-
+open Scripts.TspRouting
+open Scripts.SiteOrder
 
 type SiteListTable = 
     ExcelFile< @"G:\work\Projects\events2\EDM2 Site-List.xlsx",
@@ -57,19 +61,32 @@ let getSiteListRows () : seq<SiteListRow> =
           NotNullProc = fun row -> match row.GetValue(0) with null -> false | _ -> true }
     excelTableGetRowsSeq dict (new SiteListTable())
 
-//let groupByDict:GeoGroupByDict<string,SiteListRow> = 
-//    { GroupBy = 
-//        fun (row:SiteListRow) -> row.``Work Center``
-//    ; ElementGridRef = 
-//        fun (row:SiteListRow) -> 
-//            Option.map osgb36ToWGS84 <| tryReadOSGB36Point row.``Site Grid Ref`` }
+type WorkGroup = string * WGS84Point option
+
+let workGroupTspDict:TspNodeInsertDict<WorkGroup> = 
+    { TryMakeNodeLocation = snd; MakeNodeLabel = fst }
 
 let test01 () =
     let makeGrouping = fun (row:SiteListRow) -> row.``Work Center``
     let groups = groupingBy makeGrouping <| getSiteListRows ()
     Seq.iter (printfn "GROUP:\n%A") <| groups
 
+let test02 (password:string) : unit = 
+    let conn = pgsqlConnParamsTesting "spt_geo" password
 
+    let makeGrouping    = fun (row:SiteListRow) -> row.``Work Center``
+    let getGridRef      = 
+        fun (row:SiteListRow) -> 
+            Option.map osgb36ToWGS84 <| tryReadOSGB36Point row.``Site Grid Ref``
+
+    runConsoleScript (printfn "Success: %A ") conn
+        <| scriptMonad { 
+            
+            let groups          = groupingBy makeGrouping <| getSiteListRows ()
+            let! groupCentroids = getCentroids wktIsoWGS84 getGridRef groups
+            let! groupRoute     = tspRoute workGroupTspDict groupCentroids
+            return groupRoute
+            }
 
 
 // Seq vs List...

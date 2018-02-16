@@ -48,10 +48,10 @@ type StationRow = StationData.Row
 let getStations () : StationRow list = (new StationData ()).Rows |> Seq.toList
 
 
-let tspVertexInsertDict:TspVertexInsertDict<StationRow> = 
-    { TryMakeVertexPoint = 
+let tspVertexInsertDict:TspNodeInsertDict<StationRow> = 
+    { TryMakeNodeLocation = 
         fun (row:StationRow) -> Option.map osgb36ToWGS84 <| tryReadOSGB36Point row.Grid_Ref
-      MakeVertexLabel = 
+      MakeNodeLabel = 
         fun (row:StationRow) -> row.Name
     }
 
@@ -60,13 +60,13 @@ let SetupDB(password:string) : unit =
     let rows = getStations ()
     let conn = pgsqlConnParamsTesting "spt_geo" password
     runConsoleScript (printfn "Success: %A") conn 
-        <| SetupTspVertexDB tspVertexInsertDict rows 
+        <| setupTspNodeDB tspVertexInsertDict rows 
 
 
 let stationOutputDict : TspPrintRouteStepDict = 
     { CsvHeaders = [ "Serial Num"; "Station"; "Grid Ref"; "Aggregate Cost" ]
       MakeCsvRow =  
-        fun (node:RouteNode) -> 
+        fun (node:TspRouteNode) -> 
             [ tellInt           node.SeqNumber
             ; tellString        node.NodeLabel
             ; tellString        << showOSGB36Point << wgs84ToOSGB36 <| node.GridRef
@@ -90,8 +90,8 @@ let test02 (password:string) : unit =
     let conn = pgsqlConnParamsTesting "spt_geo" password
     runConsoleScript (printfn "Success: %A ") conn 
         <| scriptMonad { 
-            let! startId    = furthestEastId
-            let! endId      = furthestWestId
+            let! startId    = furthestEastId ()
+            let! endId      = furthestWestId ()
             let! ans        = generateTspRouteWKT startId endId 
             return ans
             }
