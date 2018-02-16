@@ -99,6 +99,7 @@ let private dropLast (source:'a list) : 'a list =
         | x :: xs -> work (x::ac) xs
     work [] source
 
+/// NOte - need at least two elements in the database.
 let eucledianTSP (startId:int) (endId:int) : Script<TspRoute> = 
     let query = makeEucledianTSPQUERY startId endId
     let procM (reader:NpgsqlDataReader) : TspRouteNode = 
@@ -110,7 +111,7 @@ let eucledianTSP (startId:int) (endId:int) : Script<TspRoute> =
         ; NodeLabel     = reader.GetString(2)
         ; GridRef       = gridRef
         ; Cost          = float <| reader.GetDouble(5)
-        ; AggCost       = float<| reader.GetDouble(6) } 
+        ; AggCost       = float <| reader.GetDouble(6) } 
     fmapM dropLast << liftWithConnParams << runPGSQLConn <| execReaderList query procM  
 
 
@@ -176,13 +177,18 @@ let generateTspRouteWKT (startId:int) (endId:int) : Script<string> =
 // New code...
 // API of this module to think about at some point.
 
-let tspRoute (dict:TspNodeInsertDict<'asset>) (assets:seq<'asset>) : Script<seq<int * string>> = 
-    scriptMonad { 
-        let! _          = setupTspNodeDB dict assets
-        let! startId    = furthestNorthId ()
-        let! endId      = furthestSouthId ()
-        let! steps      = eucledianTSP startId endId
-        let  path       = List.map (fun (x:TspRouteNode) -> (x.SeqNumber, x.NodeLabel)) steps
-        return (List.toSeq path)
-        }
+let tspRoute (dict:TspNodeInsertDict<'asset>) (assets:'asset list) : Script<(int * string) list> = 
+    match assets with
+    | [] -> scriptMonad.Return []
+    | [one] -> scriptMonad.Return [(1, dict.MakeNodeLabel one)]
+    | xs -> 
+        scriptMonad { 
+            let! _          = setupTspNodeDB dict assets
+            let! startId    = furthestNorthId ()
+            let! endId      = furthestSouthId ()
+            let! steps      = eucledianTSP startId endId
+            let  path       = List.map (fun (x:TspRouteNode) -> (x.SeqNumber, x.NodeLabel)) steps
+            return path
+            }
+
     
