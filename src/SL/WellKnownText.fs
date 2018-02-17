@@ -130,27 +130,34 @@ module WellKnownText =
 
     /// Does dictionary passing let us usefully generalize things?
     /// Initial results seem very positive!
+    /// Should we store Spheroid as string (flexible / error prone...) or a proper data type?
     type WktCoordIso<'T,'srid> =  
-        { ToWktCoord : 'T -> WktCoord
+        { SRID: int 
+          Spheroid: string
+          ToWktCoord : 'T -> WktCoord
           FromWktCoord: WktCoord -> 'T }
 
     let wktIsoWGS84:WktCoordIso<WGS84Point,WGS84> = 
-        { ToWktCoord = 
+        { SRID = 4326
+        ; Spheroid = "SPHEROID[\"WGS 84\", 6378137, 298.257223563]"
+        ; ToWktCoord = 
             fun point -> 
                 { WktLon = decimal point.Longitude
                 ; WktLat = decimal point.Latitude }
-          FromWktCoord = 
+        ; FromWktCoord = 
             fun coord -> 
                 { Longitude = 1.0<degree> * float coord.WktLon
                 ; Latitude = 1.0<degree> * float coord.WktLat }
         }
 
     let wktIsoOSGB36:WktCoordIso<OSGB36Point,OSGB36> = 
-        { ToWktCoord = 
+        { SRID = 27700
+        ; Spheroid = "SPHEROID[\"Airy 1830\",6377563.396,299.3249646]"
+        ; ToWktCoord = 
             fun point -> 
                 { WktLon = decimal point.Easting
                 ; WktLat = decimal point.Northing }
-          FromWktCoord = 
+        ; FromWktCoord = 
             fun coord -> 
                 { Easting = 1.0<meter> * float coord.WktLon
                 ; Northing = 1.0<meter> * float coord.WktLat }
