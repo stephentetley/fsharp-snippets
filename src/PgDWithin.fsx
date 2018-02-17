@@ -30,6 +30,7 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 #load @"SL\ExcelProviderHelper.fs"
 #load @"SL\WellKnownText.fs"
 #load @"SL\ScriptMonad.fs"
+#load @"SL\PostGIS.fs"
 open SL.Geo.Coord
 open SL.AnswerMonad
 open SL.SqlUtils
@@ -37,9 +38,7 @@ open SL.PGSQLConn
 open SL.CsvOutput
 open SL.ExcelProviderHelper
 open SL.ScriptMonad
-
-#load @"Scripts\PostGIS.fs"
-open Scripts.PostGIS
+open SL.PostGIS
 
 
 

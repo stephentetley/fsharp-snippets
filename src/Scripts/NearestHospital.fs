@@ -12,8 +12,7 @@ open SL.SqlUtils
 open SL.CsvOutput
 open SL.PGSQLConn
 open SL.ScriptMonad
-
-open Scripts.PostGIS
+open SL.PostGIS
 
 // Use PostGIS for nearest neighour and distance.
 

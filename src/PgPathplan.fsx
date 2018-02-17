@@ -29,6 +29,7 @@ open Npgsql
 #load @"SL\ScriptMonad.fs"
 #load @"SL\CsvOutput.fs"
 #load @"SL\GraphvizOutput.fs"
+#load @"SL\PostGIS.fs"
 open SL.AnswerMonad
 open SL.SqlUtils
 open SL.Geo.Coord
@@ -39,7 +40,7 @@ open SL.GraphvizOutput
 open SL.ScriptMonad
 
 
-#load @"Scripts\PostGIS.fs"
+
 #load @"Scripts\PathFinder.fs"
 open Scripts.PathFinder
 

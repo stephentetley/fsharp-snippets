@@ -9,8 +9,7 @@ open SL.PGSQLConn
 open SL.CsvOutput
 open SL.Geo.WellKnownText
 open SL.ScriptMonad
-
-open Scripts.PostGIS
+open SL.PostGIS
 
 
 // Generate a route of List<label * grid_ref * cost> 

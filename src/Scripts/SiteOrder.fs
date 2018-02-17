@@ -3,8 +3,8 @@
 open SL.AnswerMonad
 open SL.Geo.WellKnownText
 open SL.ScriptMonad
+open SL.PostGIS
 
-open Scripts.PostGIS
 open Scripts.Grouping
 
 // Note Scripts.Grouping now feels "not worked out".

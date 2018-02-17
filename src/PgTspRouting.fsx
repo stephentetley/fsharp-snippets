@@ -25,6 +25,7 @@ open Npgsql
 #load @"SL\CsvOutput.fs"
 #load @"SL\WellKnownText.fs"
 #load @"SL\ScriptMonad.fs"
+#load @"SL\PostGIS.fs"
 open SL.Geo.Coord
 open SL.AnswerMonad
 open SL.SqlUtils
@@ -32,7 +33,7 @@ open SL.PGSQLConn
 open SL.CsvOutput
 open SL.ScriptMonad
 
-#load @"Scripts\PostGIS.fs"
+
 #load @"Scripts\TspRouting.fs"
 open Scripts.TspRouting
 

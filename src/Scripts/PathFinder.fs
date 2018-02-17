@@ -15,9 +15,7 @@ open SL.Geo.Coord
 open SL.Geo.WellKnownText
 open SL.GraphvizOutput
 open SL.ScriptMonad
-
-
-open Scripts.PostGIS
+open SL.PostGIS
 
 /// This is the representation of an edge that is stored in the DB.
 type EdgeRecord =

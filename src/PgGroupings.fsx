@@ -34,6 +34,7 @@ open Newtonsoft.Json
 #load @"SL\CsvOutput.fs"
 #load @"SL\ScriptMonad.fs"
 #load @"SL\ExcelProviderHelper.fs"
+#load @"SL\PostGIS.fs"
 open SL.AnswerMonad
 open SL.PGSQLConn
 open SL.Geo.Coord
@@ -43,10 +44,9 @@ open SL.JsonOutput
 open SL.CsvOutput
 open SL.ScriptMonad
 open SL.ExcelProviderHelper
+open SL.PostGIS
 
-#load @"Scripts\PostGIS.fs"
 #load @"Scripts\Grouping.fs"
-open Scripts.PostGIS
 open Scripts.Grouping
 
 

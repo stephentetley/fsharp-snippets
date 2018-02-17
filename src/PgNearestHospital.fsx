@@ -26,13 +26,14 @@ open Npgsql
 #load @"SL\ScriptMonad.fs"
 #load @"SL\Coord.fs"
 #load @"SL\WellKnownText.fs"
+#load @"SL\PostGIS.fs"
 open SL.Geo.Coord
 open SL.Geo.WellKnownText
 open SL.PGSQLConn
 open SL.CsvOutput
 open SL.ScriptMonad
 
-#load @"Scripts\PostGIS.fs"
+
 #load @"Scripts\NearestHospital.fs"
 open Scripts.NearestHospital
 

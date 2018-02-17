@@ -1,4 +1,4 @@
-﻿module Scripts.PostGIS
+﻿module SL.PostGIS
 
 open Npgsql
 
