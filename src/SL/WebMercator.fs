@@ -25,11 +25,13 @@ module WebMercator =
 
     // ***** construction / Conversion *****
     let wktIsoWebMercator:WktCoordIso<WMPoint,WebMercator> = 
-        { ToWktCoord = 
+        { SRID = 7483
+        ; Spheroid = "SPHEROID[\"WGS 84\",6378137,298.257223563]"
+        ; ToWktCoord = 
             fun point -> 
                 { WktLon = decimal point.WmEasting
                 ; WktLat = decimal point.WmNorthing }
-          FromWktCoord = 
+        ; FromWktCoord = 
             fun coord -> 
                 { WmEasting = 1.0<meter> * float coord.WktLon
                 ; WmNorthing = 1.0<meter> * float coord.WktLat }

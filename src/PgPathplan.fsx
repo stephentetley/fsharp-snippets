@@ -137,6 +137,7 @@ let test04 (password:string) : unit =
             let! startNode = findNode "Station" "Bradford Forster Square"
             let! forest = buildLinkForest startNode.GridRef
             do! outputDot "plan" forest @"G:\work\working\output1.dot"
+            do! liftAction (printfn "%s" <| drawLinkForest forest)
             }
 
 

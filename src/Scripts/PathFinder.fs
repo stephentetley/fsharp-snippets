@@ -190,6 +190,32 @@ type LinkTree =
 /// A source node may have more than one outgoing routes.
 type LinkForest = LinkTree list
 
+// Not tail recursive...
+let rec private drawLT (tree:LinkTree) : string list = 
+    let rec shift2 (ac:string list) (other:string) (ls:string list) : string list =
+        match ls with
+        | [] -> List.rev ac
+        | (x::xs) -> shift2 (other + x :: ac) other xs
+    let shift1 (first:string) (other:string) (ls:string list) : string list = 
+        match ls with 
+        | [] -> []
+        | (x::xs) -> (first + x) :: shift2 [] other xs
+    let rec drawSubTrees ts = 
+        match ts with
+        | [] -> []
+        | [t] -> 
+            "|" :: shift1 "`- " "   " (drawLT t)
+        | (t::ts) -> 
+            "|" :: shift1 "+- " "   " (drawLT t @ drawSubTrees ts)
+    match tree with
+    | LinkTree(edge,kids) -> edge.EdgeLabel :: drawSubTrees kids
+
+let drawLinkTree (tree:LinkTree) : string = 
+    String.concat "\n" <| drawLT tree
+
+let drawLinkForest (forest:LinkForest) : string = 
+    String.concat "\n" << List.concat <| List.map drawLT forest
+
 
 let makeFindEdgesQUERY (startPt:WGS84Point) : string = 
     System.String.Format("""
