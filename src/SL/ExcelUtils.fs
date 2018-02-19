@@ -37,7 +37,7 @@ let private csvTrimToClosedXML (inputFile:string) (outputFile:string) (sheetName
     let procM : ClosedXMLOutput<unit> = 
         SL.ClosedXMLOutput.traverseMz (SL.ClosedXMLOutput.tellRow << truncRow) csvRows
         
-    SL.ClosedXMLOutput.outputToNew { SheetName = sheetName } procM outputFile 
+    SL.ClosedXMLOutput.outputToNew { SheetName = sheetName } outputFile procM  
 
 
 type private ExcelScript<'a> = ScriptMonad<Excel.Application,'a>

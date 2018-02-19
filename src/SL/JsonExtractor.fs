@@ -105,11 +105,13 @@ let mapiMz (fn:int -> 'a -> JsonExtractor<'b>) (xs: 'a list) : JsonExtractor<uni
 
 
 // JsonExtractor-specific operations
+let runJsonExtractor (fileName:string) (ma:JsonExtractor<'a>)  : Answer<'a> =
+    let json = JsonValue.Parse <| System.IO.File.ReadAllText fileName
+    apply1 ma json
+
+/// This is runJsonExtractor with the arguments flipped.
 let extractFromFile (ma:JsonExtractor<'a>) (fileName:string) : Answer<'a> =
-    fileName 
-        |> System.IO.File.ReadAllText
-        |> JsonValue.Parse 
-        |> apply1 ma
+    runJsonExtractor fileName ma
 
 
 let throwError (msg:string) : JsonExtractor<'a> = 

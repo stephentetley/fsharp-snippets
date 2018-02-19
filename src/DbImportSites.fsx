@@ -58,12 +58,12 @@ let makeConnParams () : SQLiteConnParams =
 let withConnParams (fn:SQLiteConnParams -> Script<'a>) : Script<'a> = 
     scriptMonad.Bind (ask (), fn)
 
-let liftWithConnParams (fn:SQLiteConnParams -> Answer<'a>) : Script<'a> = 
-    withConnParams <| (liftAnswer << fn)
+let liftSQLiteConn (sql:SQLiteConn<'a>) : Script<'a> = 
+    withConnParams <| fun conn -> liftAnswer <| runSQLiteConn conn sql
 
 
 let deleteData () : Script<int> = 
-    liftWithConnParams <| runSQLiteConn (deleteAllRows "all_sites")
+    liftSQLiteConn <| deleteAllRows "all_sites"
 
 
 // This is the new style...
@@ -81,7 +81,7 @@ let genINSERT1 (row:ImportRow) : string =
 
 let insertData (rows:seq<ImportRow>) : Script<int> = 
     let rowProc (row:ImportRow) : SQLiteConn<int> = execNonQuery <| genINSERT1 row
-    liftWithConnParams <| runSQLiteConn (withTransactionSeqSum rows rowProc)
+    liftSQLiteConn <| withTransactionSeqSum rows rowProc
 
 let main () : unit = 
     let conn = makeConnParams ()

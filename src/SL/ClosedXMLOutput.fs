@@ -118,7 +118,7 @@ type ClosedXMLOptions =
     { SheetName: string }
 
 
-let outputToNew (options:ClosedXMLOptions) (ma:ClosedXMLOutput<'a>) (fileName:string) : 'a =
+let outputToNew (options:ClosedXMLOptions) (fileName:string) (ma:ClosedXMLOutput<'a>) : 'a =
     let outputbook : ClosedXML.Excel.XLWorkbook = new ClosedXML.Excel.XLWorkbook()
     let outputsheet : ClosedXML.Excel.IXLWorksheet = outputbook.Worksheets.Add(options.SheetName)
     let ans = runClosedXMLOutput ma outputsheet

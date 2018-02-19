@@ -31,7 +31,7 @@ let getHospitalImportRows () : seq<HospitalsRow> =
 
 
 let deleteAllData () : Script<int> = 
-    liftWithConnParams << runPGSQLConn <| deleteAllRowsRestartIdentity "spt_hospitals"
+    liftPGSQLConn <| deleteAllRowsRestartIdentity "spt_hospitals"
 
 
 
@@ -74,8 +74,7 @@ let insertHospitals (dict:HospitalInsertDict<'inputrow>) (outfalls:seq<'inputrow
         match dict.tryMakeHospitalRecord row with
         | Some vertex -> execNonQuery <| makeHospitalINSERT vertex
         | None -> pgsqlConn.Return 0
-    liftWithConnParams 
-        << runPGSQLConn << withTransaction <| SL.PGSQLConn.sumTraverseM proc1 outfalls
+    liftPGSQLConn << withTransaction <| SL.PGSQLConn.sumTraverseM proc1 outfalls
 
 
 let SetupHospitalDB (dict:HospitalInsertDict<'inputrow>) (hospitals:seq<'inputrow>) : Script<int> = 
@@ -124,7 +123,7 @@ let nearestHospitalQuery (point:WGS84Point) : Script<NeighbourRec list> =
         ; Address       = reader.GetString(2) 
         ; Postcode      = reader.GetString(3)
         ; GridRef       = gridRef }
-    liftWithConnParams << runPGSQLConn <| execReaderList query procM  
+    liftPGSQLConn <| execReaderList query procM  
 
 let nearestHospital (point:WGS84Point) : Script<NeighbourRec option> = 
     let first xs = match xs with | x :: _ -> Some x; | [] -> None

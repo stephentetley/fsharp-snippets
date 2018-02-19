@@ -86,7 +86,7 @@ let runGraphvizOutput (ma:GraphvizOutput<'a>) : (string * 'a) =
 
 let execGraphvizOutput (ma:GraphvizOutput<'a>) : string = fst <| runGraphvizOutput ma
 
-let runGraphvizOutputFile (ma:GraphvizOutput<'a>) (outputPath:string) : 'a = 
+let runGraphvizOutputFile (outputPath:string) (ma:GraphvizOutput<'a>) : 'a = 
     let (text,ans) = runGraphvizOutput ma
     System.IO.File.WriteAllText(outputPath, text)
     ans

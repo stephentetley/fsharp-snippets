@@ -57,7 +57,7 @@ let getSiteListRows () : SiteListRow list =
 
 
 let deleteAllData () : Script<int> = 
-    liftWithConnParams << runPGSQLConn <| deleteAllRowsRestartIdentity "spt_dwithin"
+    liftPGSQLConn <| deleteAllRowsRestartIdentity "spt_dwithin"
 
 
 let private makeDWithinINSERT (row:SiteListRow) : string option = 
@@ -77,8 +77,7 @@ let insertRows (rows:seq<SiteListRow>) : Script<int> =
         match makeDWithinINSERT row with
         | Some sql -> execNonQuery sql
         | None -> pgsqlConn.Return 0
-    liftWithConnParams 
-        << runPGSQLConn << withTransaction <| SL.PGSQLConn.sumTraverseM proc1 rows
+    liftPGSQLConn << withTransaction <| SL.PGSQLConn.sumTraverseM proc1 rows
 
 
 let SetupDB(password:string) : unit = 
@@ -113,7 +112,7 @@ let neighboursWithin (point:WGS84Point) (distance:float<meter>) : Script<Neighbo
     let procM (reader:NpgsqlDataReader) : NeighbourRec = 
         { Uid   = reader.GetString(0)
         ; Name  = reader.GetString(1) }
-    liftWithConnParams << runPGSQLConn <| execReaderList query procM  
+    liftPGSQLConn <| execReaderList query procM  
 
 let csvHeaders = [ "Uid"; "Name"; "Neighbours within 25m"; "Neighbours within 1km" ]
 

@@ -110,4 +110,4 @@ let main () : unit =
         do! tellHeaders headers
         do! mapMz (fun (row:WorkListRow) -> writeRow row.uid) rows }
 
-    ignore <| outputToNew { SheetName = "Site_List"} writerProc xlsOutputPath 
+    ignore <| outputToNew { SheetName = "Site_List"} xlsOutputPath writerProc  

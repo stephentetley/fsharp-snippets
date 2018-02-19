@@ -145,8 +145,9 @@ type Script<'a> = ScriptMonad<SQLiteConnParams,'a>
 let withConnParams (fn:SQLiteConnParams -> Script<'a>) : Script<'a> = 
     scriptMonad.Bind (ask (), fn)
 
-let liftWithConnParams (fn:SQLiteConnParams -> Answer<'a>) : Script<'a> = 
-    withConnParams <| (liftAnswer << fn)
+let liftSQLiteConn (sql:SQLiteConn<'a>) : Script<'a> = 
+    withConnParams <| fun conn -> liftAnswer <| runSQLiteConn conn sql
+
 
 //  **** DB Import
 
@@ -158,7 +159,7 @@ let deleteAllData () : Script<int> =
                                     ; deleteAllRows "rts_outstations"
                                     ; deleteAllRows "lotus_consents"
                                     ; deleteAllRows "outfalls"]
-    liftWithConnParams <| runSQLiteConn proc
+    liftSQLiteConn proc
 
 
 // Unfortunately input speadsheet has three (almost) identical tables
@@ -278,7 +279,7 @@ let insertCatsConsents () : Script<int> =
         SL.SQLiteConn.sumSequenceM [ forMSum poweredRows poweredRowProc 
                                     ; forMSum batteryRows batteryRowProc 
                                     ; forMSum nonTelemRows nonTelemRowProc ]
-    liftWithConnParams <| runSQLiteConn (withTransaction combinedProc)
+    liftSQLiteConn <| withTransaction combinedProc
 
 
 
@@ -286,28 +287,28 @@ let insertCatsConsents () : Script<int> =
 let insertStormDisPermits () : Script<int> =  
     let rows = getStormDisPermitsRows ()
     let insertProc (row:StormDisPermitsRow) : SQLiteConn<int> = execNonQuery <| makeStormDisPermitsINSERT row
-    liftWithConnParams <| runSQLiteConn (withTransactionListSum rows insertProc)
+    liftSQLiteConn <| withTransactionListSum rows insertProc
 
 let insertBaseSites () : Script<int> =  
     let rows = getBaseSitesRows ()
     let insertProc (row:BaseSitesRow) : SQLiteConn<int> = execNonQuery <| makeBaseSitesINSERT row
-    liftWithConnParams <| runSQLiteConn (withTransactionListSum rows insertProc)
+    liftSQLiteConn <| withTransactionListSum rows insertProc
 
 
 let insertOutstations () : Script<int> =  
     let rows = getOutstations ()
     let insertProc (row:OutstationRow) : SQLiteConn<int> = execNonQuery <| makeOutstationINSERT row
-    liftWithConnParams <| runSQLiteConn (withTransactionListSum rows insertProc)
+    liftSQLiteConn <| withTransactionListSum rows insertProc
 
 let insertLotusConsents () : Script<int> =  
     let rows = getLotusContents ()
     let insertProc (row:LotusRow) : SQLiteConn<int> = execNonQuery <| makeLotusConsentINSERT row
-    liftWithConnParams <| runSQLiteConn (withTransactionListSum rows insertProc)
+    liftSQLiteConn <| withTransactionListSum rows insertProc
 
 let insertOutfalls () : Script<int> =  
     let rows = getOutfalls ()
     let insertProc (row:OutfallRow) : SQLiteConn<int> = execNonQuery <| makeOutfallINSERT row
-    liftWithConnParams <| runSQLiteConn (withTransactionListSum rows insertProc)
+    liftSQLiteConn <| withTransactionListSum rows insertProc
 
 
 let main () : unit = 

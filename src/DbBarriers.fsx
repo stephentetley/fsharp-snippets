@@ -68,12 +68,12 @@ let makeConnParams () : SQLiteConnParams =
 let withConnParams (fn:SQLiteConnParams -> Script<'a>) : Script<'a> = 
     scriptMonad.Bind (ask (), fn)
 
-let liftWithConnParams (fn:SQLiteConnParams -> Answer<'a>) : Script<'a> = 
-    withConnParams <| (liftAnswer << fn)
+let liftSQLiteConn (sql:SQLiteConn<'a>) : Script<'a> = 
+    withConnParams <| fun conn -> liftAnswer <| runSQLiteConn conn sql
 
 
 let deleteData () : Script<int> = 
-    liftWithConnParams <| runSQLiteConn (deleteAllRows "installations")
+    liftSQLiteConn <| deleteAllRows "installations"
 
 
 // This is the new style...
@@ -87,7 +87,7 @@ let genINSERT1 (row:ImportRow) : string =
 
 let insertData (rows:seq<ImportRow>) : Script<int> = 
     let rowProc (row:ImportRow) : SQLiteConn<int> = execNonQuery <| genINSERT1 row
-    liftWithConnParams <| runSQLiteConn (withTransactionSeqSum rows rowProc)
+    liftSQLiteConn <| withTransactionSeqSum rows rowProc
 
 let main () : unit = 
     let conn = makeConnParams ()
@@ -134,7 +134,7 @@ let nameGlobQuery (name:string) : SQLiteConn<ResultRec list> =
 
 
 let queryName1 (name:string) : Script<ResultRec list> = 
-    liftWithConnParams <| runSQLiteConn (nameGlobQuery name)
+    liftSQLiteConn <| nameGlobQuery name
     
 
 let queryNames (names:string list) : Script<ResultRec list> = 
@@ -149,8 +149,9 @@ let exportSiteList (recs:ResultRec list) (xlsOutPath:string) : Script<unit> =
         
     liftAction <| 
         outputToNew { SheetName = "Sites" } 
-                    (writeRecordsWithHeaders ["Uid"; "Name"; "Location"] recs proc1) 
                     xlsOutPath
+                    (writeRecordsWithHeaders ["Uid"; "Name"; "Location"] recs proc1) 
+                    
 
 let tempSiteList = 
     [ @"FOSTER ROAD"

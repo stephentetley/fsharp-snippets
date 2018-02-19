@@ -34,13 +34,8 @@ let private testQuoteField (sep:Separator) (input:string)  : string =
 type CsvOutput<'a> = 
     CsvOutput of (StreamWriter -> Separator -> 'a)
 
-let runCsvOutput (ma:CsvOutput<'a>) (handle:StreamWriter) (sep:Separator) : 'a =
-    match ma with | CsvOutput f -> f handle sep
-
-
-
 let inline private apply1 (ma : CsvOutput<'a>) (handle:StreamWriter) (sep:Separator) : 'a = 
-    runCsvOutput ma handle sep
+    match ma with | CsvOutput f -> f handle sep
 
 let private unitM (x:'a) : CsvOutput<'a> = 
     CsvOutput <| fun handle sep -> x
@@ -129,9 +124,12 @@ type CsvOptions =
     { Separator: string }
 
 /// Should monadic function be first or second argument?
-let outputToNew (options:CsvOptions) (ma:CsvOutput<'a>) (fileName:string) : 'a =
+let runCsvOutput (options:CsvOptions) (fileName:string) (ma:CsvOutput<'a>) : 'a =
     use sw = new System.IO.StreamWriter(fileName)
-    runCsvOutput ma sw options.Separator
+    apply1 ma sw options.Separator
+
+let outputToNew (options:CsvOptions) (ma:CsvOutput<'a>) (fileName:string) : 'a =
+    runCsvOutput options fileName ma 
 
 let askSep : CsvOutput<Separator> = 
     CsvOutput <| fun _ sep -> sep

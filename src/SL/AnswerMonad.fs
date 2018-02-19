@@ -281,7 +281,7 @@ let liftAction (action:'a) : Answer<'a> =
         let ans = action
         Ok ans
     with
-    | ex -> Err <| ex.ToString()
+    | err -> Err <| err.Message
 
 // Left biased choice, if ``ma`` succeeds return its result, otherwise try ``mb``.
 let alt (ma:Answer<'a>) (mb:Answer<'a>) : Answer<'a> = 

@@ -58,7 +58,7 @@ type PathFindInsertDict<'node,'edge> =
 
 
 let deleteAllData () : Script<int> = 
-    liftWithConnParams << runPGSQLConn <| 
+    liftPGSQLConn <| 
         pgsqlConn { 
             let! i = deleteAllRowsRestartIdentity "spt_pathfind_edges"
             let! j = deleteAllRowsRestartIdentity "spt_pathfind_nodes"
@@ -99,16 +99,14 @@ let insertNodes (dict:PathFindInsertDict<'noderow,'edgerow>) (source:seq<'nodero
         match dict.TryMakeUserLandNode row with
         | Some node -> execNonQuery <| makeNodeInsertStmt node
         | None -> pgsqlConn.Return 0
-    liftWithConnParams 
-        << runPGSQLConn << withTransaction <| SL.PGSQLConn.sumTraverseM proc1 source
+    liftPGSQLConn << withTransaction <| SL.PGSQLConn.sumTraverseM proc1 source
 
 let insertEdges (dict:PathFindInsertDict<'noderow,'edgerow>) (source:seq<'edgerow>) : Script<int> = 
     let proc1 (row:'edgerow) : PGSQLConn<int> = 
         match dict.TryMakeUserLandEdge row with
         | Some edge -> execNonQuery <| makeEdgeInsertStmt edge
         | None -> pgsqlConn.Return 0
-    liftWithConnParams 
-        << runPGSQLConn << withTransaction <| SL.PGSQLConn.sumTraverseM proc1 source
+    liftPGSQLConn << withTransaction <| SL.PGSQLConn.sumTraverseM proc1 source
 
 
 
@@ -144,7 +142,7 @@ let findNode (typeTag:string) (nodeLabel:string) : Script<NodeRecord> =
         ; TypeTag       = reader.GetString(1)
         ; NodeLabel     = reader.GetString(2)
         ; GridRef       = gridRef }
-    liftWithConnParams << runPGSQLConn <| execReaderFirst query procM  
+    liftPGSQLConn <| execReaderFirst query procM  
 
 let private findNearestNodeQUERY (gridRef:WGS84Point) (proximity:float<meter>) : string = 
     System.String.Format("""
@@ -171,8 +169,7 @@ let findNearestNode (origin:WGS84Point) (proximity:float<meter>) : Script<NodeRe
         Option.map makeNode 
             << Option.bind wktPointToWGS84
             <| tryReadWktPoint (reader.GetString(3))
-
-    liftWithConnParams << runPGSQLConn <| execReaderFirst query procM  
+    liftPGSQLConn <| execReaderFirst query procM  
 
 
 
@@ -243,7 +240,7 @@ let findOutwardEdges (startPt:WGS84Point) : Script<EdgeRecord list> =
         ; StartPoint    = startPt
         ; EndPoint      = wgs84End
         ; DirectDistance = 1.0<meter> * (float <| reader.GetDouble(4)) }
-    liftWithConnParams << runPGSQLConn <| execReaderList query procM  
+    liftPGSQLConn <| execReaderList query procM  
 
 let notVisited (visited:EdgeRecord list) (e1:EdgeRecord) = 
     not <| List.exists (fun (e:EdgeRecord) -> e.UID = e1.UID) visited
@@ -690,7 +687,7 @@ let outputDot (graphName:string) (forest:LinkForest) (fileName:string) : Script<
         let! tree       = extractPathTree pathTreeDict forest
         let! routes     = extractAllRoutes graphvizDict forest
         let gvProc      = generateDot graphName tree routes
-        let gvAction    = runGraphvizOutputFile gvProc fileName
+        let gvAction    = runGraphvizOutputFile fileName gvProc 
         do! (liftAction gvAction)
         }
             

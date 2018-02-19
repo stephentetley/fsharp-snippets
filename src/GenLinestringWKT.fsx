@@ -14,8 +14,9 @@ open Microsoft.Office.Interop
 #load @"SL\Tolerance.fs"
 #load @"SL\Coord.fs"
 #load @"SL\WellKnownText.fs"
-open SL.Geo
 #load @"SL\CsvOutput.fs"
+open SL.Geo.Coord
+open SL.Geo.WellKnownText
 open SL.CsvOutput
 
 
@@ -29,7 +30,7 @@ type InputTable =
 type InputRow = InputTable.Row
 
 
-type CoordDB = Map<string, Coord.WGS84Point>
+type CoordDB = Map<string, WGS84Point>
 
 
 let buildCoordDatabase () : CoordDB = 
@@ -37,9 +38,9 @@ let buildCoordDatabase () : CoordDB =
     let addLine (db:CoordDB) (rowi:InputRow) = 
         match rowi.``Site Name`` with
         | null -> db
-        | _ ->  let opt = Option.map Coord.osgb36ToWGS84 <| Coord.tryReadOSGB36Point  rowi.``Grid Ref``
+        | _ ->  let opt = Option.map osgb36ToWGS84 <| tryReadOSGB36Point  rowi.``Grid Ref``
                 match opt with
-                | Some(pt:Coord.WGS84Point) -> Map.add rowi.``Site Name`` pt db
+                | Some(pt:WGS84Point) -> Map.add rowi.``Site Name`` pt db
                 | None -> db
     inputData.Data 
         |> Seq.fold addLine Map.empty
@@ -48,7 +49,7 @@ let buildCoordDatabase () : CoordDB =
 type OrderGroups = (string list) list
 
 
-let findPoints (sites:string list)  (db:CoordDB) : Coord.WGS84Point list = 
+let findPoints (sites:string list)  (db:CoordDB) : WGS84Point list = 
     List.fold (fun ac name -> 
         match Map.tryFind name db with
         | Some(pt) -> (pt :: ac)
@@ -62,7 +63,7 @@ let genWKT (orders:OrderGroups) (db:CoordDB) : CsvOutput<unit> =
                                 pointGroups
                                 (fun ix pts -> 
                                     [ tellInteger <| ix+1
-                                    ; tellQuotedString <| WellKnownText.genLINESTRING pts ])
+                                    ; tellQuotedString << showWktLineString <| makeWktLineString wktIsoWGS84 pts ])
 
 
 let partition (lines:string list) : OrderGroups = 

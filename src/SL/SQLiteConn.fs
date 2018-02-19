@@ -134,7 +134,7 @@ let sumSequenceM (source:SQLiteConn<int> list) : SQLiteConn<int> =
 
 
 // SQLiteConn specific operations
-let runSQLiteConn (ma:SQLiteConn<'a>) (connParams:SQLiteConnParams) : Answer<'a> = 
+let runSQLiteConn (connParams:SQLiteConnParams) (ma:SQLiteConn<'a>): Answer<'a> = 
     let conn = paramsConnString connParams
     try 
         let dbconn = new SQLiteConnection(conn)
@@ -162,7 +162,7 @@ let liftConn (proc:SQLite.SQLiteConnection -> 'a) : SQLiteConn<'a> =
         try 
             let ans = proc conn in Ok (ans)
         with
-        | ex -> Err(ex.ToString())
+        | err -> Err err.Message
 
     
 let execNonQuery (statement:string) : SQLiteConn<int> = 

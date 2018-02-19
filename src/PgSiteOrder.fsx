@@ -120,12 +120,3 @@ let main (password:string) : unit =
             }
 
 
-// Seq vs List...
-// let myMap (fn:'a -> 'b) (source:seq<'a>) : seq<'b> = Seq.map fn source
-// Below doesn't typecheck because list2 is actually seq<int>
-// Seq.map returns a seq<> when applied to a list
-
-// let test02 () =
-//    let (list1:int list) = [1;2;3;4]
-//    let (list2:int list) = myMap (fun a -> a+10) list1
-//    printfn "%A" <| list2

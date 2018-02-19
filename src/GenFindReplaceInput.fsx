@@ -61,4 +61,4 @@ let tellRow1(row:InputRow) : JsonOutput<unit> =
 let main () : unit = 
     let rows = getImportRows () |> Seq.toList
     let proc = tellAsArray rows tellRow1
-    ignore <| runJsonOutput proc 2 outputFile
+    ignore <| runJsonOutput {IndentLevel=2} outputFile proc

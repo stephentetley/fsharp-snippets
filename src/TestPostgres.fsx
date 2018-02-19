@@ -26,33 +26,33 @@ let test01 (pwd:string) =
     conn.Close ()
 
 let test02 (pwd:string) : unit = 
-    let connparams = makeConnParams pwd "spt_test" 
+    let connParams = makeConnParams pwd "spt_test" 
     let proc = 
         execReader "SELECT name, age FROM people" <| fun reader -> 
             while reader.Read() do 
                printfn "%s is %i years old" (reader.GetString(0)) (reader.GetInt64(1)) 
-    ignore <| runPGSQLConn proc connparams 
+    ignore <| runPGSQLConn connParams proc 
 
 
 let test03 (pwd:string) : unit = 
-    let connparams = makeConnParams pwd "spt_geo" 
+    let connParams = makeConnParams pwd "spt_geo" 
     let proc = 
         execReader "SELECT point_code, point_name FROM temp_routing" <| fun reader -> 
             while reader.Read() do 
                printfn "%s, %s" (reader.GetString(0)) (reader.GetString(1)) 
-    ignore <| runPGSQLConn proc connparams 
+    ignore <| runPGSQLConn connParams proc 
 
 let test04 (pwd:string) = 
-    let connparams = makeConnParams pwd "spt_geo" 
+    let connParams = makeConnParams pwd "spt_geo" 
     let query = @"SELECT ST_AsGeoJSON(ST_GeomFromText('MULTIPOINT(50 5, 150 30, 50 10, 10 10)')) ;"
     let proc = 
         execReaderSingleton query <| fun reader -> printfn "%s" (reader.GetString(0))
-    ignore <| runPGSQLConn proc connparams 
+    ignore <| runPGSQLConn connParams proc 
 
 
 let test05 (pwd:string) : unit = 
-    let connparams = makeConnParams pwd "spt_geo" 
+    let connParams = makeConnParams pwd "spt_geo" 
     let proc = 
         execReaderList "SELECT point_code, point_name FROM temp_routing;" <| fun reader -> 
             printfn "%s, %s" (reader.GetString(0)) (reader.GetString(1)) 
-    ignore <| runPGSQLConn proc connparams 
+    ignore <| runPGSQLConn connParams proc 

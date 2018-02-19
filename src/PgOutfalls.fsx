@@ -7,6 +7,10 @@ open FSharp.Data
 
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 
+#I @"..\packages\FParsec.1.0.2\lib\net40-client"
+#r "FParsec"
+#r "FParsecCS"
+
 #I @"..\packages\Npgsql.3.2.6\lib\net451\"
 #I @"..\packages\System.Threading.Tasks.Extensions.4.3.0\lib\portable-net45+win8+wp8+wpa81"
 #r "Npgsql"
@@ -14,18 +18,23 @@ open Npgsql
 
 
 #load @"SL\AnswerMonad.fs"
+#load @"SL\Tolerance.fs"
 #load @"SL\SqlUtils.fs"
 #load @"SL\PGSQLConn.fs"
 #load @"SL\Coord.fs"
+#load @"SL\WellKnownText.fs"
 #load @"SL\JsonExtractor.fs"
 #load @"SL\ScriptMonad.fs"
 #load @"SL\CsvOutput.fs"
+#load @"SL\PostGIS.fs"
 open SL.AnswerMonad
 open SL.SqlUtils
 open SL.Geo.Coord
 open SL.PGSQLConn
 open SL.ScriptMonad
 open SL.CsvOutput
+open SL.PostGIS
+
 
 // PostgresSQL with PostGIS enabled.
 // Use Table: spt_outfalls
@@ -49,16 +58,9 @@ let getDataForNeighbours () : seq<NeighboursRow> = (new NeighboursData ()).Rows 
 
 
 // ********** SCRIPT **********
-type Script<'a> = ScriptMonad<PGSQLConnParams,'a>
-
-let withConnParams (fn:PGSQLConnParams -> Script<'a>) : Script<'a> = 
-    scriptMonad.Bind (ask (), fn)
-
-let liftWithConnParams (fn:PGSQLConnParams -> Answer<'a>) : Script<'a> = 
-    withConnParams <| (liftAnswer << fn)
 
 let deleteAllData () : Script<int> = 
-    liftWithConnParams << runPGSQLConn <| deleteAllRows "spt_outfalls"
+    liftPGSQLConn <| deleteAllRows "spt_outfalls"
 
 let makeOutfallINSERT (row:OutfallRow) : string = 
     let east        = 1.0<meter> * (float <| row.METREEASTING)
@@ -82,8 +84,7 @@ let makeOutfallINSERT (row:OutfallRow) : string =
 let insertOutfalls () : Script<int> = 
     let rows = getOutfalls ()
     let proc1 (row:OutfallRow) : PGSQLConn<int> = execNonQuery <| makeOutfallINSERT row
-    liftWithConnParams 
-        << runPGSQLConn << withTransaction <| SL.PGSQLConn.sumForM rows proc1
+    liftPGSQLConn << withTransaction <| SL.PGSQLConn.sumForM rows proc1
 
 
 
@@ -141,7 +142,7 @@ let genOutputRow (limit:int) (row:NeighboursRow) : Script<OutputRow> =
     let neighbours () : Script<NeighbourRec list>= 
         match Option.map osgb36ToWGS84 <| tryReadOSGB36Point row.``Cats NGRs`` with
         | Some wgs84 -> 
-            liftWithConnParams << runPGSQLConn <| pgNearestNeighbourQuery 5 wgs84
+            liftPGSQLConn <| pgNearestNeighbourQuery 5 wgs84
         | None -> scriptMonad.Return []
 
     let ngrAndStc25OfOne (xs:NeighbourRec list) : string*string = 

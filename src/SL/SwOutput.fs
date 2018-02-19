@@ -95,6 +95,16 @@ let runSwOutput (ma:SwOutput<'a>) : string * 'a =
     let output = sw.ToString()
     (output,ans)
 
+let runSwOutputFile (outputPath:string) (ma:SwOutput<'a>) : 'a = 
+    let (text,ans) = runSwOutput ma
+    System.IO.File.WriteAllText(outputPath, text)
+    ans
+
+let runSwOutputConsole (ma:SwOutput<'a>) : 'a = 
+    let (text,ans) = runSwOutput ma
+    printfn "%s" text
+    ans
+
 
 let tellLine (line:string) : SwOutput<unit> =
     SwOutput <| fun handle ->

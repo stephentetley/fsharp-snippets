@@ -64,13 +64,15 @@ let traverseMz (fn: 'a -> JsonOutput<'b>) (source:seq<'a>) : JsonOutput<unit> =
                  source 
 
 // JsonOutput-specific operations
+type JsonOptions = 
+    { IndentLevel: int }
 
-let runJsonOutput (ma:JsonOutput<'a>) (indent:int) (outputFile:string) : 'a = 
+let runJsonOutput (opts:JsonOptions) (outputFile:string) (ma:JsonOutput<'a>) : 'a = 
     use sw : System.IO.StreamWriter = new System.IO.StreamWriter(outputFile)
     use handle : JsonTextWriter = new JsonTextWriter(sw)
-    if indent > 0 then
+    if opts.IndentLevel > 0 then
         handle.Formatting <- Formatting.Indented
-        handle.Indentation <- indent
+        handle.Indentation <- opts.IndentLevel
     else handle.Formatting <- Formatting.None
     match ma with | JsonOutput(f) -> f handle
 

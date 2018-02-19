@@ -42,7 +42,7 @@ let findUid (name:string) : string =
         sprintf "SELECT uid FROM all_sites WHERE sitename='%s';" (realName name)        
     let readProc (reader : SQLiteDataReader) = 
         if reader.Read() then reader.GetString(0) else ""
-    match runSQLiteConn (execReader query1 readProc) connParams with
+    match runSQLiteConn connParams (execReader query1 readProc) with
     | Err(msg) -> failwith <| sprintf "Cannot find Uid %s" name
     | Ok(a) -> a
 
@@ -108,4 +108,4 @@ let main () : unit =
         do! tellHeaders headers
         do! mapMz (fun a -> tellRow (makeOutputCells a)) rows }
 
-    ignore <| outputToNew { SheetName = "Sheet1"} writerProc xlsOutputPath
+    ignore <| outputToNew { SheetName = "Sheet1"} xlsOutputPath writerProc 

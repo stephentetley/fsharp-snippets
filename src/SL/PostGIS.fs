@@ -17,10 +17,11 @@ let withConnParams (fn:PGSQLConnParams -> Script<'a>) : Script<'a> =
 let liftWithConnParams (fn:PGSQLConnParams -> Answer<'a>) : Script<'a> = 
     withConnParams <| (liftAnswer << fn)
 
-
+let liftPGSQLConn (pgsql:PGSQLConn<'a>) : Script<'a> = 
+    withConnParams <| fun conn -> liftAnswer <| runPGSQLConn conn pgsql
 
 let private singletonWithReader (query:string) (proc:NpgsqlDataReader -> 'a) : Script<'a> = 
-    liftWithConnParams << runPGSQLConn <| execReaderSingleton query proc
+    liftPGSQLConn <| execReaderSingleton query proc
 
 let private singletonAsText1 (query:string) : Script<string> = 
     singletonWithReader query <| fun reader -> reader.GetString(0)

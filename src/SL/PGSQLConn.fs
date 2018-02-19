@@ -128,7 +128,7 @@ let sumSequenceM (source:PGSQLConn<int> list) : PGSQLConn<int> =
 
 
 // PGSQLConn-specific operations
-let runPGSQLConn (ma:PGSQLConn<'a>) (connParams:PGSQLConnParams) : Answer<'a> = 
+let runPGSQLConn (connParams:PGSQLConnParams) (ma:PGSQLConn<'a>) : Answer<'a> = 
     let conn = paramsConnString connParams 
     try
         let dbconn = new NpgsqlConnection(conn)

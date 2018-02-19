@@ -23,8 +23,7 @@ open SL.PostGIS
 
 
 let private deleteAllTSPDbRows () : Script<int> = 
-    liftWithConnParams 
-        << runPGSQLConn <| deleteAllRowsRestartIdentity "spt_tsp_nodes"
+    liftPGSQLConn <| deleteAllRowsRestartIdentity "spt_tsp_nodes"
 
 
 /// wgs84:Longitude is x, wgs84:Latitude is y
@@ -58,8 +57,7 @@ let insertVertices (dict:TspNodeInsertDict<'row>) (vertices:seq<'row>) : Script<
 
     let goodData = Seq.choose id <| Seq.map good1 vertices 
 
-    liftWithConnParams 
-        << runPGSQLConn << withTransaction <| SL.PGSQLConn.sumTraverseM proc1 goodData
+    liftPGSQLConn << withTransaction <| SL.PGSQLConn.sumTraverseM proc1 goodData
 
 let setupTspNodeDB (dict:TspNodeInsertDict<'row>) (vertices:seq<'row>) : Script<int> = 
     scriptMonad { 
@@ -111,7 +109,7 @@ let eucledianTSP (startId:int) (endId:int) : Script<TspRoute> =
         ; GridRef       = gridRef
         ; Cost          = float <| reader.GetDouble(5)
         ; AggCost       = float <| reader.GetDouble(6) } 
-    fmapM dropLast << liftWithConnParams << runPGSQLConn <| execReaderList query procM  
+    fmapM dropLast << liftPGSQLConn <| execReaderList query procM  
 
 
 let makeFindIdByLabelQUERY (label:string) : string = 
@@ -121,7 +119,7 @@ let makeFindIdByLabelQUERY (label:string) : string =
 
 let private findIdQuery (query:string) : Script<int> = 
     let procM (reader:NpgsqlDataReader) : int = reader.GetInt32(0)
-    liftWithConnParams << runPGSQLConn <| execReaderFirst query procM  
+    liftPGSQLConn <| execReaderFirst query procM  
 
 
 let findIdByLabel (label:string) : Script<int> = 
