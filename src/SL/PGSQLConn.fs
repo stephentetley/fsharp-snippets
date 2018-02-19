@@ -129,12 +129,16 @@ let sumSequenceM (source:PGSQLConn<int> list) : PGSQLConn<int> =
 
 // PGSQLConn-specific operations
 let runPGSQLConn (ma:PGSQLConn<'a>) (connParams:PGSQLConnParams) : Answer<'a> = 
-    let conn = paramsConnString connParams
-    let dbconn = new NpgsqlConnection(conn)
-    dbconn.Open()
-    let a = match ma with | PGSQLConn(f) -> f dbconn
-    dbconn.Close()
-    a
+    let conn = paramsConnString connParams 
+    try
+        let dbconn = new NpgsqlConnection(conn)
+        dbconn.Open()
+        let a = match ma with | PGSQLConn(f) -> f dbconn
+        dbconn.Close()
+        a   
+    with
+    | err -> Err err.Message
+
 
 let throwError (msg:string) : PGSQLConn<'a> = 
     PGSQLConn <| fun _ -> Err(msg)
@@ -152,7 +156,7 @@ let liftConn (proc:NpgsqlConnection -> 'a) : PGSQLConn<'a> =
         try 
             let ans = proc conn in Ok (ans)
         with
-        | ex -> Err(ex.ToString())
+        | err -> Err (err.ToString ())  // ToString shows stack trace
 
 let execNonQuery (statement:string) : PGSQLConn<int> = 
     liftConn <| fun conn -> 

@@ -61,6 +61,9 @@ let getSiteListRows () : seq<SiteListRow> =
           NotNullProc = fun row -> match row.GetValue(0) with null -> false | _ -> true }
     excelTableGetRowsSeq dict (new SiteListTable())
 
+let filterOutMoreInfo (rows:seq<SiteListRow>) : seq<SiteListRow> = 
+    Seq.filter (fun (row:SiteListRow) ->
+                    row.``Work Center`` <> "MORE DETAILS REQUIRED") rows
 
 let test01 () =
     let makeGrouping = fun (row:SiteListRow) -> row.``Work Center``
@@ -103,7 +106,7 @@ let main (password:string) : unit =
     runConsoleScript (List.iteri (fun ix x -> printfn "%i,%s" (ix+1) (snd x))) conn
         <| scriptMonad { 
             
-            let groups          = groupingBy makeGrouping <| getSiteListRows ()
+            let groups          = groupingBy makeGrouping << filterOutMoreInfo <| getSiteListRows ()
             let! groupCentroids = getCentroids wktIsoWGS84 getGridRef groups
             let! groupRoute     = tspRoute workGroupTspDict (Seq.toList groupCentroids)
             let keyList         = Seq.map snd groupRoute |> Seq.toList

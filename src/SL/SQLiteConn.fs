@@ -136,11 +136,14 @@ let sumSequenceM (source:SQLiteConn<int> list) : SQLiteConn<int> =
 // SQLiteConn specific operations
 let runSQLiteConn (ma:SQLiteConn<'a>) (connParams:SQLiteConnParams) : Answer<'a> = 
     let conn = paramsConnString connParams
-    let dbconn = new SQLiteConnection(conn)
-    dbconn.Open()
-    let a = match ma with | SQLiteConn(f) -> f dbconn
-    dbconn.Close()
-    a
+    try 
+        let dbconn = new SQLiteConnection(conn)
+        dbconn.Open()
+        let a = match ma with | SQLiteConn(f) -> f dbconn
+        dbconn.Close()
+        a
+    with
+    | err -> Err err.Message
 
 let throwError (msg:string) : SQLiteConn<'a> = 
     SQLiteConn <| fun _ -> Err(msg)
