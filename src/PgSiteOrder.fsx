@@ -76,28 +76,12 @@ let test02 () =
     Seq.iter (printfn "%A") <| sortToKeyList (fst) (source |> List.toSeq) keys
 
 
-type WorkGroup = string * WGS84Point option
-
-let workGroupTspDict:TspNodeInsertDict<WorkGroup> = 
-    { TryMakeNodeLocation = snd; MakeNodeLabel = fst }
-
-let siteListRowDict : TspNodeInsertDict<SiteListRow> = 
-    { TryMakeNodeLocation =
-        fun (row:SiteListRow) -> 
-            Option.map osgb36ToWGS84 <| tryReadOSGB36Point row.``Site Grid Ref``
-
-    ; MakeNodeLabel = 
-        fun (row:SiteListRow) -> 
-            sprintf "%s" row.Name }
-
-let groupingOp (row:SiteListRow) : string =
-    match row.``Work Center`` with
-    | null -> "UNKNOWN WORK CENTER"
-    | ss -> ss
-
-
 let siteOrderDict:SiteOrderDict<string,SiteListRow> = 
-    { GroupingOp = groupingOp
+    { GroupingOp = 
+        fun (row:SiteListRow) -> 
+            match row.``Work Center`` with
+            | null -> "UNKNOWN WORK CENTER"
+            | ss -> ss
     ; ExtractGridRef = 
         fun (row:SiteListRow) -> 
             Option.map osgb36ToWGS84 <| tryReadOSGB36Point row.``Site Grid Ref``
@@ -108,41 +92,10 @@ let siteOrderDict:SiteOrderDict<string,SiteListRow> =
 
 let main (password:string) : unit = 
     let conn = pgsqlConnParamsTesting "spt_geo" password
-
-    let makeGrouping    = groupingOp
-    let getGridRef      = 
-        fun (row:SiteListRow) -> 
-            Option.map osgb36ToWGS84 <| tryReadOSGB36Point row.``Site Grid Ref``
-
+    let siteList = filterOutMoreInfo <| getSiteListRows ()
     runConsoleScript (List.iter (fun (i,s) -> printfn "%i,%s" i s)) conn
-        <| siteOrder siteOrderDict (filterOutMoreInfo <| getSiteListRows ())
+        <| siteOrder siteOrderDict siteList
             
 
-
-
-
-let mainOld (password:string) : unit = 
-    let conn = pgsqlConnParamsTesting "spt_geo" password
-
-    let makeGrouping    = groupingOp
-    let getGridRef      = 
-        fun (row:SiteListRow) -> 
-            Option.map osgb36ToWGS84 <| tryReadOSGB36Point row.``Site Grid Ref``
-
-    runConsoleScript (List.iteri (fun ix x -> printfn "%i,%s" (ix+1) (snd x))) conn
-        <| scriptMonad { 
-            
-            let groups          = groupingBy makeGrouping << filterOutMoreInfo <| getSiteListRows ()
-            let! groupCentroids = getCentroids wktIsoWGS84 getGridRef groups
-            let! groupRoute     = tspRoute workGroupTspDict (Seq.toList groupCentroids)
-            let keyList         = Seq.map snd groupRoute |> Seq.toList
-            let orderedGroups   = 
-                sortToKeyList (fun (x:Grouping<string,SiteListRow>) -> x.GroupingKey) groups keyList
-            let! sitesInGroups  = 
-                forM (Seq.toList orderedGroups) 
-                     (fun og -> tspRoute siteListRowDict (Seq.toList og.Elements))
-            let finalOrder      = List.concat sitesInGroups  
-            return finalOrder
-            }
 
 

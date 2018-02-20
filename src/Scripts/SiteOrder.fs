@@ -29,6 +29,12 @@ let getCentroids (dict:WktCoordIso<'point,'srid>) (getLocation:LocationExtractor
         fmapM (fun pto -> (group.GroupingKey, pto)) <| getCentroid1 dict getLocation group
     traverseM proc groups
 
+let private renumber (source : ('a *'obj) list) : (int * 'obj) list = 
+    let rec work ac ix xs = 
+        match xs with 
+        | [] -> List.rev ac
+        | (_,b) :: ys -> work ((ix,b) :: ac) (ix+1) ys
+    work [] 1 source 
 
 type SiteOrderDict<'Key,'elem> = 
     { GroupingOp: 'elem -> 'Key
@@ -55,6 +61,6 @@ let siteOrder (dict:SiteOrderDict<string,'elem>) (unordered:seq<'elem>) : Script
             let! sitesInGroups  = 
                 forM (Seq.toList orderedGroups) 
                      (fun og -> tspRoute sitesTspDict (Seq.toList og.Elements))
-            let finalOrder      = List.concat sitesInGroups  
+            let finalOrder      = renumber <| List.concat sitesInGroups  
             return finalOrder
             }
