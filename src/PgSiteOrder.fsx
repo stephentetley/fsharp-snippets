@@ -90,12 +90,38 @@ let siteListRowDict : TspNodeInsertDict<SiteListRow> =
         fun (row:SiteListRow) -> 
             sprintf "%s" row.Name }
 
-let groupingOp (row:SiteListRow) =
+let groupingOp (row:SiteListRow) : string =
     match row.``Work Center`` with
     | null -> "UNKNOWN WORK CENTER"
     | ss -> ss
 
+
+let siteOrderDict:SiteOrderDict<string,SiteListRow> = 
+    { GroupingOp = groupingOp
+    ; ExtractGridRef = 
+        fun (row:SiteListRow) -> 
+            Option.map osgb36ToWGS84 <| tryReadOSGB36Point row.``Site Grid Ref``
+    ; ExtractNodeLabel = 
+        fun (row:SiteListRow) -> 
+            sprintf "%s" row.Name }
+
+
 let main (password:string) : unit = 
+    let conn = pgsqlConnParamsTesting "spt_geo" password
+
+    let makeGrouping    = groupingOp
+    let getGridRef      = 
+        fun (row:SiteListRow) -> 
+            Option.map osgb36ToWGS84 <| tryReadOSGB36Point row.``Site Grid Ref``
+
+    runConsoleScript (List.iter (fun (i,s) -> printfn "%i,%s" i s)) conn
+        <| siteOrder siteOrderDict (filterOutMoreInfo <| getSiteListRows ())
+            
+
+
+
+
+let mainOld (password:string) : unit = 
     let conn = pgsqlConnParamsTesting "spt_geo" password
 
     let makeGrouping    = groupingOp

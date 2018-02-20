@@ -41,7 +41,8 @@ type Grouping<'Key,'a> =
 let groupingBy (projection:'T -> 'Key) (source:seq<'T>) : seq<Grouping<'Key,'T>> = 
     Seq.map (fun (a,b) -> {GroupingKey = a; Elements = b}) <| Seq.groupBy projection source
 
-/// Ideally the Key should match a single item if it matches 
+
+/// Ideally the Key should match a single item, if it matches 
 /// multiple ones the sort order is unspecified.
 let sortToKeyList (projection:'T -> 'Key) (source:seq<'T>) (keyList:'Key list) : seq<'T> = 
     let rec work ac keys src = 
