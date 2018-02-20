@@ -9,9 +9,10 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 #load @"SL\Tolerance.fs"
 #load @"SL\Coord.fs"
 #load @"SL\WellKnownText.fs"
+#load @"SL\WebMercator.fs"
 open SL.Geo.Coord
 open SL.Geo.WellKnownText
-
+open SL.Geo.WebMercator
 
 let testZ2 = Char.GetNumericValue '6'
 
@@ -98,3 +99,29 @@ let dist01 () =
 let dist02 () =
     haversineDistanceOGSB36Point    {Easting=422494.690<meter>; Northing=505852.776<meter>}  
                                     {Easting=410700.754<meter>; Northing=510164.568<meter>} 
+
+/// Off topic KML is EPSG:4326.
+
+
+/// Work towards WebMercator <-> WGS84
+let osgb36BaildonHillTP = {Easting=414124.69<meter>; Northing=440072.41<meter> }
+
+let wgs84BaildonHillTP = { Longitude = -1.7867456<degree>; Latitude = 53.856689<degree> }
+
+let wmBaildonHill = { WmEasting = -198899.61036912<meter>; WmNorthing = 7143061.49042226<meter> }
+
+
+let arctanh (x:float) : float= (log(1.0+x) - log(1.0-x))/2.0
+
+let wmEasting (lon:float<degree>) : float = 
+    let a = 6378137.0
+    let lam = degreeToRadian lon
+    a * float lam
+
+let wmNorthing (lat:float<degree>) : float = 
+    let a = 6378137.0
+    let phi = degreeToRadian lat
+    a * arctanh (sin <| float phi)
+
+let wmTest01 () = 
+    wgs84ToWM wgs84BaildonHillTP

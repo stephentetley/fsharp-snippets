@@ -14,10 +14,19 @@ open SL.Geo.WellKnownText
 module WebMercator = 
     
 
-    [<StructuredFormatDisplay("{WmEasting}E {WmNorthing}N:3857")>]
+    [<StructuredFormatDisplay("{WmEasting}E {WmNorthing}N:7483")>]
     type WMPoint = 
         { WmEasting : float<meter>
           WmNorthing : float<meter> }
+
+    let private arctanh (x:float) : float= (log(1.0+x) - log(1.0-x))/2.0
+
+    let wgs84ToWM ({Latitude = lat; Longitude = lon} : WGS84Point) : WMPoint = 
+        let a = 6378137.0
+        let lam = degreeToRadian lon
+        let phi = degreeToRadian lat
+        { WmEasting = 1.0<meter> * a * float lam
+        ; WmNorthing= 1.0<meter> * a * arctanh (sin <| float phi) }
 
     /// Projection used by Open Street Map and Google Maps
     /// There are several SRID for this system is ESPG:3857, ESPG:900913, ...

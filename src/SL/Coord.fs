@@ -19,6 +19,9 @@ module Coord =
     [<Measure>]
     type degree
 
+    [<Measure>]
+    type radian
+
 
     // Note - the the grid letter plus grid digits is a synonymous representation for OSGB36
     // E.g Sullom Voe oil terminal in the Shetlands can be specified as HU396753 or 439668,1175316.
@@ -36,9 +39,15 @@ module Coord =
         { Latitude : float<degree>
           Longitude : float<degree> }
 
-    let inline private deg2rad (d : float) = (Math.PI/180.0) * d
+    let inline degreeToRadian (d : float<degree>) : float<radian> = 
+        1.0<radian> * (Math.PI/180.0) * float d
 
-    let inline private rad2deg (r : float) = (180.0/Math.PI) * r
+    let inline radianToDegree (r : float<radian>) : float<degree> = 
+        1.0<degree> * (180.0/Math.PI) * float r
+
+    let inline private deg2rad (d : float) : float = (Math.PI/180.0) * d
+
+    let inline private rad2deg (r : float) : float = (180.0/Math.PI) * r
 
     /// fromDMS :: Int -> Int -> Double -> DDegrees
     let makeDegree (d : int) (m : int) (s : float) : float<degree> = 
