@@ -26,3 +26,12 @@ let test03 () =
     match readDirRecurseOutput path1 with
     | Choice1Of2 err -> failwith err
     | Choice2Of2 ans -> printfn "%A" << List.choose id << List.map (tryGetExtension) <| getFiles1 ans
+
+
+/// TEMP
+
+let testRTU () =
+    let path = @"G:\work\projects\rtu\y4-surveys-dir.txt"
+    match readDirRecurseOutput path with
+    | Choice1Of2 err -> failwith err
+    | Choice2Of2 ans -> printfn "%s" <| display ans

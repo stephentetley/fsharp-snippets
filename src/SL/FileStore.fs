@@ -96,9 +96,16 @@ let private pMode : Parser<string,unit> = many1Chars (lower <|> pchar '-')
 let private isDir (mode:string) : bool = mode.StartsWith("d")
 
 // Note - if directory name longer than 100(?) chars it is listed on a new line
-let private pQualifiedDirectoryName : Parser<Name,unit> = 
+let pDirPath : Parser<Name,unit> = 
+    let indent = pstring "    "
+    let line1 = pName .>> newline
+    let linesK = indent >>. pName .>> newline
+    pipe2 line1 (many linesK) (fun s ss -> String.concat "" (s::ss))
+
+
+let private pDirectoryDirective : Parser<Name,unit> = 
     let indent = manyChars (pchar ' ')
-    indent >>. pstring "Directory:" >>. spaces >>. pName
+    indent >>. pstring "Directory:" >>. spaces >>. pDirPath
 
 let private pHeadings : Parser<string list,unit> = 
     let columns = pipe4 (keyword "Mode")
@@ -121,15 +128,15 @@ let private pFileObj : Parser<FileObj,unit> =
               pName 
               (fun timestamp size name-> FsFile (name, { Mode = Some mode; ModificationTime = Some timestamp}, size))
     let parseK mode = 
-        if isDir mode then pFolder mode else  pFile mode
+        if isDir mode then pFolder mode else pFile mode
     (symbol pMode) >>= parseK
 
 
 type Block = string * FileObj list
 
-// TODO - many1 looks wrong (empty directories?)
+
 let private pBlock : Parser<Block, unit> = 
-    pipe3 (spaces >>. lineOf pQualifiedDirectoryName) 
+    pipe3 (spaces >>. pDirectoryDirective) 
           (twice blankline >>. lineOf pHeadings >>. many1 (lineOf pFileObj))
           spaces
           (fun dirName objs zzz -> (dirName, objs))
@@ -199,10 +206,13 @@ let private display1 (source:FileObj) : SwOutput<unit> =
         match obj1 with
         | FsFile (name,_,_) -> tellLine <| catPath path name
         | FsFolder (name,_,xs) -> 
-            let path1 = catPath path name
-            ignore <| tellLine path1
-            let sortedKids = List.sortWith ciCompare xs
-            forMz sortedKids (work path1)
+            swOutput{ 
+                let path1 = catPath path name
+                do! tellLine (path1 + "\\")
+                let sortedKids = List.sortWith ciCompare xs
+                do! forMz sortedKids (work path1)
+                return ()
+                }
     work "" source
 
 /// Displays the output as a simple list of folders and files in
