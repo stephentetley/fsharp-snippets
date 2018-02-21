@@ -276,12 +276,23 @@ let augmentError (fn:string -> string) (ma:Answer<'a>) : Answer<'a> =
     | Ok a -> Ok a
 
 
+let replaceError (defaultValue:'a) (ma:Answer<'a>) : Answer<'a> = 
+    match ma with
+    | Err msg -> Ok defaultValue
+    | Ok a -> Ok a
+
+
 let liftAction (action:'a) : Answer<'a> = 
     try
         let ans = action
         Ok ans
     with
     | err -> Err <| err.Message
+
+let liftOption (source:'a option) : Answer<'a> = 
+    match source with
+    | Some a -> Ok a
+    | None -> Err "None from option"
 
 // Left biased choice, if ``ma`` succeeds return its result, otherwise try ``mb``.
 let alt (ma:Answer<'a>) (mb:Answer<'a>) : Answer<'a> = 

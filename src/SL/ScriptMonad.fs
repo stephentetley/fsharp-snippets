@@ -189,9 +189,6 @@ let runScript (failure: string -> 'b) (success: 'a -> 'b) (logger:LogAction) (en
 
 
 
-let runAnswerWithError (logger:LogAction) (env:'r) (ma:ScriptMonad<'r,'a>) : 'a = 
-    runScript failwith id logger env ma
-
 let runConsoleScript (success:'a -> unit) (env:'r) (ma:ScriptMonad<'r,'a>) : unit = 
     runScript failwith id (consoleLogger) env ma |> success
     
@@ -206,6 +203,10 @@ let swapError (msg:string) (ma:ScriptMonad<'r,'a>) : ScriptMonad<'r,'a> =
 let augmentError (fn:string -> string) (ma:ScriptMonad<'r,'a>) : ScriptMonad<'r,'a> = 
     ScriptMonad <| fun sw env -> 
         AnswerMonad.augmentError fn (apply1 ma sw env)
+
+let replaceFailure (defaultValue:'a) (ma:ScriptMonad<'r,'a>) : ScriptMonad<'r,'a> = 
+    ScriptMonad <| fun sw env -> 
+        AnswerMonad.replaceError defaultValue (apply1 ma sw env)
 
 let logWriteLine (text:string) : ScriptMonad<'r,unit> = 
     ScriptMonad <| fun sw env -> 
@@ -235,6 +236,9 @@ let liftAction (action:'a) : ScriptMonad<'r,'a> =
 let liftAnswer (result:Answer<'a>) : ScriptMonad<'r,'a> = 
     ScriptMonad <| fun _ _ -> result
 
+let liftOption (source:'a option) : ScriptMonad<'r,'a> = 
+    ScriptMonad <| fun _ _ -> AnswerMonad.liftOption source
+
 
 // Left biased choice, if ``ma`` succeeds return its result, otherwise try ``mb``.
 let alt (ma:ScriptMonad<'r,'a>) (mb:ScriptMonad<'r,'a>) : ScriptMonad<'r,'a> = 
@@ -253,6 +257,18 @@ let optional (ma:ScriptMonad<'r,'a>) : ScriptMonad<'r,'a option> =
 let optionalz (ma:ScriptMonad<'r,'a>) : ScriptMonad<'r,unit> = 
     ScriptMonad <| fun sw env -> 
         AnswerMonad.optionalz (apply1 ma sw env)
+
+let runOptional (failMsg:string) (ma:ScriptMonad<'r,'a option>) : ScriptMonad<'r,'a> = 
+    scriptMonad { 
+        let! opt1 = ma
+        match opt1 with
+        | None -> 
+            let! err = throwError failMsg
+            return err
+        | Some a -> return a        
+        }    
+
+
 
 /// Are specific lifters worth the dependency?
 let liftJsonExtract (ma:JsonExtractor<'a>) (fileName:string) : ScriptMonad<'r,'a> = 

@@ -684,10 +684,9 @@ let outputDot (graphName:string) (forest:LinkForest) (fileName:string) : Script<
         ; MakePathTreeAnonNode = graphvizDict.MakeRouteAnonNode } 
  
     scriptMonad { 
-        let! tree       = extractPathTree pathTreeDict forest
-        let! routes     = extractAllRoutes graphvizDict forest
-        let gvProc      = generateDot graphName tree routes
-        let gvAction    = runGraphvizOutputFile fileName gvProc 
-        do! (liftAction gvAction)
+        let! tree   = extractPathTree pathTreeDict forest
+        let! routes = extractAllRoutes graphvizDict forest
+        let gvProc  = generateDot graphName tree routes
+        do! liftAction (runGraphvizOutputFile fileName gvProc)
         }
             

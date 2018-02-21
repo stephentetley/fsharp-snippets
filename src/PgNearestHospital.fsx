@@ -70,13 +70,13 @@ let nearestMethodDict : NearestHospitalDict<AssetRow>  =
         | Some bestMatch -> 
             let hospitalLine = 
                 sprintf "%s, %s, %s. Tel: %s" 
-                        bestMatch.NearestHospital.Name
+                        bestMatch.NearestHospital.HospitalName
                         bestMatch.NearestHospital.Address
                         bestMatch.NearestHospital.Postcode
-                        bestMatch.NearestHospital.Telephone
+                        bestMatch.NearestHospital.Phone
             [ tellQuotedString      row.Reference
             ; tellQuotedString      row.``Common Name``
-            ; tellQuotedString      bestMatch.NearestHospital.Name
+            ; tellQuotedString      bestMatch.NearestHospital.HospitalName
             ; tellQuotedString      hospitalLine
             ; tellFloat             <| float bestMatch.Distance]
 
