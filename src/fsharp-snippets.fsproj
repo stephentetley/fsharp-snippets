@@ -96,6 +96,7 @@
     <Compile Include="Scripts\PathFinder.fs" />
     <Compile Include="Scripts\NearestHospital.fs" />
     <Compile Include="Scripts\Grouping.fs" />
+    <Compile Include="Scripts\PostGISHulls.fs" />
     <Compile Include="Scripts\TspRouting.fs" />
     <Compile Include="Scripts\TotalOrder.fs" />
     <Compile Include="Scripts\SiteOrder.fs" />

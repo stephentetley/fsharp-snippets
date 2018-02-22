@@ -47,8 +47,9 @@ open SL.ExcelProviderHelper
 open SL.PostGIS
 
 #load @"Scripts\Grouping.fs"
+#load @"Scripts\PostGISHulls.fs"
 open Scripts.Grouping
-
+open Scripts.PostGISHulls
 
 type ImportTable = 
     ExcelFile< @"G:\work\Projects\events2\site-list-for-hospitals.xlsx",
