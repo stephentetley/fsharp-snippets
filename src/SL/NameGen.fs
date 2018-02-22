@@ -4,22 +4,23 @@
 // For Seq.tail
 open FSharpx.Collections
 
+type private State = 
+    { GenFun: int -> string
+      Counter: int }
 
-type NameGen<'a> = private NameGen of ((int -> string) -> int -> (int * 'a))
+type NameGen<'a> = private NameGen of (State -> (State * 'a))
 
 
-let inline private apply1 (ma:NameGen<'a>) (gen:int -> string) (i:int) : (int * 'a) = 
-    match ma with
-    | NameGen fn -> fn gen i
+let inline private apply1 (ma:NameGen<'a>) (st:State) : (State * 'a) = 
+    match ma with | NameGen fn -> fn st
 
 let inline private unitM (x:'a) : NameGen<'a> = 
-    NameGen <| fun _ i -> (i,x)
+    NameGen <| fun st -> (st,x)
 
 
 let inline private bindM (ma:NameGen<'a>) (f : 'a -> NameGen<'b>) : NameGen<'b> =
-    NameGen <| fun mk i ->
-        let (i1,a) = apply1 ma mk i
-        apply1 (f a) mk i1
+    NameGen <| fun st ->
+        let (s1,a) = apply1 ma st in apply1 (f a) s1
 
 
 type NameGenBuilder() = 
@@ -31,40 +32,40 @@ let (nameGen:NameGenBuilder) = new NameGenBuilder()
 
 // Common monadic operations
 let fmapM (fn:'a -> 'b) (ma:NameGen<'a>) : NameGen<'b> = 
-    NameGen <| fun mk i ->
-        let (i1,a) = apply1 ma mk 1 in (i1, fn a)
+    NameGen <| fun st ->
+        let (s1,a) = apply1 ma st in (s1, fn a)
 
 let liftM (fn:'a -> 'r) (ma:NameGen<'a>) : NameGen<'r> = fmapM fn ma
 
 let liftM2 (fn:'a -> 'b -> 'r) (ma:NameGen<'a>) (mb:NameGen<'b>) : NameGen<'r> = 
-    NameGen <| fun mk i ->
-        let (i1,a) = apply1 ma mk i
-        let (i2,b) = apply1 mb mk i1
-        (i2, fn a b)
+    NameGen <| fun st ->
+        let (s1,a) = apply1 ma st
+        let (s2,b) = apply1 mb s1
+        (s2, fn a b)
 
 let liftM3 (fn:'a -> 'b -> 'c -> 'r) (ma:NameGen<'a>) (mb:NameGen<'b>) (mc:NameGen<'c>) : NameGen<'r> = 
-    NameGen <| fun mk i ->
-        let (i1,a) = apply1 ma mk i
-        let (i2,b) = apply1 mb mk i1
-        let (i3,c) = apply1 mc mk i2
-        (i3, fn a b c)
+    NameGen <| fun st ->
+        let (s1,a) = apply1 ma st
+        let (s2,b) = apply1 mb s1
+        let (s3,c) = apply1 mc s2
+        (s3, fn a b c)
 
 let liftM4 (fn:'a -> 'b -> 'c -> 'd -> 'r) (ma:NameGen<'a>) (mb:NameGen<'b>) (mc:NameGen<'c>) (md:NameGen<'d>) : NameGen<'r> = 
-    NameGen <| fun mk i ->
-        let (i1,a) = apply1 ma mk i
-        let (i2,b) = apply1 mb mk i1
-        let (i3,c) = apply1 mc mk i2
-        let (i4,d) = apply1 md mk i3
-        (i4, fn a b c d)
+    NameGen <| fun st ->
+        let (s1,a) = apply1 ma st
+        let (s2,b) = apply1 mb s1
+        let (s3,c) = apply1 mc s2
+        let (s4,d) = apply1 md s3
+        (s4, fn a b c d)
 
 let liftM5 (fn:'a -> 'b -> 'c -> 'd -> 'e -> 'r) (ma:NameGen<'a>) (mb:NameGen<'b>) (mc:NameGen<'c>) (md:NameGen<'d>) (me:NameGen<'e>) : NameGen<'r> = 
-    NameGen <| fun mk i ->
-        let (i1,a) = apply1 ma mk i
-        let (i2,b) = apply1 mb mk i1
-        let (i3,c) = apply1 mc mk i2
-        let (i4,d) = apply1 md mk i3
-        let (i5,e) = apply1 me mk i3
-        (i5, fn a b c d e)
+    NameGen <| fun st ->
+        let (s1,a) = apply1 ma st
+        let (s2,b) = apply1 mb s1
+        let (s3,c) = apply1 mc s2
+        let (s4,d) = apply1 md s3
+        let (s5,e) = apply1 me s4
+        (s5, fn a b c d e)
 
 let tupleM2 (ma:NameGen<'a>) (mb:NameGen<'b>) : NameGen<'a * 'b> = 
     liftM2 (fun a b -> (a,b)) ma mb
@@ -179,34 +180,41 @@ let sumSequenceM (results:NameGen<int> list) : NameGen<int> =
 
 // Applicative's (<*>)
 let apM (mf:NameGen<'a ->'b>) (ma:NameGen<'a>) : NameGen<'b> = 
-    NameGen <| fun mk i ->
-        let (i1,f) = apply1 mf mk i
-        let (i2,a) = apply1 ma mk i1
-        (i2, f a)
+    NameGen <| fun st ->
+        let (s1,f) = apply1 mf st
+        let (s2,a) = apply1 ma s1
+        (s2, f a)
 
 // Perform two actions in sequence. Ignore the results of the second action if both succeed.
 let seqL (ma:NameGen<'a>) (mb:NameGen<'b>) : NameGen<'a> = 
-    NameGen <| fun mk i ->
-        let (i1,a) = apply1 ma mk i
-        let (i2,b) = apply1 mb mk i1
-        (i2, a)
+    NameGen <| fun st ->
+        let (s1,a) = apply1 ma st
+        let (s2,b) = apply1 mb s1
+        (s2, a)
 
 // Perform two actions in sequence. Ignore the results of the first action if both succeed.
 let seqR (ma:NameGen<'a>) (mb:NameGen<'b>) : NameGen<'b> = 
-    NameGen <| fun mk i ->
-        let (i1,a) = apply1 ma mk i
-        let (i2,b) = apply1 mb mk i1
-        (i2, b)
+    NameGen <| fun st ->
+        let (s1,a) = apply1 ma st
+        let (s2,b) = apply1 mb s1
+        (s2, b)
 
 // NameGen specific operations
+let runNameGen (start:int) (genName: int -> string) (ma:NameGen<'a>) : 'a = 
+    snd <| apply1 ma { GenFun = genName; Counter = start}
+
 
 // Run a NameGen computation, the fresh name counter starts at 0.
 let runNameGenZero (genName: int -> string) (ma:NameGen<'a>) : 'a = 
-    snd <| apply1 ma genName 0
+    snd <| apply1 ma { GenFun = genName; Counter = 0 }
 
 // Run a NameGen computation, the fresh name counter starts at 1.
 let runNameGenOne (genName: int -> string) (ma:NameGen<'a>) : 'a = 
-    snd <| apply1 ma genName 1
+    snd <| apply1 ma { GenFun = genName; Counter = 1 }
 
 let newName () : NameGen<string> = 
-    NameGen <| fun mk i -> (i+1, mk i)
+    NameGen <| fun st -> let i = st.Counter in ({st with Counter = i + 1}, st.GenFun i)
+
+let reset (start:int) (genName: int -> string) : NameGen<unit> = 
+    NameGen <| fun _ -> ({ GenFun = genName; Counter = start}, ())
+

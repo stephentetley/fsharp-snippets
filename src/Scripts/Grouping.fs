@@ -1,14 +1,5 @@
 ﻿module Scripts.Grouping
 
-open Npgsql
-
-open SL.AnswerMonad
-open SL.Geo.Coord
-open SL.Geo.WellKnownText
-open SL.PGSQLConn
-open SL.CsvOutput
-open SL.ScriptMonad
-open SL.PostGIS
 
 // Note Fsharp's groupBy is not the same as Haskell's groupBy.
 // Haskell's groupBy does not do a global "collect" instead it is a linear scan,
