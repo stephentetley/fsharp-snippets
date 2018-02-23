@@ -125,3 +125,11 @@ let wmNorthing (lat:float<degree>) : float =
 
 let wmTest01 () = 
     wgs84ToWM wgs84BaildonHillTP
+
+let xWGS (xwm:float<meter>) : float<degree> = 
+    let aWGS = 6378137.0
+    radianToDegree <| 1.0<radian> * (float xwm) / aWGS
+
+let yWGS (ywm:float<meter>) : float<degree> = 
+    let aWGS = 6378137.0
+    radianToDegree <| 1.0<radian> * (Math.Atan(Math.Exp (float ywm / aWGS)) * 2.0 - (Math.PI / 2.0))
