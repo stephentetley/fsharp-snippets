@@ -81,7 +81,7 @@ let trimXlsSheet (inputFile:string) (outputFile:string) : unit =
     let tempFile2 = suffixFileName tempFile1 "-TRIM"
     let app = new Excel.ApplicationClass(Visible = true) :> Excel.Application
     try
-        runAnswerWithError (consoleLogger) app <| 
+        runConsoleScript (fun _ -> printfn "Ok") app <| 
             scriptMonad { 
                 let! sheet = xlsToCsv inputFile tempFile1
                 let! () = liftAction <| trimCsvFile tempFile1 tempFile2 false ","
@@ -95,7 +95,7 @@ let trimXlsFileToCsv (inputFile:string) (outputFile:string) : unit =
     let tempFile = suffixFileName outputFile "-TEMP"
     let app = new Excel.ApplicationClass(Visible = true) :> Excel.Application
     try
-        runAnswerWithError (consoleLogger) app <| 
+        runConsoleScript (fun _ -> printfn "Ok") app <| 
             scriptMonad { 
                 let! sheet = xlsToCsv inputFile tempFile
                 let! _ = trimCsvFile tempFile outputFile false ","  |> liftAction

@@ -70,34 +70,34 @@ let pgDistanceSpheroid (point1:WGS84Point) (point2:WGS84Point) : Script<float<ki
     singletonWithReader (makeDistanceQUERY wktIsoWGS84 point1 point2) procM  
 
 
-// ***** Concave and covex hulls
+// ***** Concave and convex hulls
 
 
-let private makeConvexHullQUERY (points:WGS84Point list) : string = 
+let private makeConvexHullQUERY (dict:WktCoordIso<'point,'srid>) (points:'point list) : string = 
     System.String.Format("""
         SELECT ST_AsText(ST_ConvexHull(
 	        ST_Collect(
 		        ST_GeomFromText('{0}')
                 )) );
-        """, showWktMultiPoint << WktMultiPoint <| wgs84WktCoordList points )
+        """, showWktMultiPoint <| makeWktMultiPoint dict points )
 
 /// Returns WellKnownText.
 /// May return different geometry types depending on number of points in the result set.
 /// One point - POINT
 /// Two points - LINESTRING
 /// Three or more points - POLYGON
-let pgConvexHull (points:WGS84Point list) : Script<WellKnownText<WGS84>> = 
-    fmapM WellKnownText << singletonAsText1 <| makeConvexHullQUERY points
+let pgConvexHull (dict:WktCoordIso<'point,'srid>) (points:'point list) : Script<WellKnownText<WGS84>> = 
+    fmapM WellKnownText << singletonAsText1 <| makeConvexHullQUERY dict points
     
 
 // Note TargetPercent of 1.0 gives a convex hull (0.9 seems okay)
-let private makeConcaveHullQUERY (points:WGS84Point list) (targetPercent:float) : string = 
+let private makeConcaveHullQUERY (dict:WktCoordIso<'point,'srid>) (points:'point list) (targetPercent:float) : string = 
     System.String.Format("""
         SELECT ST_AsText(ST_ConcaveHull(
 	        ST_Collect(
 		        ST_GeomFromText('{0}')
                 ), {1}) );
-        """, showWktMultiPoint << WktMultiPoint <| wgs84WktCoordList points
+        """, showWktMultiPoint <| makeWktMultiPoint dict points
            , targetPercent)
 
 /// Returns WellKnownText.
@@ -107,8 +107,8 @@ let private makeConcaveHullQUERY (points:WGS84Point list) (targetPercent:float) 
 /// Three or more points - POLYGON
 ///
 /// TODO - need to return a composite geometry type rather then WellKnownText<WGS84>
-let pgConcaveHull (points:WGS84Point list) (targetPercent:float) : Script<WellKnownText<WGS84>> = 
-    fmapM WellKnownText << singletonAsText1 <| makeConcaveHullQUERY points targetPercent
+let pgConcaveHull (dict:WktCoordIso<'point,'srid>) (points:'point list) (targetPercent:float) : Script<WellKnownText<WGS84>> = 
+    fmapM WellKnownText << singletonAsText1 <| makeConcaveHullQUERY dict points targetPercent
 
 
 // ***** Centroid

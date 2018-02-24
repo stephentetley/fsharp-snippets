@@ -90,9 +90,6 @@
     <Compile Include="SL\PostGIS.fs" />
     <Compile Include="SL\ExcelUtils.fs" />
     <Compile Include="SL\FileStore.fs" />
-    <Compile Include="Obsolete\Fact.fs" />
-    <Compile Include="Obsolete\JsonOrderedInput.fs" />
-    <Compile Include="Obsolete\XlsWriter.fs" />
     <Compile Include="Scripts\PathFinder.fs" />
     <Compile Include="Scripts\NearestHospital.fs" />
     <Compile Include="Scripts\Grouping.fs" />

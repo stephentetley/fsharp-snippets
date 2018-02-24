@@ -23,17 +23,16 @@ type GroupingMakeHullsDict<'Key,'a> =
     { GroupByOperation: 'a -> 'Key
       GetElementLoc: 'a -> WGS84Point option
       CsvHeaders: string list
-      MakeCsvRow: int -> 'Key -> WellKnownText<WGS84> -> seq<'a> -> RowWriter
-    }
+      MakeCsvRow: int -> 'Key -> WellKnownText<WGS84> -> seq<'a> -> RowWriter }
 
 let private extractPoints (dict:GroupingMakeHullsDict<'Key,'a>) (source:Grouping<'Key,'a>) : seq<WGS84Point> = 
     Seq.choose id <| Seq.map (dict.GetElementLoc) source.Elements
 
 let private concaveHull1 (dict:GroupingMakeHullsDict<'Key,'a>) (source:Grouping<'Key,'a>) (targetPercent:float) : Script<WellKnownText<WGS84>> = 
-    pgConcaveHull (Seq.toList <| extractPoints dict source) targetPercent
+    pgConcaveHull wktIsoWGS84 (Seq.toList <| extractPoints dict source) targetPercent
 
 let private convexHull1 (dict:GroupingMakeHullsDict<'Key,'a>) (source:Grouping<'Key,'a>) : Script<WellKnownText<WGS84>> = 
-    pgConvexHull (Seq.toList <| extractPoints dict source)
+    pgConvexHull wktIsoWGS84 (Seq.toList <| extractPoints dict source)
 
 let private centroid1 (dict:GroupingMakeHullsDict<'Key,'a>) (source:Grouping<'Key,'a>) : Script<WGS84Point option> = 
     pgCentroid wktIsoWGS84 (Seq.toList <| extractPoints dict source)
