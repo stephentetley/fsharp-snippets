@@ -81,6 +81,16 @@ let private makeConvexHullQUERY (dict:WktCoordIso<'point,'srid>) (points:'point 
                 )) );
         """, showWktMultiPoint <| makeWktMultiPoint dict points )
 
+// TODO - (Ideally) Move to this, potentially with a list of geom rather than a single one.
+let private makeConvexHullQUERY2 (dict:WktCoordIso<'point,'srid>) (geom:WktGeometry<'srid>) : string = 
+    System.String.Format("""
+        SELECT ST_AsText(ST_ConvexHull(
+	        ST_Collect(
+		        ST_GeomFromText('{0}, {1}')
+                )) );
+        """, showWktGeometry geom, dict.SRID )
+
+
 /// Returns WellKnownText.
 /// May return different geometry types depending on number of points in the result set.
 /// One point - POINT

@@ -89,6 +89,9 @@ module WellKnownText =
     /// that points are in counter-clockwise direction.        
     type WktPolygon<'a> =  WktPolygon of WktSurface 
 
+    let inline unwrapWktPolygon (source:WktPolygon<'a>) : WktSurface = 
+        match source with | WktPolygon s -> s
+
 
     type WktPolyhedralSurface<'a> = WktPolyhedralSurface of WktSurface list 
 
@@ -124,6 +127,18 @@ module WellKnownText =
 
     let inline unwrapWktMultiPolygon (source:WktMultiPolygon<'a>) : WktSurface list= 
         match source with | WktMultiPolygon xs -> xs
+
+    type WktGeometry<'a> =
+        | Point of WktPoint<'a>
+        | LineString of WktLineString<'a>
+        | Polygon of WktPolygon<'a>
+        | PolyhedralSurface of WktPolyhedralSurface<'a>
+        | Triangle of WktTriangle<'a>
+        | Tin of WktTin<'a>
+        | MultiPoint of WktMultiPoint<'a>
+        | MultiLineString of WktMultiLineString<'a>
+        | MultiPolygon of WktMultiPolygon<'a>
+            
 
 
     // ***** construction / Conversion *****
@@ -296,8 +311,8 @@ module WellKnownText =
         | xs -> sprintf "(%s)" (String.concat "," <| List.map showLineStringText xs)
 
 
-    let showWktPolygon (source:WktSurface) : string =
-        sprintf "POLYGON %s" <| showPolygonText source
+    let showWktPolygon (source:WktPolygon<'a>) : string =
+        sprintf "POLYGON %s" << showPolygonText <| unwrapWktPolygon source
 
 
     let private showPolyhedralSurfaceText (source:WktSurface list) : string =
@@ -352,6 +367,17 @@ module WellKnownText =
     let showWktMultiPolygon (source:WktMultiPolygon<'a>) : string = 
         sprintf "MULTIPOLYGON %s" << showMultiPolygonText <| unwrapWktMultiPolygon source
 
+    let showWktGeometry(geom:WktGeometry<'a>) : string =
+        match geom with
+        | Point x -> showWktPoint x
+        | LineString x -> showWktLineString x
+        | Polygon x -> showWktPolygon x
+        | PolyhedralSurface x -> showWktPolyhedralSurface x
+        | Triangle x -> showWktTriangle x
+        | Tin x -> showWktTin x
+        | MultiPoint x -> showWktMultiPoint x
+        | MultiLineString x -> showWktMultiLineString x
+        | MultiPolygon x -> showWktMultiPolygon x
 
 
     // ***** PARSING *****
