@@ -117,6 +117,7 @@
     <None Include="TestGeo.fsx" />
     <None Include="TestGraphvizOutput.fsx" />
     <None Include="TestMagick.fsx" />
+    <None Include="BatchTransformOSGB36.fsx" />
     <None Include="TestPostgres.fsx" />
     <None Include="PgNearestHospital.fsx" />
     <None Include="PgTspRouting.fsx" />
