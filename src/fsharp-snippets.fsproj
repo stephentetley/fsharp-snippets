@@ -127,6 +127,7 @@
     <None Include="PgDWithin.fsx" />
     <None Include="PgSiteOrder.fsx" />
     <None Include="FindSiblings.fsx" />
+    <None Include="ScreenData.fsx" />
     <COMReference Include="Microsoft Excel 16.0 Object Library">
       <Guid>{00020813-0000-0000-c000-000000000046}</Guid>
       <VersionMajor>1</VersionMajor>
