@@ -145,6 +145,31 @@ let temp100 () =
 let temp101 () = 
     showOSGB36Point <| {Easting = 464994.0<meter>; Northing = 412615.0<meter>}
 
+
+let ed50: HelmertParams = 
+    { DX = 89.5; DY = 93.8; DZ = 123.1; RotX = 0.0; RotY = 0.0; RotZ = 0.156; Scale = -1.200 }
+    
+let osgb: HelmertParams = 
+    { DX = -446.448; DY = 125.157; DZ = -542.060; RotX = -0.150; RotY = -0.247; RotZ = -0.842; Scale = 20.4894 }
+
+let temp102 () = 
+    let phi = makeDegree 53 0 0.0
+    let lam = makeDegree 1 0 0.0
+    let cc1 = toCC3D airy1830 phi lam 50.00<meter>;
+    let cc2 = helmertTransform osgb cc1
+    let ans = fromCC3D airy1830 cc2
+    (ans, cc1, cc2)
+
+let temp102a () = 
+    let phi = makeDegree 53 0 0.0
+    let lam = makeDegree 1 0 0.0
+    let cc1 = toCC3D airy1830 phi lam 50.00<meter>;
+    let ans = fromCC3D airy1830 cc1
+    (ans, cc1)
+
+let temp103 () = 
+    toCC3D airy1830 phi1 lam1 24.700<meter>
+
 // showOSGB36Point is fine, wgs84ToOSGB36 is inaccurate
 
 // let deg2rad (d : float) : float = (Math.PI/180.0) * d

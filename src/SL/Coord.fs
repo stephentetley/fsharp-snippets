@@ -96,7 +96,31 @@ module Coord =
         let h = (p / cos phi) - v
         (rad2deg phi, rad2deg lam, h)
 
-    let helmertTransform ({CCx = x; CCy = y; CCz = z}:CC3D) : CC3D = 
+    type HelmertParams = 
+        { DX: float
+          DY: float
+          DZ: float
+          RotX: float
+          RotY: float
+          RotZ: float
+          Scale: float }
+    
+    let helmertTransform (hparams:HelmertParams) ({CCx = x; CCy = y; CCz = z}:CC3D) : CC3D = 
+        let tx = hparams.DX
+        let ty = hparams.DY
+        let tz = hparams.DZ
+        let s  = hparams.Scale
+        let rx = deg2rad << float <| makeDegree 0 0 hparams.RotX
+        let ry = deg2rad << float <| makeDegree 0 0 hparams.RotX
+        let rz = deg2rad << float <| makeDegree 0 0 hparams.RotX
+        let m = 1.0 + s * (10.0 ** -6.0)
+        let xGB = tx + m * (x         + (-rz * y) + (ry * z))
+        let yGB = ty + m * ((-rz * x) + y         + (-rx * z))
+        let zGB = tz + m * ((-ry * x) + (rx * y)  + z)
+        { CCx = xGB; CCy = yGB; CCz = zGB }
+
+
+    let osgbHelmertTransform ({CCx = x; CCy = y; CCz = z}:CC3D) : CC3D = 
         let tx = -446.448
         let ty = 125.157
         let tz = -520.060
@@ -104,10 +128,10 @@ module Coord =
         let rx = deg2rad << float <| makeDegree 0 0 -0.1502
         let ry = deg2rad << float <| makeDegree 0 0 -0.2470
         let rz = deg2rad << float <| makeDegree 0 0 -0.8421
-        let xGB = tx + (x * (1.0 + s)) + (-rz * y) + (ry * z)
-        let yGB = ty + (rz * x) + (y * (1.0 + s)) + (-rx * z)
-        let zGB = tz + ( -ry * x) + (rx * y) + (z * (1.0 + s))
-        { CCx = x; CCy = y; CCz = z }
+        let xGB = tx + (1.0 + s * 0.000001) * (x         + (-rz * y) + (ry * z))
+        let yGB = ty + (1.0 + s * 0.000001) * ((-rz * x) + y         + (-rx * z))
+        let zGB = tz + (1.0 + s * 0.000001) * ((-ry * x) + (rx * y)  + z)
+        { CCx = xGB; CCy = yGB; CCz = zGB }
 
     // Note - the the grid letter plus grid digits is a synonymous representation for OSGB36
     // E.g Sullom Voe oil terminal in the Shetlands can be specified as HU396753 or 439668,1175316.
@@ -181,8 +205,10 @@ module Coord =
     // Need to do the datum change!
     let wgs84ToOSGB36 ({Latitude = phidd; Longitude = lamdd} : WGS84Point) : OSGB36Point = 
         let wgsCC3D = toCC3D airy1830 phidd lamdd 0.0<meter>
-        let osgbCC3D = helmertTransform wgsCC3D
-        let (phi, lam, h) = fromCC3D airy1830 osgbCC3D
+        let osgbCC3D = osgbHelmertTransform wgsCC3D
+        let (phidd1, lamdd1, h) = fromCC3D airy1830 osgbCC3D
+        let phi = deg2rad phidd1
+        let lam = deg2rad lamdd1
         let sinPhi = sin phi
         let cosPhi = cos phi
         let tanPhi = tan phi
@@ -205,6 +231,7 @@ module Coord =
         let E = airyE0 + IV * lamMlam0 + V * lamMlam0 ** 3.0 + VI * lamMlam0 ** 5.0
         printfn "v=%f" nu
         printfn "p=%f" rho
+        printfn "n2=%f" eta2
         { Easting = E * 1.0<meter>; Northing = N * 1.0<meter> }
 
 
