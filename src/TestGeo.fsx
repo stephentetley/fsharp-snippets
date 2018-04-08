@@ -133,3 +133,20 @@ let xWGS (xwm:float<meter>) : float<degree> =
 let yWGS (ywm:float<meter>) : float<degree> = 
     let aWGS = 6378137.0
     radianToDegree <| 1.0<radian> * (Math.Atan(Math.Exp (float ywm / aWGS)) * 2.0 - (Math.PI / 2.0))
+
+let temp100 () = 
+    let osgb1 = wgs84ToOSGB36 {Latitude = 53.6060746<degree>; Longitude = -1.019215849<degree>}
+    showOSGB36Point <| osgb1
+
+    // should be "SE 64994 12615"
+
+// 464994E 412615N
+
+let temp101 () = 
+    showOSGB36Point <| {Easting = 464994.0<meter>; Northing = 412615.0<meter>}
+
+// showOSGB36Point is fine, wgs84ToOSGB36 is inaccurate
+
+// let deg2rad (d : float) : float = (Math.PI/180.0) * d
+
+// let rad2deg (r : float) : float = (180.0/Math.PI) * r

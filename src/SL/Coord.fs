@@ -6,6 +6,11 @@ open System.Text.RegularExpressions
 open Microsoft.FSharp.Core
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 
+// Coordinate transformations from 
+// A guide to coordinate systems in Great Britain (v2.4)
+// Ordnance Survey
+// Ref D00659
+
 module Coord = 
 
     // kilometer and degree can probably go into their own module...
@@ -22,6 +27,46 @@ module Coord =
     [<Measure>]
     type radian
 
+    let inline degreeToRadian (d : float<degree>) : float<radian> = 
+        1.0<radian> * (Math.PI/180.0) * float d
+
+    let inline radianToDegree (r : float<radian>) : float<degree> = 
+        1.0<degree> * (180.0/Math.PI) * float r
+
+    let inline private deg2rad (d : float) : float = (Math.PI/180.0) * d
+
+    let inline private rad2deg (r : float) : float = (180.0/Math.PI) * r
+
+    /// fromDMS :: Int -> Int -> Double -> DDegrees
+    let makeDegree (d : int) (m : int) (s : float) : float<degree> = 
+        LanguagePrimitives.FloatWithMeasure (float d + float m / 60.0 + s / 3600.0)
+
+    // Prelimary for coordinate transformation
+    type ECEFCoord = 
+        { CCx: float
+          CCy: float 
+          CCz: float }
+
+    type BiaxialEllipsoid = 
+        { SemiMajorA: float<meter>
+          SemiMinorB: float<meter> }
+
+    // From table A.1 in D00659
+    let airy1830 : BiaxialEllipsoid = 
+        { SemiMajorA = 6377563.396<meter>; SemiMinorB = 6356256.909<meter> }
+
+    let eccentricitySquared (ellipsoid:BiaxialEllipsoid) : float =
+        let a2 = float ellipsoid.SemiMajorA ** 2.0
+        let b2 = float ellipsoid.SemiMinorB ** 2.0
+        (a2 - b2) / a2
+
+    let getCartesianCoordinates (ellipsoid:BiaxialEllipsoid) (phidd:float<degree>) (lamdd:float<degree>)   = 
+        let a = float ellipsoid.SemiMajorA
+        let e2 = eccentricitySquared ellipsoid
+        let phi = deg2rad <| float phidd
+        let sin2Phi = sin phi * sin phi
+        let v = a / (sqrt (1.0 - e2 * sin2Phi))
+        v
 
     // Note - the the grid letter plus grid digits is a synonymous representation for OSGB36
     // E.g Sullom Voe oil terminal in the Shetlands can be specified as HU396753 or 439668,1175316.
@@ -39,19 +84,7 @@ module Coord =
         { Latitude : float<degree>
           Longitude : float<degree> }
 
-    let inline degreeToRadian (d : float<degree>) : float<radian> = 
-        1.0<radian> * (Math.PI/180.0) * float d
 
-    let inline radianToDegree (r : float<radian>) : float<degree> = 
-        1.0<degree> * (180.0/Math.PI) * float r
-
-    let inline private deg2rad (d : float) : float = (Math.PI/180.0) * d
-
-    let inline private rad2deg (r : float) : float = (180.0/Math.PI) * r
-
-    /// fromDMS :: Int -> Int -> Double -> DDegrees
-    let makeDegree (d : int) (m : int) (s : float) : float<degree> = 
-        LanguagePrimitives.FloatWithMeasure (float d + float m / 60.0 + s / 3600.0)
 
     // ellipsoid constants for Airy 1830
     let private airyA:float = 6377563.396
@@ -87,14 +120,14 @@ module Coord =
 
     let private airyN3 = airyN*airyN*airyN
 
-    let private equationC2 (phi : double) = 
+    let private equationC2 (phi : float) = 
         let sin2Phi = sin phi * sin phi
         let nu = airyA * airyF0 * (1.0 - airyE2 * sin2Phi) ** -0.5
         let rho = airyA * airyF0 * (1.0 - airyE2) * (1.0 - airyE2 * sin2Phi) ** -1.5
         let eta2 = nu / rho - 1.0
         (nu, rho, eta2)
     
-    let private equationC3 (phi : double) =  
+    let private equationC3 (phi : float) =  
         let phiPphi0  = phi + phi0
         let phiMphi0  = phi - phi0
         let Ma = (1.0 + airyN + (5.0/4.0)*airyN2 + (5.0/4.0)*airyN3) * phiMphi0
@@ -103,9 +136,13 @@ module Coord =
         let Md = ((35.0/24.0)*airyN3) * sin (3.0*phiMphi0) * cos (3.0*phiPphi0)
         airyB * airyF0 * (Ma - Mb + Mc - Md)
 
+    // see https://stackoverflow.com/questions/8551028/convert-wgs84-to-osgb36 (NickT answer)
+    // Need to do the datum change!
     let wgs84ToOSGB36 ({Latitude = phidd; Longitude = lamdd} : WGS84Point) : OSGB36Point = 
-        let phi = deg2rad (float phidd)
-        let lam = deg2rad (float lamdd)
+        let phiHelmert = phidd - makeDegree 0 0 0.2470
+        let lamHelmert = lamdd - makeDegree 0 0 0.1502
+        let phi = deg2rad (float phiHelmert)
+        let lam = deg2rad (float lamHelmert)
         let sinPhi = sin phi
         let cosPhi = cos phi
         let tanPhi = tan phi
@@ -129,7 +166,7 @@ module Coord =
         { Easting = E * 1.0<meter>; Northing = N * 1.0<meter> }
 
 
-    let osgb36ToWGS84 (osgb36:OSGB36Point) : WGS84Point =
+    let osgb36ToWGS84 (osgb36:OSGB36Point) : WGS84Point = 
         let osgbE               = float osgb36.Easting
         let osgbN               = float osgb36.Northing
         let rec makePhi p m = 
