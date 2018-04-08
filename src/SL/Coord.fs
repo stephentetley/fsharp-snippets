@@ -41,8 +41,8 @@ module Coord =
     let makeDegree (d : int) (m : int) (s : float) : float<degree> = 
         LanguagePrimitives.FloatWithMeasure (float d + float m / 60.0 + s / 3600.0)
 
-    // Prelimary for coordinate transformation
-    type ECEFCoord = 
+    // Prelimary for coordinate / datum transformation
+    type CC3D = 
         { CCx: float
           CCy: float 
           CCz: float }
@@ -60,13 +60,54 @@ module Coord =
         let b2 = float ellipsoid.SemiMinorB ** 2.0
         (a2 - b2) / a2
 
-    let getCartesianCoordinates (ellipsoid:BiaxialEllipsoid) (phidd:float<degree>) (lamdd:float<degree>)   = 
+    
+    let toCC3D (ellipsoid:BiaxialEllipsoid) (phidd:float<degree>) (lamdd:float<degree>) (height:float<meter>) : CC3D = 
+        let lam = deg2rad <| float lamdd
+        let phi = deg2rad <| float phidd
+        let h = float height
+        let sin2Phi = sin phi * sin phi
         let a = float ellipsoid.SemiMajorA
         let e2 = eccentricitySquared ellipsoid
-        let phi = deg2rad <| float phidd
+        let v = a / (sqrt (1.0 - e2 * sin2Phi))
+        let x = (v + h) * cos phi * cos lam
+        let y = (v + h) * cos phi * sin lam
+        let z = ((1.0 - e2) * v + h)* sin phi
+        { CCx = x; CCy = y; CCz = z }
+
+    let fromCC3D (ellipsoid:BiaxialEllipsoid) ({CCx = x; CCy = y; CCz = z}:CC3D) : (float * float * float)  =
+        let lam = atan (y / x)
+        let e2 = eccentricitySquared ellipsoid
+        let a = float ellipsoid.SemiMajorA
+        let p = sqrt (x*x + y*y)
+        let phi0 = atan (z / (p * (1.0 - e2)))
+        let computePhi (phi1:float) : float=
+            let sin2Phi1 = sin phi1 * sin phi1
+            let v1 = a / (sqrt (1.0 - e2 * sin2Phi1))
+            atan ((z + e2 * v1 * sin phi1) / p)
+           
+        let rec refinePhi (n:int) (phi1:float) : float = 
+            let phi2 = computePhi phi1
+            let diff = phi1 - phi2
+            if n > 10 || diff < 0.0000000001 then phi2 else refinePhi (n+1) phi2
+
+        let phi = refinePhi 0 phi0
         let sin2Phi = sin phi * sin phi
         let v = a / (sqrt (1.0 - e2 * sin2Phi))
-        v
+        let h = (p / cos phi) - v
+        (rad2deg phi, rad2deg lam, h)
+
+    let helmertTransform ({CCx = x; CCy = y; CCz = z}:CC3D) : CC3D = 
+        let tx = -446.448
+        let ty = 125.157
+        let tz = -520.060
+        let s  = 20.4894
+        let rx = deg2rad << float <| makeDegree 0 0 -0.1502
+        let ry = deg2rad << float <| makeDegree 0 0 -0.2470
+        let rz = deg2rad << float <| makeDegree 0 0 -0.8421
+        let xGB = tx + (x * (1.0 + s)) + (-rz * y) + (ry * z)
+        let yGB = ty + (rz * x) + (y * (1.0 + s)) + (-rx * z)
+        let zGB = tz + ( -ry * x) + (rx * y) + (z * (1.0 + s))
+        { CCx = x; CCy = y; CCz = z }
 
     // Note - the the grid letter plus grid digits is a synonymous representation for OSGB36
     // E.g Sullom Voe oil terminal in the Shetlands can be specified as HU396753 or 439668,1175316.
@@ -139,10 +180,9 @@ module Coord =
     // see https://stackoverflow.com/questions/8551028/convert-wgs84-to-osgb36 (NickT answer)
     // Need to do the datum change!
     let wgs84ToOSGB36 ({Latitude = phidd; Longitude = lamdd} : WGS84Point) : OSGB36Point = 
-        let phiHelmert = phidd - makeDegree 0 0 0.2470
-        let lamHelmert = lamdd - makeDegree 0 0 0.1502
-        let phi = deg2rad (float phiHelmert)
-        let lam = deg2rad (float lamHelmert)
+        let wgsCC3D = toCC3D airy1830 phidd lamdd 0.0<meter>
+        let osgbCC3D = helmertTransform wgsCC3D
+        let (phi, lam, h) = fromCC3D airy1830 osgbCC3D
         let sinPhi = sin phi
         let cosPhi = cos phi
         let tanPhi = tan phi
@@ -163,6 +203,8 @@ module Coord =
         let VI = nu / 120.0 * cos5Phi * (5.0 - 18.0 * tan2Phi + tan4Phi + 14.0 * eta2 - 58.0 * tan2Phi * eta2)
         let N = I + II * lamMlam0 ** 2.0 + III * lamMlam0 ** 4.0 + IIIA * lamMlam0 ** 6.0
         let E = airyE0 + IV * lamMlam0 + V * lamMlam0 ** 3.0 + VI * lamMlam0 ** 5.0
+        printfn "v=%f" nu
+        printfn "p=%f" rho
         { Easting = E * 1.0<meter>; Northing = N * 1.0<meter> }
 
 
