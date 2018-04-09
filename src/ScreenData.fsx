@@ -190,7 +190,7 @@ let main () =
     let screens = getImportRows ()
     let writerProc = csvOutput {
         do! tellHeaders csvHeaders
-        do! tellRecords screens (fun r -> rowToCsv r parentDict)  }
+        do! tellRecords screens (fun r -> rowToCsv r parentDict)}
     ignore <| runCsvOutput { Separator = "," } csvOutputPath writerProc   
 
 
