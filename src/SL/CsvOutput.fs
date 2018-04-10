@@ -1,5 +1,6 @@
 ﻿module SL.CsvOutput
 
+open System
 open System.IO
 
 // NOTE - there is no real need for a corresponding CsvInput monad.
@@ -214,5 +215,17 @@ let tellInt64 (value:int64) : CellWriter = tellObj (value :> obj)
 
 let tellString (value:string) : CellWriter = Wrapped <| fun sep -> testQuoteField sep value
 let tellQuotedString (value:string) : CellWriter = Wrapped <| fun _ -> quoteField value
+
+let tellOption (teller:'a -> CellWriter) (value:option<'a>) : CellWriter = 
+    match value with 
+    | None -> tellString ""
+    | Some a -> teller a
+
+let tellNullable (teller:'a -> CellWriter) (value:Nullable<'a>) : CellWriter = 
+    if value.HasValue then teller value.Value else tellString ""
+   
+
+
+    
 
     

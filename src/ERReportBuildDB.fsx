@@ -14,6 +14,7 @@ open FSharp.ExcelProvider
 #r @"FSharp.Data.dll"
 open FSharp.Data
 
+open System
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
@@ -63,6 +64,27 @@ let getInstallations () : InstallationsRow list =
 let getSites() : InstallationsRow list = 
     let projectSite (row:InstallationsRow) = row.SiteReference
     getInstallations () |> List.distinctBy projectSite
+
+// Name => uid
+type AssetUidDict = Map<string,string>
+
+let buildAssetUidDict () : AssetUidDict = 
+    let assets = getInstallations ()
+    let insert1 (dict1:AssetUidDict) (row:InstallationsRow) : AssetUidDict = 
+        Map.add row.InstCommonName row.InstReference dict1
+    List.fold insert1 Map.empty assets
+
+let assetUidFromChildPath (dict:AssetUidDict) (path:string) : option<string> = 
+    let prefix =
+        match path.Split('/') |> Array.toList with
+        | (a :: b :: _) -> a + "/" + b
+        | _ -> ""
+    match Map.tryFind prefix dict with
+    | Some s -> Some s
+    | None -> 
+        // printfn "siteUidFromChildPath failed for %s (%s)"  prefix path
+        None
+
 
 
 type ScreensTable = 
@@ -237,8 +259,7 @@ let deleteAllData () : Script<int> =
         [ "all_assets"
         ; "all_sites"
         ; "screens"
-        ; "ret_tanks"
-        ; "ss_tanks"
+        ; "tanks"
         ; "eso_assets"
         ; "stw_assets"
         ; "sps_assets"
@@ -247,6 +268,27 @@ let deleteAllData () : Script<int> =
         ]
     liftSQLiteConn  << SL.SQLiteConn.sumSequenceM <| List.map deleteAllRows tables
 
+// Note - can do CRUD with SQLProvider
+
+let readNullableInt (s:string) : Nullable<int> = 
+    try
+    match s with
+        | null -> System.Nullable()
+        | s -> System.Nullable(System.Convert.ToInt32 s)
+    with
+    | _ ->    
+        printfn "readNullableInt failed for %s" s
+        System.Nullable()
+
+let readNullableDecimal (s:string) : Nullable<decimal> = 
+    try
+    match s with
+        | null -> System.Nullable()
+        | s -> System.Nullable(System.Convert.ToDecimal s)
+    with
+    | _ ->    
+        printfn "readNullableDecimal failed for %s" s
+        System.Nullable()
 
 let makeAllSitesINSERT (row:InstallationsRow) : string = 
     sqlINSERT "all_sites" 
@@ -266,9 +308,11 @@ let makeAllAssetsINSERT (row:InstallationsRow) : string =
             ; stringValue       "asset_status"      row.AssetStatus
             ]
 
-let makeScreensINSERT (row:ScreensRow) : string = 
+let makeScreensINSERT (dict:AssetUidDict) (row:ScreensRow) : string = 
+    let instUid = (assetUidFromChildPath dict <| row.``Common Name``) |> Option.defaultValue ""
     sqlINSERT "screens" 
-        <|  [ stringValue       "uid"               row.Reference
+        <|  [ stringValue       "screen_uid"        row.Reference
+            ; stringValue       "inst_uid"          instUid
             ; stringValue       "path_string"       row.``Common Name``
             ; stringValue       "manufacturer"      row.Manufacturer
             ; stringValue       "model"             row.Model
@@ -278,19 +322,32 @@ let makeScreensINSERT (row:ScreensRow) : string =
             ; stringValue       "flow_units"        row.``Flow Units``
             ; stringValue       "flow"              row.Flow
             ; stringValue       "control_type"      row.``Automatic or Manual``
+            ; stringValue       "op_status"         row.AssetStatus
             ]
 
-let makeRetTanksINSERT (row:RetTanksRow) : string = 
-    sqlINSERT "ret_tanks" 
-        <|  [ stringValue       "uid"               row.Reference
-            ; stringValue       "path_string"       row.``Common Name``
+let makeRetTanksINSERT (dict:AssetUidDict) (row:RetTanksRow) : string = 
+    let instUid = (assetUidFromChildPath dict <| row.``Common Name``) |> Option.defaultValue ""
+    sqlINSERT "tanks" 
+        <|  [ stringValue           "tank_uid"          row.Reference
+            ; stringValue           "tank_type"         "WW_RETENTION"
+            ; stringValue           "inst_uid"          instUid
+            ; stringValue           "path_string"       row.``Common Name``
+            ; stringValue           "op_status"         row.AssetStatus
+            ; decimalNullableValue  "tank_capacity"     (readNullableDecimal <| row.``Unit Capacity cum``)
+            ; stringValue           "location_on_site"  row.``Location On Site``
             ]
 
 
-let makeSSTanksINSERT (row:SSTanksRow) : string = 
-    sqlINSERT "ss_tanks" 
-        <|  [ stringValue       "uid"               row.Reference
-            ; stringValue       "path_string"       row.``Common Name``
+let makeSSTanksINSERT (dict:AssetUidDict) (row:SSTanksRow) : string = 
+    let instUid = (assetUidFromChildPath dict <| row.``Common Name``) |> Option.defaultValue ""
+    sqlINSERT "tanks" 
+        <|  [ stringValue           "tank_uid"          row.Reference
+            ; stringValue           "tank_type"         "WW_STORM_SEDIMENTATION"
+            ; stringValue           "inst_uid"          instUid
+            ; stringValue           "path_string"       row.``Common Name``
+            ; stringValue           "op_status"         row.AssetStatus
+            ; decimalNullableValue  "tank_capacity"     (readNullableDecimal <| row.``Unit Capacity cum``)
+            ; stringValue           "location_on_site"  row.``Location On Site``
             ]
 
 
@@ -329,14 +386,15 @@ let makeSpsAssetsINSERT (row:SpsAssetsRow1) : string =
 let makeSpsAssetsUPDATE1 (row:SpsExtras1Row) : string = 
     let updates = 
         [ stringValue       "eo_receiving_watercourse"      row.``EO Receiving Watercourse``
-        ; stringValue       "eo_discharge_northing"         row.``EO Discharge Northing``
-        ; stringValue       "eo_discharge_easting"          row.``EO Discharge Easting``
+        ; intNullableValue  "eo_discharge_northing"         (readNullableInt <| row.``EO Discharge Northing``)
+        ; intNullableValue  "eo_discharge_easting"          (readNullableInt <| row.``EO Discharge Easting``)
         ; stringValue       "function"                      row.Function
         ; stringValue       "overflow_grid_ref"             row.``Overflow NGR``
         ]
     let restrictions = 
         [ stringValue "uid"                   row.Reference   ]
     sqlUPDATE "sps_assets" updates restrictions
+
 
 
 let makeCsoAssetsINSERT (row:CsoAssetsRow) : string = 
@@ -347,6 +405,8 @@ let makeCsoAssetsINSERT (row:CsoAssetsRow) : string =
             ; stringValue       "grid_ref"              row.``Loc.Ref.``
             ; stringValue       "consent_ref"           row.``Consent Ref``
             ; stringValue       "consent_application"   row.``Consented For``
+            ; intNullableValue  "discharge_easting"     (readNullableInt <| row.``CSO Discharge Easting``)
+            ; intNullableValue  "discharge_northing"    (readNullableInt <| row.``CSO Discharge Northing``)
             ]
 
 
@@ -406,14 +466,14 @@ let insertAllAssets () : Script<int> =
     runSQL makeAllAssetsINSERT <| getInstallations ()
 
     
-let insertScreens () : Script<int> =  
-    runSQL makeScreensINSERT <| getScreens ()
+let insertScreens (uidDict:AssetUidDict)  : Script<int> =  
+    runSQL (makeScreensINSERT uidDict) <| getScreens ()
     
-let insertRetTanks () : Script<int> = 
-    runSQL makeRetTanksINSERT <| getRetTanks ()
+let insertRetTanks (uidDict:AssetUidDict) : Script<int> = 
+    runSQL (makeRetTanksINSERT uidDict) <| getRetTanks ()
     
-let insertSSTanks () : Script<int> = 
-    runSQL makeSSTanksINSERT <| getSSTanks ()
+let insertSSTanks (uidDict:AssetUidDict) : Script<int> = 
+    runSQL (makeSSTanksINSERT uidDict) <| getSSTanks ()
     
 let insertEsoAssets () : Script<int> = 
     runSQL makeEsoAssetsINSERT <| getEsoAssets ()
@@ -445,6 +505,9 @@ let updateDtkAssets1 () : Script<int> =
 let SetupDB () : unit = 
     let conn = sqliteConnParamsVersion3  @"G:\work\Projects\events2\er-report\erReportDB.sqlite3"
     let deleteAll = deleteAllData () |> logScript (sprintf "%i rows deleted") 
+
+    let uidDict = buildAssetUidDict () 
+
     runScript (failwith) (printfn "Success: %i modifications") (consoleLogger) conn 
         <| deleteAll
 
@@ -452,9 +515,9 @@ let SetupDB () : unit =
         <| sumSequenceM 
             [ insertAllSites ()         |> logScript (sprintf "%i all_sites inserted")       
             ; insertAllAssets ()        |> logScript (sprintf "%i all_assets inserted") 
-            ; insertScreens ()          |> logScript (sprintf "%i screens inserted") 
-            ; insertRetTanks ()         |> logScript (sprintf "%i ret_tanks inserted")
-            ; insertSSTanks ()          |> logScript (sprintf "%i ss_tanks inserted")
+            ; insertScreens uidDict     |> logScript (sprintf "%i screens inserted") 
+            ; insertRetTanks uidDict    |> logScript (sprintf "%i ret_tanks inserted")
+            ; insertSSTanks uidDict     |> logScript (sprintf "%i ss_tanks inserted")
             ; insertEsoAssets ()        |> logScript (sprintf "%i eso_assets inserted")
             ; insertStwAssets ()        |> logScript (sprintf "%i stw_assets inserted")
             ; insertSpsAssets ()        |> logScript (sprintf "%i sps_assets inserted")

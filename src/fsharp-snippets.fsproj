@@ -77,7 +77,6 @@
     <Compile Include="SL\WebMercator.fs" />
     <Compile Include="SL\ExcelProviderHelper.fs" />
     <Compile Include="SL\JsonExtractor.fs" />
-    <Compile Include="SL\JsonOutput.fs" />
     <Compile Include="SL\SqlUtils.fs" />
     <Compile Include="SL\PGSQLConn.fs" />
     <Compile Include="SL\SQLiteConn.fs" />
@@ -90,6 +89,7 @@
     <Compile Include="SL\PostGIS.fs" />
     <Compile Include="SL\ExcelUtils.fs" />
     <Compile Include="SL\FileStore.fs" />
+    <Compile Include="SL\Copy of JsonOutput.fs" />
     <Compile Include="Scripts\PathFinder.fs" />
     <Compile Include="Scripts\NearestHospital.fs" />
     <Compile Include="Scripts\Grouping.fs" />

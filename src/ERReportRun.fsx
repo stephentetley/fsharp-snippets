@@ -31,12 +31,14 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 #load @"SL\ScriptMonad.fs"
 #load @"SL\CsvOutput.fs"
 #load @"SL\ExcelProviderHelper.fs"
+#load @"SL\Coord.fs"
 open SL.AnswerMonad
 open SL.SqlUtils
 open SL.SQLiteConn
 open SL.ScriptMonad
 open SL.CsvOutput
 open SL.ExcelProviderHelper
+open SL.Geo.Coord
 
 
 let [<Literal>] ResolutionPath1 = __SOURCE_DIRECTORY__ + @"\..\packages\System.Data.SQLite.Core.1.0.105.0\lib\net451"
@@ -81,7 +83,7 @@ let temp01 () =
     List.iter (fun (asset:AssetListRow) -> printfn "%s" asset.Name) <| getAssetList () 
 
 
-/// "Make a proper tree"
+/// "Make a proper tree" ???
 
 type ParentSite = 
     { SiteUid: string
@@ -99,7 +101,7 @@ type ESO =
       OpStatus: string
       GridRef: string
       ConsentRef: string
-      OverflowLocation: string          // descriptive string, not a grid ref
+      OverflowPoint: string          // descriptive string, not a grid ref
       ScreensType: string }
 
 
@@ -118,28 +120,47 @@ type Site =
       Postcode: string
       Assets: Asset list }
 
-
-
-let uniqueItem (src:seq<'a>) : option<'a> = 
-    match Seq.toList src with
-    | [x] -> Some x
-    | _ -> None
+// TODO - use exactlyOneOrDefault instead...
+//let uniqueItem (src:seq<'a>) : option<'a> = 
+//    match Seq.toList src with
+//    | [x] -> Some x
+//    | _ -> None
 
 let getAssetName (uid:string) : string  = 
     query { 
         for assets in ctx.Main.AllAssets do
         where (assets.Uid = uid)       
-        select (assets.AssetName:string)
-        distinct 
-    } |> uniqueItem |> Option.defaultValue "N/A"
+        select (Some <| assets.AssetName)
+        exactlyOneOrDefault 
+    } |> Option.defaultValue "N/A"
+
+
 
 let getParentSiteId (assetUid:string) : option<string> = 
     query { 
         for assets in ctx.Main.AllAssets do
         where (assets.Uid = assetUid)       
         select (assets.ParentSiteRef)
-        distinct 
-    } |> uniqueItem |> Option.flatten
+        exactlyOneOrDefault 
+    } 
+
+let getSiblingIds (assetUid:string) (siblingType:string) : string list = 
+    let sk (parentId:string) = 
+        query {
+            for row in ctx.Main.AllAssets do
+            where (row.ParentSiteRef = Some parentId 
+                    && row.AssetType = Some siblingType 
+                    && row.AssetStatus = Some "OPERATIONAL")       
+            select (row.Uid)
+        } |> Seq.toList
+    match getParentSiteId assetUid with
+    | None -> []
+    | Some pid -> sk pid
+
+let getSiblingSpsId (assetUid:string) : option<string> = 
+    match getSiblingIds assetUid "SPS" with
+    | [x] -> Some x
+    | _ -> None
 
 type SiteRec = 
     { Uid: string
@@ -147,16 +168,26 @@ type SiteRec =
       SiteAddress: string
       PostCode: string }
 
+let mapSiteRec (dbRec:SqlDB.dataContext.``main.all_sitesEntity``) : SiteRec = 
+    { Uid =  dbRec.Uid
+      SiteName = dbRec.SiteName
+      SiteAddress = Option.defaultValue "" <| dbRec.SiteAddress
+      PostCode = Option.defaultValue "" <| dbRec.Postcode }
+
+
 let getSiteRec (uid:string) : option<SiteRec> = 
     query { 
         for sites in ctx.Main.AllSites do
         where (sites.Uid = uid)       
-        select ({ Uid =  sites.Uid
-                ; SiteName = sites.SiteName
-                ; SiteAddress = Option.defaultValue "" <| sites.SiteAddress
-                ; PostCode = Option.defaultValue "" <| sites.Postcode })
-        distinct 
-    } |> uniqueItem 
+        select (Some { Uid =  sites.Uid
+                     ; SiteName = sites.SiteName
+                     ; SiteAddress = Option.defaultValue "" <| sites.SiteAddress
+                     ; PostCode = Option.defaultValue "" <| sites.Postcode })
+        exactlyOneOrDefault 
+    } 
+
+
+
 
 let getChildIds (siteUid:string) : string list = 
     query { 
@@ -166,33 +197,14 @@ let getChildIds (siteUid:string) : string list =
         distinct 
         } |> Seq.toList
 
-//let getParentSite (uid:string) : option<ParentSite> = 
-//    let parentUid = 
-//        query { 
-//            for assets in ctx.Main.AllAssets do
-//            where (assets.Uid = uid)       
-//            select (assets.ParentSiteRef)
-//            distinct 
-//        } |> uniqueItem |> Option.flatten
-//    let getParent1 (uid:string) = 
-//        query { 
-//            for sites in ctx.Main.AllSites do
-//            where (sites.Uid = uid)       
-//            select ({ Uid       = sites.Uid
-//                    ; SiteName  = sites.SiteName
-//                    ; Address   = Option.defaultValue "" <| sites.SiteAddress
-//                    ; Postcode  = Option.defaultValue "" <| sites.Postcode })
-//            distinct 
-//        } |> uniqueItem
-//    Option.bind getParent1 parentUid
 
-let getAssetType (uid:string) : string = 
+let getAssetType (uid:string) : string option = 
     query { 
         for assets in ctx.Main.AllAssets do
         where (assets.Uid = uid)       
         select (assets.AssetType:string option)
-        distinct 
-    } |> uniqueItem |> Option.flatten |> Option.defaultValue ""
+        exactlyOneOrDefault
+    } 
 
 let getConsent (uid:string) (siteType:string) : option<Consent> = 
     let makeConsent (name:option<string>) (watercourse:option<string>) : option<Consent> = 
@@ -206,64 +218,227 @@ let getConsent (uid:string) (siteType:string) : option<Consent> =
             where (assets.Uid = uid)       
             select (
                 makeConsent assets.ConsentRef assets.ConsentApplication )
-            distinct 
-        } |> uniqueItem |> Option.flatten 
+            exactlyOneOrDefault 
+        } 
     | "STW" -> 
         query { 
             for assets in ctx.Main.StwAssets do
             where (assets.Uid = uid)       
             select  (
                 makeConsent assets.ConsentRef None )
-            distinct 
-        } |> uniqueItem |> Option.flatten
+            exactlyOneOrDefault 
+        } 
     | "SPS" -> 
         query { 
             for assets in ctx.Main.SpsAssets do
             where (assets.Uid = uid)       
             select  (
                 makeConsent assets.ConsentRef assets.ConsentApplication )
-            distinct 
-        } |> uniqueItem |> Option.flatten
+            exactlyOneOrDefault 
+        } 
     | "ESO" -> 
         query { 
             for assets in ctx.Main.EsoAssets do
             where (assets.Uid = uid)       
             select  (
                 makeConsent assets.ConsentRef None )
-            distinct 
-        } |> uniqueItem |> Option.flatten
+            exactlyOneOrDefault 
+        } 
     | _ -> None
 
+let makeOSGB36 (easting:int64) (northing:int64) : OSGB36Point = 
+    let conv (i:int64) : float<meter> = float i * 1.0<meter>;
+    {Easting = conv easting; Northing = conv  northing}
 
-let makeAsset (uid:string) : Asset = 
-    let assetType = getAssetType uid
-    { AssetUid = uid
-    ; CommonName = getAssetName uid 
-    ; AssetType = assetType
-    ; Consent = getConsent uid assetType
-    }
+let getOutletNGR (uid:string) (siteType:string) : option<string> = 
+    try
+        match siteType with
+        | "SPS" -> 
+            let ans = 
+                query { 
+                    for row in ctx.Main.SpsAssets do
+                    where (row.Uid = uid)       
+                    select (row.EoDischargeEasting, row.EoDischargeNorthing )
+                    exactlyOneOrDefault 
+                } 
+            match ans with
+            | Some e, Some n -> Some << showOSGB36Point <| makeOSGB36 e n
+            | _ , _ -> None
+        | "CSO" -> 
+            let ans = 
+                query { 
+                    for row in ctx.Main.CsoAssets do
+                    where (row.Uid = uid)       
+                    select (row.DischargeEasting, row.DischargeNorthing)
+                    exactlyOneOrDefault 
+                } 
+            match ans with
+            | Some e, Some n -> Some << showOSGB36Point <| makeOSGB36 e n
+            | _ , _ -> None
 
-let processRow (row:AssetListRow) : unit =
-    let uid = row.UID
-    let assetName = getAssetName uid
+        | _ -> None
+    with
+    | _ ->
+        printfn "Failed getOutletNGR %s, returning None" uid
+        None
+
+let getReceivingWatercourse (uid:string) (siteType:string) : option<string> = 
+    try
+        match siteType with
+        | "CSO" -> 
+            let ans = 
+                query { 
+                    for row in ctx.Main.CsoAssets do
+                    where (row.Uid = uid)       
+                    select (row.OverflowLocation, row.ReceivingWatercourse )
+                    exactlyOneOrDefault 
+                } 
+            match ans with
+            | _, ans1 -> ans1
+
+        | "STW" -> None 
+        | "SPS" -> 
+            query { 
+                for row in ctx.Main.SpsAssets do
+                where (row.Uid = uid)       
+                select  (row.EoReceivingWatercourse)
+                exactlyOneOrDefault 
+            } 
+        | "ESO" -> None
+        | "DTK" -> 
+            query { 
+                for row in ctx.Main.DtkAssets do
+                where (row.Uid = uid)       
+                select  (row.ReceivingWatercourse)
+                exactlyOneOrDefault 
+            } 
+        | _ -> None
+    with
+    | _ -> 
+        printfn "Failed getReceivingWatercourse %s, returning None" uid
+        None
+
+
+type ScreenParams = 
+    { ScreenType: string
+      ScreenAperture: string
+      Flow: string
+      FlowUnits: string }
+
+
+let getScreenParams(uid:string) : option<ScreenParams> = 
+    let sk (xs:ScreenParams list) : option<ScreenParams> = 
+        match xs with
+        | [x] -> Some x
+        | _ -> None
+    query { 
+        for row in ctx.Main.Screens do
+        where (row.InstUid = Some uid)       
+        select ({ ScreenType = Option.defaultValue "" row.ScreenType
+                  ScreenAperture = Option.defaultValue "" row.ScreenAperture
+                  Flow = Option.defaultValue "" row.Flow
+                  FlowUnits  = Option.defaultValue "" row.FlowUnits }) 
+    } |> Seq.toList |> sk
+
+
+let getStormTankCapacity (uid:string) : option<decimal> = 
+    let sk (xs: (option<decimal>) list) : option<decimal> = 
+        match xs with
+        | [x] -> x
+        | _ -> None
+    query { 
+        for row in ctx.Main.Tanks do
+        where (row.InstUid = Some uid && row.TankType = "WW_STORM_SEDIMENTATION")       
+        select (row.TankCapacity) 
+    } |> Seq.toList |> sk
+
+//let processRow (row:AssetListRow) : unit =
+//    let uid = row.UID
+//    let assetName = getAssetName uid
      
-    match getParentSiteId uid with
-    | None -> printfn "ERROR: no parent for %s %s" uid assetName
-    | Some pid -> 
-        let kidsIds = getChildIds pid
-        let site = getSiteRec pid
-        let siteName = Option.defaultValue "" << Option.map (fun s -> s.SiteName) <| site
-        printfn "%s => %s (kids:%A)" assetName siteName kidsIds
+//    match getParentSiteId uid with
+//    | None -> printfn "ERROR: no parent for %s %s" uid assetName
+//    | Some pid -> 
+//        let kidsIds = getChildIds pid
+//        let site = getSiteRec pid
+//        let siteName = Option.defaultValue "" << Option.map (fun s -> s.SiteName) <| site
+//        printfn "%s => %s (kids:%A)" assetName siteName kidsIds
 
-let temp02 () = 
-    List.iter processRow << List.take 30 <|  getAssetList () 
+
 
 
 let columnHeaders : string list = 
     [ "SAI of Related Asset"
     ; "Related AI2 Asset Name"
+    ; "Address of related AI asset"
+    ; "Discharge Point Name"
+    ; "Outlet NGR"
+    ; "STC 25 of discharge point (if known)"
+    ; "Receiving Water / Environment"
+    ; "Screen Type"
+    ; "Screen Aperture size"
+    ; "Screen Flow"
+    ; "Storm Tank Capacity"
     ]
 
-let tellOuputRow (uid:string) : CsvOutput<unit> = 
-    tellRow [ tellString uid
-            ]
+type OutputRec = 
+    { Uid: string
+      AssetName: string
+      AssetAddress: string
+      DischargePointName: string
+      OutletNGR: string
+      DischargeSTC25: string 
+      ReceivingWatercourse: string
+      ScreenParams: option<ScreenParams>
+      StormTankCapacity: option<decimal> }
+
+
+let tellOuputRow (orec:OutputRec) : RowWriter = 
+    let screenFlow (x:ScreenParams) : string = 
+        match x.Flow, x.FlowUnits with
+        | "", _ -> ""
+        | s, "LITRES PER SECOND" -> s
+        | s, t -> sprintf "%s %s" s t
+
+    [ tellString orec.Uid
+    ; tellString orec.AssetName
+    ; tellString orec.AssetAddress
+    ; tellString orec.DischargePointName
+    ; tellString orec.OutletNGR
+    ; tellString orec.DischargeSTC25
+    ; tellString orec.ReceivingWatercourse
+    ; tellString << Option.defaultValue "" << Option.map (fun (x:ScreenParams) -> x.ScreenType) <| orec.ScreenParams
+    ; tellString << Option.defaultValue "" << Option.map (fun (x:ScreenParams) -> x.ScreenAperture) <| orec.ScreenParams
+    ; tellString << Option.defaultValue "" << Option.map (fun (x:ScreenParams) -> screenFlow x) <| orec.ScreenParams
+    ; tellOption tellDecimal orec.StormTankCapacity
+    ]
+
+let makeOutputRec (uid:string) : OutputRec = 
+    printfn "%s" uid
+    let parentId    = getParentSiteId uid   |> Option.defaultValue "n/a"
+    let assetType   = getAssetType uid      |> Option.defaultValue "n/a" 
+    let screenParams = getScreenParams uid
+    { Uid = uid
+      AssetName = getAssetName uid 
+      AssetAddress = getSiteRec parentId
+                        |> Option.map (fun x -> x.SiteAddress) 
+                        |> Option.defaultValue "" 
+      DischargePointName = ""
+      OutletNGR = getOutletNGR uid assetType |> Option.defaultValue "" 
+      DischargeSTC25 = ""
+      ReceivingWatercourse = getReceivingWatercourse uid assetType |> Option.defaultValue "" 
+      ScreenParams = getScreenParams uid
+      StormTankCapacity = getStormTankCapacity uid
+      }
+
+let RunReport () = 
+    // let xs =  List.take 30 <| getAssetList ()
+    let xs = getAssetList ()
+    let assetList = List.map (fun (x:AssetListRow) -> makeOutputRec x.UID) <| xs 
+    let outFile = @"G:\work\Projects\events2\er-report\output1.csv"
+    let csvProc = 
+        writeRecordsWithHeaders columnHeaders assetList tellOuputRow
+    outputToNew {Separator=","} csvProc outFile
+
+let main () = 
+    RunReport ()
