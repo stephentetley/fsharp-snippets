@@ -82,3 +82,38 @@ let rtuTrim () =
           InputHasHeaders = false
           OutputSeparator = "," }
     trimCsvFile options input output
+
+
+// Don't use type provider as input has type errors...
+//type RtuInput = 
+//    CsvProvider< Sample = @"G:\work\Projects\rtu\RTS-outstations-report.tab.csv",
+//                    Separators = "\t",
+//                    HasHeaders = true>
+
+//type RtuInputRow = RtuInput.Row
+
+
+let readAddr (s:string) = 
+    match s.Split(',') |> Array.toList with
+    | [x;y] -> x.Trim() + ", " + y.Trim()
+    | _ -> s
+
+
+
+let rtuTranspose () = 
+    let csvRows : seq<CsvRow> = 
+        CsvFile.Load(uri = @"G:\work\Projects\rtu\RTS-outstations-report.tab.csv", 
+            separators = "\t",
+            hasHeaders = true, 
+            quote= '"' ).Rows
+
+    let outFile = @"G:\work\Projects\rtu\RTS-outstations2.csv"
+    let headers = ["Common Name"; "OS Name"; "OS Address"]
+    let tellRow (row:CsvRow) : RowWriter = 
+        [ tellString        <| (row.GetColumn("OD comment")).Trim()
+        ; tellString        <| (row.GetColumn("OS name")).Trim()
+        ; tellString        << readAddr <| row.GetColumn("OS Addr")
+        ]
+    let csvProc = 
+            writeRecordsWithHeaders headers csvRows tellRow
+    outputToNew {Separator=","} csvProc outFile
