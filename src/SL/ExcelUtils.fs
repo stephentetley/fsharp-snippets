@@ -10,21 +10,8 @@ open SL.AnswerMonad
 open SL.ScriptMonad
 open SL.CsvOutput
 open SL.ClosedXMLOutput
+open SL.CsvUtils
 
-
-
-let trimCsvFile (inputFile:string) (outputFile:string) (csvHasHeaders:bool) (sep:string) : unit =
-    let truncRow (row:CsvRow) : SL.CsvOutput.CellWriter list = 
-        Array.foldBack (fun (value:string) ac -> 
-                         let a = value.Trim() |> SL.CsvOutput.tellString in a::ac) row.Columns [] 
-        
-    let csvRows : seq<CsvRow> = 
-        CsvFile.Load(uri=inputFile, hasHeaders=csvHasHeaders, quote='"').Rows
-
-    let procM : CsvOutput<unit> = 
-        SL.CsvOutput.traverseMz (SL.CsvOutput.tellRow << truncRow) csvRows
-        
-    SL.CsvOutput.outputToNew {Separator=sep} procM outputFile    
 
 
 // Output from Excel uses double quote and comma
@@ -80,11 +67,15 @@ let trimXlsSheet (inputFile:string) (outputFile:string) : unit =
     let tempFile1 = IO.Path.ChangeExtension(outputFile, "csv")
     let tempFile2 = suffixFileName tempFile1 "-TRIM"
     let app = new Excel.ApplicationClass(Visible = true) :> Excel.Application
+    let options = 
+        { InputSeparator = ","
+          InputHasHeaders = false
+          OutputSeparator = "," }
     try
         runConsoleScript (fun _ -> printfn "Ok") app <| 
             scriptMonad { 
                 let! sheet = xlsToCsv inputFile tempFile1
-                let! () = liftAction <| trimCsvFile tempFile1 tempFile2 false ","
+                let! () = liftAction <| trimCsvFile options tempFile1 tempFile2
                 let! () = csvToXls tempFile2 outputFile
                 return () }
     finally
@@ -94,11 +85,15 @@ let trimXlsSheet (inputFile:string) (outputFile:string) : unit =
 let trimXlsFileToCsv (inputFile:string) (outputFile:string) : unit = 
     let tempFile = suffixFileName outputFile "-TEMP"
     let app = new Excel.ApplicationClass(Visible = true) :> Excel.Application
+    let options = 
+        { InputSeparator = ","
+          InputHasHeaders = false
+          OutputSeparator = "," }
     try
         runConsoleScript (fun _ -> printfn "Ok") app <| 
             scriptMonad { 
                 let! sheet = xlsToCsv inputFile tempFile
-                let! _ = trimCsvFile tempFile outputFile false ","  |> liftAction
+                let! _ = trimCsvFile options tempFile outputFile  |> liftAction
                 return () }
     finally 
         app.Quit ()                               

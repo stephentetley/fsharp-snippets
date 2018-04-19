@@ -1,5 +1,5 @@
 ﻿// Use FSharp.Data for CSV reading
-#I @"..\packages\FSharp.Data.2.3.3\lib\net40"
+#I @"..\packages\FSharp.Data.2.4.6\lib\net45"
 #r @"FSharp.Data.dll"
 open FSharp.Data
 
@@ -8,25 +8,28 @@ open FSharp.Data
 #r "Microsoft.Office.Interop.Excel"
 open Microsoft.Office.Interop
 
-#load @"SL\CommonUtils.fs"
-open SL.CommonUtils
-
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
-#I @"..\packages\DocumentFormat.OpenXml.2.7.2\lib\net46\"
-#I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
-#I @"..\packages\ClosedXML.0.90.0\lib\net452\"
+
+#I @"..\packages\DocumentFormat.OpenXml.2.8.1\lib\net46\"
+#I @"..\packages\FastMember.Signed.1.3.0\lib\net45\"
+#I @"..\packages\ClosedXML.0.92.1\lib\net46\"
 #r "ClosedXML"
+
+
+
+#load @"SL\CommonUtils.fs"
 #load @"SL\AnswerMonad.fs"
 #load @"SL\JsonExtractor.fs"
 #load @"SL\ScriptMonad.fs"
 #load @"SL\ClosedXMLOutput.fs"
 #load @"SL\CsvOutput.fs"
+#load @"SL\CsvUtils.fs"
 #load @"SL\ExcelUtils.fs"
-open SL.ExcelUtils
-
-
+open SL.CommonUtils
 open SL.CsvOutput
+open SL.CsvUtils
+open SL.ExcelUtils
 
 // NOTE - CSV processing with FSharp.Data is very fast
 // To trim basic (macro-free) Xls files, going to and from CSV looks like
@@ -39,8 +42,12 @@ let xlsPathIn       = @"G:\work\Projects\events2\stations-jan2018.xlsx"
 let xlsPathOutCsv   = @"G:\work\Projects\events2\stations-jan2018-TRIM.csv"     
 let xlsPathOutXls   = @"G:\work\Projects\events2\stations-jan2018-TRIM.xlsx" 
 
-let main () = 
-    trimCsvFile csvPathIn csvPathOut false ","
+let temp01 () = 
+    let options = 
+        { InputSeparator = ","
+          InputHasHeaders = false
+          OutputSeparator = "," }
+    trimCsvFile options csvPathIn csvPathOut
     trimXlsFileToCsv xlsPathIn xlsPathOutCsv
     trimXlsSheet xlsPathIn xlsPathOutXls
 
@@ -53,8 +60,12 @@ let test01 () : unit =
     let csv1 = @"G:\work\Projects\events2\stations1.csv"
     let csv2 = @"G:\work\Projects\events2\stations2.csv"
     let output = @"G:\work\Projects\events2\stations-TRIM.xlsx"
+    let options = 
+        { InputSeparator = ","
+          InputHasHeaders = false
+          OutputSeparator = "," }
     covertToCSV input csv1
-    trimCsvFile csv1 csv2 false ","
+    trimCsvFile options csv1 csv2
     covertToXlOpenXML csv2 output 
 
 
@@ -62,3 +73,12 @@ let test01 () : unit =
 let test02 () = 
     suffixFileName @"G:\work\Projects\events2\stations.xlsx" "-TRIM"
 
+
+let rtuTrim () = 
+    let input  = @"G:\work\Projects\rtu\RTS-outstations-report.tab.csv"
+    let output = @"G:\work\Projects\rtu\RTS-outstations-report.trim.csv"
+    let options = 
+        { InputSeparator = "\t"
+          InputHasHeaders = false
+          OutputSeparator = "," }
+    trimCsvFile options input output
