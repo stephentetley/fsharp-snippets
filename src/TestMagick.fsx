@@ -1,11 +1,8 @@
-﻿
-
-open System
-
-
-#I @"..\packages\Magick.NET-Q8-AnyCPU.7.3.0\lib\net40"
+﻿#I @"..\packages\Magick.NET-Q8-AnyCPU.7.4.4\lib\net40"
 #r @"Magick.NET-Q8-AnyCPU.dll"
 open ImageMagick
+
+open System
 
 type Orientation = Portrait | Landscape
 

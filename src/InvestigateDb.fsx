@@ -1,18 +1,19 @@
-﻿open System
-open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
-
-#I @"..\packages\System.Data.SQLite.Core.1.0.105.0\lib\net451"
+﻿#I @"..\packages\System.Data.SQLite.Core.1.0.108.0\lib\net45"
 #r "System.Data.SQLite"
 open System.Data.SQLite
 
 
-#I @"..\\packages\SQLProvider.1.0.54\lib"
+#I @"..\packages\SQLProvider.1.1.41\lib\net451"
 #r "FSharp.Data.SQLProvider.dll"
 open FSharp.Data.Sql
 
 
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
+
+open System
+open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
+
 
 #load @"SL\Coord.fs"
 #load @"SL\CsvOutput.fs"

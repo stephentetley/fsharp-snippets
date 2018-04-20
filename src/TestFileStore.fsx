@@ -1,8 +1,8 @@
 ﻿#I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
-#I @"..\packages\FParsec.1.0.2\lib\net40-client"
+
+#I @"..\packages\FParsec.1.0.3\lib\net40-client"
 #r "FParsec"
-#r "FParsecCS"
 
 #load @"SL\SwOutput.fs"
 #load @"SL\FileStore.fs"

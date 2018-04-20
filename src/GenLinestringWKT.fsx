@@ -6,9 +6,8 @@ open FSharp.ExcelProvider
 #r "Microsoft.Office.Interop.Excel"
 open Microsoft.Office.Interop
 
-#I @"..\packages\FParsec.1.0.2\lib\net40-client"
+#I @"..\packages\FParsec.1.0.3\lib\net40-client"
 #r "FParsec"
-#r "FParsecCS"
 
 
 #load @"SL\Tolerance.fs"

@@ -2,18 +2,20 @@
 #r "ExcelProvider.dll"
 open FSharp.ExcelProvider
 
-open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
-
-#load @"SL\Coord.fs"
-open SL.Geo
 
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
-#I @"..\packages\DocumentFormat.OpenXml.2.7.2\lib\net46\"
-#I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
-#I @"..\packages\ClosedXML.0.90.0\lib\net452\"
+
+#I @"..\packages\DocumentFormat.OpenXml.2.8.1\lib\net46"
+#I @"..\packages\FastMember.Signed.1.3.0\lib\net45"
+#I @"..\packages\ClosedXML.0.92.1\lib\net46"
 #r "ClosedXML"
+
+open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
+
+#load @"SL\Coord.fs"
 #load @"SL\ClosedXMLOutput.fs"
+open SL.Geo
 open SL.ClosedXMLOutput
 
 

@@ -1,16 +1,16 @@
-﻿#I @"..\packages\FSharp.Data.2.3.3\lib\net40"
+﻿#I @"..\packages\FSharp.Data.2.4.6\lib\net45"
 #r @"FSharp.Data.dll"
 open FSharp.Data
 
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
 
-#I @"..\packages\Npgsql.3.2.6\lib\net451\"
-#I @"..\packages\System.Threading.Tasks.Extensions.4.3.0\lib\portable-net45+win8+wp8+wpa81"
+#I @"..\packages\Npgsql.3.2.7\lib\net451"
+#I @"..\packages\System.Threading.Tasks.Extensions.4.4.0\lib\portable-net45+win8+wp8+wpa81"
 #r "Npgsql"
 open Npgsql
 
-#I @"..\packages\FParsec.1.0.2\lib\net40-client"
+#I @"..\packages\FParsec.1.0.3\lib\net40-client"
 #r "FParsec"
 #r "FParsecCS"
 

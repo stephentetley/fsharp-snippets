@@ -1,8 +1,8 @@
-﻿#I @"..\packages\FSharp.Data.2.3.3\lib\net40"
+﻿#I @"..\packages\FSharp.Data.2.4.6\lib\net45"
 #r @"FSharp.Data.dll"
 open FSharp.Data
 
-#I @"..\packages\System.Data.SQLite.Core.1.0.105.0\lib\net451"
+#I @"..\packages\System.Data.SQLite.Core.1.0.108.0\lib\net45"
 #r "System.Data.SQLite"
 open System.Data.SQLite
 
@@ -16,16 +16,20 @@ open FSharp.ExcelProvider
 
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
+
+#I @"..\packages\DocumentFormat.OpenXml.2.8.1\lib\net46"
+#I @"..\packages\FastMember.Signed.1.3.0\lib\net45"
+#I @"..\packages\ClosedXML.0.92.1\lib\net46"
+#r "ClosedXML"
+
+
 #load @"SL\AnswerMonad.fs"
 #load @"SL\SqlUtils.fs"
 #load @"SL\SQLiteConn.fs"
 open SL.AnswerMonad
 open SL.SQLiteConn
 
-#I @"..\packages\DocumentFormat.OpenXml.2.7.2\lib\net46\"
-#I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
-#I @"..\packages\ClosedXML.0.90.0\lib\net452\"
-#r "ClosedXML"
+
 #load @"SL\ClosedXMLOutput.fs"
 open SL.ClosedXMLOutput
 

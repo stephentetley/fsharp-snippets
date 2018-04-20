@@ -1,4 +1,4 @@
-﻿#I @"..\packages\FSharp.Data.2.3.3\lib\net40"
+﻿#I @"..\packages\FSharp.Data.2.4.6\lib\net45"
 #r @"FSharp.Data.dll"
 open FSharp.Data
 
@@ -10,13 +10,11 @@ open FSharp.ExcelProvider
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
 
-#load @"SL\ExcelProviderHelper.fs"
-open SL.ExcelProviderHelper
-
 
 #load @"SL\CsvOutput.fs"
+#load @"SL\ExcelProviderHelper.fs"
 open SL.CsvOutput
-
+open SL.ExcelProviderHelper
 
 type ImportTable = 
     ExcelFile< @"G:\work\Projects\events2\enva\Siblings.xlsx",

@@ -1,4 +1,4 @@
-﻿#I @"..\packages\System.Data.SQLite.Core.1.0.105.2\lib\net451"
+﻿#I @"..\packages\System.Data.SQLite.Core.1.0.108.0\lib\net45"
 #r "System.Data.SQLite"
 open System.Data.SQLite
 
@@ -10,7 +10,6 @@ open Microsoft.Office.Interop
 #r @"FSharp.Data.dll"
 open FSharp.Data
 
-
 #I @"..\packages\ExcelProvider.0.8.2\lib"
 #r "ExcelProvider.dll"
 open FSharp.ExcelProvider
@@ -19,13 +18,13 @@ open FSharp.ExcelProvider
 #r "FSharp.Data.SQLProvider.dll"
 open FSharp.Data.Sql
 
+#I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
+#r "FSharpx.Collections"
 
 
 open System
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 
-#I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
-#r "FSharpx.Collections"
 #load @"SL\AnswerMonad.fs"
 #load @"SL\SqlUtils.fs"
 #load @"SL\SQLiteConn.fs"

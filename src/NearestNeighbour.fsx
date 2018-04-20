@@ -1,4 +1,4 @@
-﻿#I @"..\packages\FSharp.Data.2.3.3\lib\net40"
+﻿#I @"..\packages\FSharp.Data.2.4.6\lib\net45"
 #r @"FSharp.Data.dll"
 open FSharp.Data
 
@@ -12,9 +12,10 @@ open Microsoft.Office.Interop
 
 #I @"..\packages\FSharpx.Collections.1.17.0\lib\net40"
 #r "FSharpx.Collections"
-#I @"..\packages\DocumentFormat.OpenXml.2.7.2\lib\net46\"
-#I @"..\packages\FastMember.Signed.1.1.0\lib\net40\"
-#I @"..\packages\ClosedXML.0.90.0\lib\net452\"
+
+#I @"..\packages\DocumentFormat.OpenXml.2.8.1\lib\net46"
+#I @"..\packages\FastMember.Signed.1.3.0\lib\net45"
+#I @"..\packages\ClosedXML.0.92.1\lib\net46"
 #r "ClosedXML"
 
 #load @"SL\CommonUtils.fs"
@@ -22,12 +23,11 @@ open Microsoft.Office.Interop
 #load @"SL\JsonExtractor.fs"
 #load @"SL\ScriptMonad.fs"
 #load @"SL\CsvOutput.fs"
+#load @"SL\CsvUtils.fs"
 #load @"SL\ClosedXMLOutput.fs"
-
 #load @"SL\Coord.fs"
-open SL.Geo
-
 #load @"SL\ExcelUtils.fs"
+open SL.Geo
 open SL.ExcelUtils
 
 // THIS IS OBSOLETE!

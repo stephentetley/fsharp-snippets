@@ -1,10 +1,9 @@
-﻿open System
-
-open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
-
-#I @"..\packages\FParsec.1.0.2\lib\net40-client"
+﻿#I @"..\packages\FParsec.1.0.3\lib\net40-client"
 #r "FParsec"
 #r "FParsecCS"
+
+open System
+open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 
 #load @"SL\Tolerance.fs"
 #load @"SL\Coord.fs"

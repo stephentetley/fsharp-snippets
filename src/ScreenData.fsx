@@ -1,9 +1,8 @@
-﻿#I @"..\packages\FSharp.Data.2.3.3\lib\net40"
+﻿#I @"..\packages\FSharp.Data.2.4.6\lib\net45"
 #r @"FSharp.Data.dll"
 open FSharp.Data
 
-
-#I @"..\packages\Newtonsoft.Json.10.0.3\lib\net45"
+#I @"..\packages\Newtonsoft.Json.11.0.2\lib\net45"
 #r "Newtonsoft.Json"
 open Newtonsoft.Json
 
