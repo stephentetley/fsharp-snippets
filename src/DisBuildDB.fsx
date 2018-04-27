@@ -30,12 +30,10 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 #load @"SL\SQLiteConn.fs"
 #load @"SL\JsonExtractor.fs"
 #load @"SL\ScriptMonad.fs"
-#load @"SL\Coord.fs"
 open SL.AnswerMonad
 open SL.SqlUtils
 open SL.SQLiteConn
 open SL.ScriptMonad
-open SL.Geo.Coord
 
 #load @"SL\ExcelProviderHelper.fs"
 open SL.ExcelProviderHelper
