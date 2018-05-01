@@ -3,6 +3,7 @@
 
 #I @"..\packages\FParsec.1.0.3\lib\net40-client"
 #r "FParsec"
+#r "FParsecCS"
 
 #load @"SL\SwOutput.fs"
 #load @"SL\FileStore.fs"

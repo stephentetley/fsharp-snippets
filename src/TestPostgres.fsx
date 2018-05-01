@@ -1,5 +1,5 @@
 ﻿#I @"..\packages\Npgsql.3.2.7\lib\net451"
-#I @"..\packages\System.Threading.Tasks.Extensions.4.4.0\lib\portable-net45+win8+wp8+wpa81"
+#I @"..\packages\System.Threading.Tasks.Extensions.4.3.0\lib\portable-net45+win8+wp8+wpa81"
 #r "Npgsql"
 open Npgsql
 

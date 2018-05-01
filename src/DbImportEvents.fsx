@@ -1,4 +1,4 @@
-﻿#I @"..\packages\System.Data.SQLite.Core.1.0.108.0\lib\net45"
+﻿#I @"..\packages\System.Data.SQLite.Core.1.0.108.0\lib\net46"
 #r "System.Data.SQLite"
 open System.Data.SQLite
 
@@ -10,7 +10,7 @@ open Microsoft.Office.Interop
 #r "ExcelProvider.dll"
 open FSharp.ExcelProvider
 
-#I @"..\packages\FSharp.Data.2.4.6\lib\net45"
+#I @"..\packages\FSharp.Data.3.0.0-beta3\lib\net45"
 #r @"FSharp.Data.dll"
 open FSharp.Data
 
@@ -30,7 +30,7 @@ open SL.AnswerMonad
 open SL.SqlUtils
 open SL.SQLiteConn
 open SL.ScriptMonad
-open SL.Geo.Coord
+// open SL.Geo.Coord
 
 #load @"SL\ExcelProviderHelper.fs"
 open SL.ExcelProviderHelper

@@ -1,8 +1,8 @@
-﻿#I @"..\packages\FSharp.Data.2.4.6\lib\net45"
+﻿#I @"..\packages\FSharp.Data.3.0.0-beta3\lib\net45"
 #r @"FSharp.Data.dll"
 open FSharp.Data
 
-#I @"..\packages\System.Data.SQLite.Core.1.0.108.0\lib\net45"
+#I @"..\packages\System.Data.SQLite.Core.1.0.108.0\lib\net46"
 #r "System.Data.SQLite"
 open System.Data.SQLite
 
