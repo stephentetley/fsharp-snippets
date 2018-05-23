@@ -171,19 +171,6 @@ let makeDbRow (cso:CsoRecord) : unit =
     row.EmergencyOverflowToI <- cso.Measurements.EmergencyOverflowToInvert
 
 
-
-let test01 () = 
-    getHawkeyeCsoRows () 
-        |> Seq.map readCsoH
-        |> Seq.iter (printfn "%A") 
-
-
-let test02 () = 
-    getPoweredSiteCsoRows () 
-        |> Seq.map (makeDbRow << readCsoPs)
-        |> Seq.iter (printfn "%A") 
-
-
 // Note - map a List not a Seq as we want to force a full traversal.
 // Also, possibly a single fail, silently fails the whole transaction.
 let dbAddCsoRecords () : unit = 
@@ -208,6 +195,59 @@ let dbDeleteCsoRecords () : int =
         |> Seq.``delete all items from single table``
         |> Async.RunSynchronously
     
+
+let dbGetAllCsoRecords () : seq<SqlCsoRow> = 
+    query { 
+        for c in sqlCtx.Main.CsoChambers do 
+        select ( c ) } |> Seq.map id
+
+[<Literal>]
+let OutputSchema = 
+    "Site Name (string), Cso Index(string), " +
+    "Roof Slab to Invert(decimal option), " + 
+    "Transducer Face to Invert(decimal option), " +
+    "Bottom of Screen to Invert(decimal option), " +
+    "Overflow to Invert(decimal option), " +
+    "Emergency Overflow to Invert(decimal option) "
+
+type CsvOutputTable = 
+    CsvProvider< Schema = OutputSchema,
+                 HasHeaders = false >
+
+type CsvOutputRow = CsvOutputTable.Row
+
+let outputToCsv (source:seq<CsvOutputRow>) (filepath:string) : unit = 
+    let table = new CsvOutputTable(source) 
+    use sw = new IO.StreamWriter(filepath)
+    sw.WriteLine "Site Name,Cso Index,Roof Slab to Invert,Transducer Face to Invert,Bottom of Screen to Invert,Overflow to Invert,Emergency Overflow to Invert"
+    table.Save(writer = sw, separator = ',', quote = '"' )
+
+let dbRowToCsvRow (dbRow:SqlCsoRow) : CsvOutputRow = 
+    new CsvOutputRow(
+            siteName = dbRow.SiteName,
+            csoIndex = dbRow.CsoIndex,
+            roofSlabToInvert = dbRow.RoofSlabToI,
+            transducerFaceToInvert = dbRow.TransducerFaceToI,
+            bottomOfScreenToInvert = dbRow.ScreenBottomToI,
+            overflowToInvert = dbRow.OverflowToI,
+            emergencyOverflowToInvert = dbRow.EmergencyOverflowToI
+            )
+    
+    
+let test01 () = 
+    getHawkeyeCsoRows () 
+        |> Seq.map readCsoH
+        |> Seq.iter (printfn "%A") 
+
+
+let test02 () = 
+    getPoweredSiteCsoRows () 
+        |> Seq.map (makeDbRow << readCsoPs)
+        |> Seq.iter (printfn "%A") 
+
+let testCsv () = 
+    let rows = dbGetAllCsoRecords () |> Seq.map dbRowToCsvRow
+    outputToCsv rows @"G:\work\Projects\events2\telemetry-enhancements\cso-measurements.csv"
 
 let testAdd1 (name:string) : unit = 
     let row1 = sqlCsoChambers.``Create(cso_index, site_name)`` ("CSO(1)", name)
