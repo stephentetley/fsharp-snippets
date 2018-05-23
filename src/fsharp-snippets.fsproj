@@ -63,7 +63,6 @@
     <None Include="DocSoup\OldTestRange.fsx" />
     <Compile Include="SL\CommonUtils.fs" />
     <Compile Include="SL\StringUtils.fs" />
-    <Compile Include="SL\Tolerance.fs" />
     <Compile Include="SL\AnswerMonad.fs" />
     <Compile Include="SL\NameGen.fs" />
     <Compile Include="SL\ExcelProviderHelper.fs" />
@@ -102,6 +101,7 @@
     <None Include="ERReportBuildDB.fsx" />
     <None Include="ERReportRun.fsx" />
     <None Include="DisBuildDB.fsx" />
+    <None Include="TEDataExplore.fsx" />
     <COMReference Include="Microsoft Excel 16.0 Object Library">
       <Guid>{00020813-0000-0000-c000-000000000046}</Guid>
       <VersionMajor>1</VersionMajor>
