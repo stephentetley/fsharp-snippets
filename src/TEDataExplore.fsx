@@ -94,11 +94,11 @@ type SqlCsoRow = SqlDB.dataContext.``main.cso_chambersEntity``
 // *************************************
 
 type CsoMeasurements  = 
-    { RoofSlabToInvert: float<meter> 
-      TransducerFaceToInvert: float<meter> 
-      ScreenBottomToInvert: float<meter>
-      OverflowToInvert: float<meter>
-      EmergencyOverflowToInvert: float<meter> }
+    { RoofSlabToInvert: decimal option
+      TransducerFaceToInvert: decimal option
+      ScreenBottomToInvert: decimal option
+      OverflowToInvert: decimal option
+      EmergencyOverflowToInvert: decimal option }
 
 type CsoRecord = 
     { SiteName: string
@@ -106,62 +106,57 @@ type CsoRecord =
       Measurements: CsoMeasurements }
 
 
-let readWithZeroDefault (s:string) : float<meter> = 
+let readOptDecimal (s:string) : decimal option = 
     try
-        System.Convert.ToDouble(s) * 1.0<meter>
+        Some <| System.Convert.ToDecimal(s)
     with
-    | _ -> 0.0<meter>
+    | _ -> None
 
 let readCsoH (row:HawkeyeCsoRow) : CsoRecord = 
     let measurements = 
-        { RoofSlabToInvert = readWithZeroDefault row.``ROOF SLAB TO INVERT``
-          TransducerFaceToInvert = readWithZeroDefault row.``UNDERSIDE OF U/S FACE TO INVERT ``
-          ScreenBottomToInvert = 0.0<meter>
-          OverflowToInvert = readWithZeroDefault row.``OVERFLOW LEVEL TO INVERT``
-          EmergencyOverflowToInvert = readWithZeroDefault row.``EMERGENCY OVERFLOW LEVEL TO INVERT``
+        { RoofSlabToInvert = readOptDecimal row.``ROOF SLAB TO INVERT``
+          TransducerFaceToInvert = readOptDecimal row.``UNDERSIDE OF U/S FACE TO INVERT ``
+          ScreenBottomToInvert = None
+          OverflowToInvert = readOptDecimal row.``OVERFLOW LEVEL TO INVERT``
+          EmergencyOverflowToInvert = readOptDecimal row.``EMERGENCY OVERFLOW LEVEL TO INVERT``
           }
     { SiteName = row.Site
       CsoIndex = "CSO(1)"
       Measurements = measurements }
 
-let readBest (oldVal:string) (newVal:string): float<meter> = 
+let readBestDecimal (oldVal:string) (newVal:string): decimal option = 
     try
-        System.Convert.ToDouble(newVal) * 1.0<meter>
+        Some <| System.Convert.ToDecimal(newVal)
     with
     | _ -> 
         try 
-            System.Convert.ToDouble(oldVal) * 1.0<meter>
+            Some <| System.Convert.ToDecimal(oldVal) 
         with 
-        | _ -> 0.0<meter>
+        | _ -> None
 
 
 let readCsoPs (row:PoweredSiteCsoRow) : CsoRecord = 
     let measurements = 
         { RoofSlabToInvert = 
-                readBest row.``Old ROOF SLAB TO INVERT`` row.``New ROOF SLAB TO INVERT``
+                readBestDecimal row.``Old ROOF SLAB TO INVERT`` row.``New ROOF SLAB TO INVERT``
       
           TransducerFaceToInvert = 
-                readBest row.``New UNDERSIDE OF U/S TO INVERT`` row.``Old UNDERSIDE OF U/S TO INVERT``
+                readBestDecimal row.``New UNDERSIDE OF U/S TO INVERT`` row.``Old UNDERSIDE OF U/S TO INVERT``
       
           ScreenBottomToInvert = 
-                readBest row.``Old BOTTOM OF SCREEN TO INVERT`` row.``New BOTTOM OF SCREEN TO INVERT``
+                readBestDecimal row.``Old BOTTOM OF SCREEN TO INVERT`` row.``New BOTTOM OF SCREEN TO INVERT``
       
           OverflowToInvert = 
-                readBest row.``Old OVERFLOW LEVEL TO INVERT`` row.``New OVERFLOW LEVEL TO INVERT``
+                readBestDecimal row.``Old OVERFLOW LEVEL TO INVERT`` row.``New OVERFLOW LEVEL TO INVERT``
       
           EmergencyOverflowToInvert = 
-            readBest row.``Old EMERGENCY OVERFLOW LEVEL TO INVERT`` row.``New EMERGENCY OVERFLOW LEVEL TO INVERT``
+                readBestDecimal row.``Old EMERGENCY OVERFLOW LEVEL TO INVERT`` row.``New EMERGENCY OVERFLOW LEVEL TO INVERT``
           }
     { SiteName = row.Site
       CsoIndex = row.CSO
       Measurements = measurements }
       
       
-let optionMeasure (d:float<meter>) : decimal option = 
-    if d <= 0.0<meter> then 
-        None 
-    else
-        Some (decimal d)
 
 
 
@@ -169,7 +164,11 @@ let makeDbRow (cso:CsoRecord) : unit =
     let row = sqlCsoChambers.Create()
     row.SiteName <- cso.SiteName
     row.CsoIndex <- cso.CsoIndex
-    row.RoofSlabToI <- optionMeasure cso.Measurements.RoofSlabToInvert
+    row.RoofSlabToI <- cso.Measurements.RoofSlabToInvert
+    row.TransducerFaceToI <- cso.Measurements.TransducerFaceToInvert
+    row.ScreenBottomToI <- cso.Measurements.ScreenBottomToInvert
+    row.OverflowToI <- cso.Measurements.OverflowToInvert
+    row.EmergencyOverflowToI <- cso.Measurements.EmergencyOverflowToInvert
 
 
 
@@ -187,12 +186,28 @@ let test02 () =
 
 // Note - map a List not a Seq as we want to force a full traversal.
 // Also, possibly a single fail, silently fails the whole transaction.
-let dbAddRecords () : unit = 
+let dbAddCsoRecords () : unit = 
     getHawkeyeCsoRows () 
         |> Seq.toList
         |> List.map (makeDbRow << readCsoH) 
         |> ignore
     sqlCtx.SubmitUpdates ()
+
+    getPoweredSiteCsoRows () 
+        |> Seq.toList
+        |> List.map (makeDbRow << readCsoPs) 
+        |> ignore
+    sqlCtx.SubmitUpdates ()
+
+
+let dbDeleteCsoRecords () : int = 
+    query { 
+        for c in sqlCtx.Main.CsoChambers do 
+        where (c.SiteName <> "")
+        } 
+        |> Seq.``delete all items from single table``
+        |> Async.RunSynchronously
+    
 
 let testAdd1 (name:string) : unit = 
     let row1 = sqlCsoChambers.``Create(cso_index, site_name)`` ("CSO(1)", name)
