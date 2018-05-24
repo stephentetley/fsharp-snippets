@@ -79,11 +79,23 @@ let rtuTrim () =
     let output = @"G:\work\Projects\rtu\RTS-outstations-report.trim.csv"
     let options = 
         { InputSeparator = "\t"
-          InputHasHeaders = false
+          InputHasHeaders = true
           OutputSeparator = "," }
     trimCsvFile options input output
 
+    // [1] It is really whether or not to read the first row as headers 
+    // and ignore it.
 
+
+
+let rtuTrim2 () = 
+    let input  = @"G:\work\Projects\rtu\RTS-outstations-report.tab.csv"
+    let output = @"G:\work\Projects\rtu\RTS-outstations-report.trim2.csv"
+    let options = 
+        { InputSeparator = "\t"
+          InputHasHeaders = false // This is badly named [1]
+          OutputSeparator = "," }
+    trimCsvFile2 options input output
 
 
 // Don't use type provider as input has type errors...
