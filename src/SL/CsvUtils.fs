@@ -5,6 +5,7 @@ open FSharp.Data
 
 open SL.CsvOutput
 
+
 type CsvTrimOptions = 
     { InputSeparator: string
       InputHasHeaders: bool
@@ -26,4 +27,5 @@ let trimCsvFile (options:CsvTrimOptions) (inputFile:string) (outputFile:string) 
         
     SL.CsvOutput.outputToNew {Separator=options.OutputSeparator} procM outputFile    
 
-
+// Trying to use CsvProvider to to write "untyped" output has proved
+// to be fruitlessly complex. Our own CsvOutput module is fine.

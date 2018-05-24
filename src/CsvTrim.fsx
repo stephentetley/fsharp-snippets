@@ -84,6 +84,8 @@ let rtuTrim () =
     trimCsvFile options input output
 
 
+
+
 // Don't use type provider as input has type errors...
 //type RtuInput = 
 //    CsvProvider< Sample = @"G:\work\Projects\rtu\RTS-outstations-report.tab.csv",
