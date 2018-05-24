@@ -102,6 +102,7 @@
     <None Include="ERReportRun.fsx" />
     <None Include="DisBuildDB.fsx" />
     <None Include="TEDataExplore.fsx" />
+    <None Include="RTUDataExplore.fsx" />
     <COMReference Include="Microsoft Excel 16.0 Object Library">
       <Guid>{00020813-0000-0000-c000-000000000046}</Guid>
       <VersionMajor>1</VersionMajor>

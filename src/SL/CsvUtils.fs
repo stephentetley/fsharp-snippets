@@ -12,6 +12,7 @@ type CsvTrimOptions =
       OutputSeparator: string }
 
 /// This one uses SL.CsvOutput.
+/// Note - input text inside double quotes is not trimmed.
 let trimCsvFile (options:CsvTrimOptions) (inputFile:string) (outputFile:string) : unit =
     let truncRow (row:CsvRow) : RowWriter = 
         row.Columns 
@@ -48,6 +49,7 @@ let private optQuote(s:string) : string =
 
 
 /// This one writes directly to a StreamWriter.
+/// Note - input text inside double quotes is not trimmed.
 let trimCsvFile2 (options:CsvTrimOptions) (inputFile:string) (outputFile:string) : unit =
     let rowToTrimmedString (row:string []) : string = 
         let sep = options.OutputSeparator

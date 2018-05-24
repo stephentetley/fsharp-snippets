@@ -39,7 +39,7 @@ open SL.ExcelProviderHelper
 
 
 type HawkeyeCsoTable = 
-    ExcelFile< @"G:\work\Projects\events2\telemetry-enhancements\hawkeyes-edit.xlsx",
+    ExcelFile< @"G:\work\Projects\events2\data\telemetry-enhancements\hawkeyes-edit.xlsx",
                 SheetName = "CSO",
                 ForceString = true >
 
@@ -54,7 +54,7 @@ let getHawkeyeCsoRows () : seq<HawkeyeCsoRow> =
 
 
 type PoweredSiteCsoTable = 
-    ExcelFile< @"G:\work\Projects\events2\telemetry-enhancements\powered-sites-edit.xlsx",
+    ExcelFile< @"G:\work\Projects\events2\data\telemetry-enhancements\powered-sites-edit.xlsx",
                 SheetName = "CSO",
                 ForceString = true >
 
@@ -71,7 +71,7 @@ let getPoweredSiteCsoRows () : seq<PoweredSiteCsoRow> =
 
 
 let [<Literal>] ResolutionPath1 = __SOURCE_DIRECTORY__ + @"\..\packages\System.Data.SQLite.Core.1.0.105.0\lib\net451"
-let [<Literal>] ConnectionString1 = @"Data Source=G:\work\Projects\events2\telemetry-enhancements\te_measurements.sqlite3;Version=3"
+let [<Literal>] ConnectionString1 = @"Data Source=G:\work\Projects\events2\data\telemetry-enhancements\te_measurements.sqlite3;Version=3"
 
 
 type SqlDB = 
