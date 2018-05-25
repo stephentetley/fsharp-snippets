@@ -230,10 +230,13 @@ let temp05 () = runrun parseScalings "2000=-20.0000, 16000=85.0000"
 
 // "OS HH=1.0/A/2/I HI=Discard LO=Discard LL=Discard TDB=60s"
 
-let temp06 () = runrun parseAlarmParameters @"DG OFF/E ON/E TDB=60s"
+let temp06 ()  = runrun parseAlarmParameters @"DG OFF/E ON/E TDB=60s"
 let temp06a () = runrun parseAlarmParameters @"OS HH=1.0/A/2/I HI=Discard LO=Discard LL=Discard TDB=60s"
 let temp06b () = runrun parseAlarmParameters @"DG TDB=60s"
+let temp06c () = runrun parseAlarmParameters @"OS HH=3.50000/A/2/I HI=3.30000/A/2/I LO=1.70000/E/3/N LL=1.50000/E/3/N Dead=0.05000 TDB=300s"
 
 
+// "Val@15M(45d:A),1H(45d:A)"
 // "Log@24H(8d:A)  Val@15M(8d:A)"
-let temp07 () = runrun parserRecordingInfos "Log@24H(8d:A)  Val@15M(8d:A)"
+let temp07 ()  = runrun parserRecordingInfos @"Log@24H(8d:A)  Val@15M(8d:A)"
+let temp07a () = runrun parserRecordingInfos @"Val@15M(45d:A),1H(45d:A)"

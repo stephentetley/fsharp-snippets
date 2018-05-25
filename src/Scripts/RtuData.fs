@@ -17,9 +17,22 @@ type Scaling = int * decimal
 
 type AlarmLocation = AlarmOS | AlarmDG
 
+
+// E.g "UNAVAIL" "E"
+type MnemonicAlarmParam = 
+    { MnemonicName: string
+      AlarmLimit: string } 
+
+type SourceAlarmParam = 
+    { AlarmSource: string
+      AlarmLimit: string
+      PrAc: string option }
+
+
+
 type AlarmParam = 
-    | LimitAlarm of string * string
-    | StatusAlarm of string * string
+    | MnemonicParam of MnemonicAlarmParam
+    | SourceParam of SourceAlarmParam
 
 type AlarmParameters = 
     { Location: AlarmLocation
@@ -28,14 +41,18 @@ type AlarmParameters =
 type RecordingCycleUnit = CycleM | CycleH
 
 type RecordingCycleTime = 
-    { CycleTime: int
+    { TimeValue: int
       CycleUnit: RecordingCycleUnit }
 
 /// Tag is "(8d:A)" or similar, for the moment it is uninterpreted
+type RecordingCycle = 
+    { CycleTime: RecordingCycleTime
+      CycleTag: string }
+
+
 type RecordingInfo = 
     { VarName: string
-      Cycle: RecordingCycleTime
-      Tag: string }
+      RecordingCycles: RecordingCycle list }
 
 // *************************************** 
 // Parsers
@@ -45,6 +62,8 @@ type RecordingInfo =
 let private (|||) (f:char -> bool) (g:char -> bool) : char -> bool = 
     fun ch -> f ch || g ch
 
+let private (&&&) (f:char -> bool) (g:char -> bool) : char -> bool = 
+    fun ch -> f ch && g ch
 
 let pdecimal : Parser<decimal,unit> = pfloat |>> decimal
 
@@ -96,23 +115,38 @@ let parseAlarmLocation : Parser<AlarmLocation, unit> =
     (pstring "OS" |>> fun _ -> AlarmOS)  <|>
     (pstring "DG" |>> fun _ -> AlarmDG) 
 
-let parseLimitAlarm : Parser<AlarmParam, unit> = 
-    let generalLimit : Parser<string,unit> = 
-        many1Satisfy (not << System.Char.IsWhiteSpace) 
+let private sourceLimit : Parser<string * (string option), unit> = 
+    let make2 (s:string) (t:string) : string = 
+        sprintf "%s/%s" s t
 
+    let segment : Parser<string,unit> = 
+        many1Satisfy <|
+            ((not << System.Char.IsWhiteSpace) &&& (fun ch -> ch<>'/'))
+
+    let post (ss:string list) = 
+        match ss with
+        | [a;b;c;d] -> (make2 a b, Some <| make2 c d)
+        | [a;b] -> (make2 a b, None)
+        | _ -> (String.concat "/" ss, None)
+
+    sepBy1 segment (pchar '/') |>> post
+
+let parseSourceAlarmParam : Parser<SourceAlarmParam, unit> = 
     pipe2 (identifier .>> pchar '=')
-            generalLimit
-            (fun name limit -> LimitAlarm(name,limit))
+            sourceLimit
+            (fun name (limit,opt) -> 
+                { AlarmSource = name; AlarmLimit = limit; PrAc = opt})
 
-let parseStatusAlarm : Parser<AlarmParam, unit> = 
+let parseMnemonicAlarmParam: Parser<MnemonicAlarmParam, unit> = 
     pipe2 (identifier .>> pchar '/')
             identifier
-            (fun a b -> StatusAlarm(a,b))
+            (fun name limit -> {MnemonicName = name; AlarmLimit = limit})
 
 
 /// Needs backtracking            
 let parseAlarmParam : Parser<AlarmParam, unit> = 
-    (attempt parseStatusAlarm) <|> parseLimitAlarm
+    (attempt parseMnemonicAlarmParam |>> MnemonicParam) <|> 
+    (parseSourceAlarmParam |>> SourceParam)
 
 let parseAlarmParameters : Parser<AlarmParameters, unit> = 
     pipe2 (parseAlarmLocation .>> spaces1) 
@@ -127,16 +161,24 @@ let parseRecordingCycleUnit : Parser<RecordingCycleUnit, unit> =
 let parseRecordingCycleTime : Parser<RecordingCycleTime, unit> = 
     pipe2 pint32 
             parseRecordingCycleUnit
-            (fun i u -> {CycleTime = i; CycleUnit = u})
+            (fun i u -> {TimeValue = i; CycleUnit = u})
+
+let parseRecordingCycle : Parser<RecordingCycle, unit> = 
+    let pTag : Parser<string,unit> =
+        parens (many1Satisfy (System.Char.IsLetterOrDigit ||| (fun c -> c=':')) )
+
+    pipe2 parseRecordingCycleTime
+            pTag
+            ( fun cytime tag -> { CycleTime = cytime; CycleTag = tag})
+
 
 let parserRecordingInfo : Parser<RecordingInfo, unit> = 
     let pTag : Parser<string,unit> =
         parens (many1Satisfy (System.Char.IsLetterOrDigit ||| (fun c -> c=':')) )
 
-    pipe3 (identifier .>> pchar '@')
-            parseRecordingCycleTime
-            pTag
-            (fun name rct tag -> {VarName = name; Cycle = rct; Tag = tag})
+    pipe2 (identifier .>> pchar '@')
+            (sepBy parseRecordingCycle (pchar ','))
+            (fun name cys -> {VarName = name; RecordingCycles = cys})
 
 let parserRecordingInfos : Parser<RecordingInfo list, unit> = 
     sepBy1 parserRecordingInfo spaces1

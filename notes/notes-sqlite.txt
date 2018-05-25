@@ -2,7 +2,7 @@
 Notes
 -----
 
-In sqlite favour TEXT rather than STRING as STRING data may be coerced to an numeric type
+In sqlite favour TEXT rather than STRING as STRING data may be coerced to a numeric type
 if it is number-like.
 
 If you are doing everything with just raw SQL you only need System.Data.SQLite Core:
@@ -22,11 +22,11 @@ http://sqlite.1065341.n5.nabble.com/When-to-open-close-connections-td75340.html
 To add a reference to System.Data, right click on 'References'; click "Add Reference..." and find 'System.Data' in 
 Assemblies > Framework.
 
-Porbably should use a transaction to increse speed...
+Probably should use transactions to increase speed...
 https://www.devart.com/dotconnect/sqlite/docs/Devart.Data.SQLite~Devart.Data.SQLite.SQLiteTransaction.html
 
 See this answer that shows how to create databases:
 https://stackoverflow.com/questions/15292880/create-sqlite-database-and-table
-Note however, creating tables with SQL is much more tractable than creating them with functions.
+Note, creating tables with SQL is much more tractable than creating them with functions.
 
 
