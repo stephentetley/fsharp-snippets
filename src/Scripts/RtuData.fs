@@ -17,6 +17,26 @@ type Scaling = int * decimal
 
 type AlarmLocation = AlarmOS | AlarmDG
 
+type AlarmParam = 
+    | LimitAlarm of string * string
+    | StatusAlarm of string * string
+
+type AlarmParameters = 
+    { Location: AlarmLocation
+      Parameters: AlarmParam list } 
+
+type RecordingCycleUnit = CycleM | CycleH
+
+type RecordingCycleTime = 
+    { CycleTime: int
+      CycleUnit: RecordingCycleUnit }
+
+/// Tag is "(8d:A)" or similar, for the moment it is uninterpreted
+type RecordingInfo = 
+    { VarName: string
+      Cycle: RecordingCycleTime
+      Tag: string }
+
 // *************************************** 
 // Parsers
 
@@ -27,6 +47,13 @@ let private (|||) (f:char -> bool) (g:char -> bool) : char -> bool =
 
 
 let pdecimal : Parser<decimal,unit> = pfloat |>> decimal
+
+
+let parens (p:Parser<'a, unit>) : Parser<'a, unit> = 
+    between (pchar '(' .>> spaces) (pchar ')') p
+
+let identifier : Parser<string,unit> = many1Satisfy System.Char.IsLetter
+
 
 
 let parsePointDerived : Parser<PointTag,unit> = 
@@ -69,11 +96,50 @@ let parseAlarmLocation : Parser<AlarmLocation, unit> =
     (pstring "OS" |>> fun _ -> AlarmOS)  <|>
     (pstring "DG" |>> fun _ -> AlarmDG) 
 
-// TO COMPLETE!
-let parseAlarmParameters : Parser<AlarmLocation * string, unit> = 
-    tuple2 (parseAlarmLocation .>> spaces1) (restOfLine false)
+let parseLimitAlarm : Parser<AlarmParam, unit> = 
+    let generalLimit : Parser<string,unit> = 
+        many1Satisfy (not << System.Char.IsWhiteSpace) 
+
+    pipe2 (identifier .>> pchar '=')
+            generalLimit
+            (fun name limit -> LimitAlarm(name,limit))
+
+let parseStatusAlarm : Parser<AlarmParam, unit> = 
+    pipe2 (identifier .>> pchar '/')
+            identifier
+            (fun a b -> StatusAlarm(a,b))
 
 
+/// Needs backtracking            
+let parseAlarmParam : Parser<AlarmParam, unit> = 
+    (attempt parseStatusAlarm) <|> parseLimitAlarm
+
+let parseAlarmParameters : Parser<AlarmParameters, unit> = 
+    pipe2 (parseAlarmLocation .>> spaces1) 
+            (sepBy parseAlarmParam spaces1)
+            (fun loc ps -> {Location = loc; Parameters = ps})
+
+
+let parseRecordingCycleUnit : Parser<RecordingCycleUnit, unit> = 
+    (pchar 'H' |>> fun _ -> CycleH)  <|>
+    (pchar 'M' |>> fun _ -> CycleM) 
+
+let parseRecordingCycleTime : Parser<RecordingCycleTime, unit> = 
+    pipe2 pint32 
+            parseRecordingCycleUnit
+            (fun i u -> {CycleTime = i; CycleUnit = u})
+
+let parserRecordingInfo : Parser<RecordingInfo, unit> = 
+    let pTag : Parser<string,unit> =
+        parens (many1Satisfy (System.Char.IsLetterOrDigit ||| (fun c -> c=':')) )
+
+    pipe3 (identifier .>> pchar '@')
+            parseRecordingCycleTime
+            pTag
+            (fun name rct tag -> {VarName = name; Cycle = rct; Tag = tag})
+
+let parserRecordingInfos : Parser<RecordingInfo list, unit> = 
+    sepBy1 parserRecordingInfo spaces1
 
 // *************************************** 
 // Printers

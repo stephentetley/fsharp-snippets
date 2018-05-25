@@ -89,6 +89,21 @@ type SqlPointDataRow = SqlDB.dataContext.``main.point_dataEntity``
 
 let sqlPointData : SqlPointDataTable = sqlCtx.Main.PointData
 
+
+
+let trimTabSepFile (inputPath:string) : unit = 
+    let name1 = System.IO.FileInfo(inputPath).Name
+    let path1 = System.IO.FileInfo(inputPath).Directory.FullName
+    let name2 = name1.Replace(".tab.", ".trim.")
+    let outputPath = System.IO.Path.Combine(path1,name2)
+    let options = 
+        { InputSeparator = "\t"
+          InputHasHeaders = true
+          OutputSeparator = "," }
+    trimCsvFile options inputPath outputPath
+
+
+
 let nullToOption (s:string) : Option<string> = 
     match s with
     | null -> None
@@ -191,10 +206,6 @@ let setupDB () : unit =
     dbAddPointRecords  @"G:\work\Projects\events2\data\rtu-data\rtu-tad-all-points.trim.csv"
 
 
-
-
-
-
 let runrun (p:Parser<'a,unit>) (input:string) : option<'a> = 
     match run p input with
     | Success(a,_,_) -> Some a
@@ -202,23 +213,27 @@ let runrun (p:Parser<'a,unit>) (input:string) : option<'a> =
 
 let temp01 () = readDTI "C    A    1"
 
-//let temp02 () : unit = 
-//    query { 
-//        for c in sqlCtx.Main.PointData do 
-//        select (c.TypeAndIx) 
-//        } |> Seq.iter (Option.iter (printfn "%A" << readDTI))
+let temp02 () : unit = 
+    query { 
+        for c in sqlCtx.Main.PointData do 
+        select (c.PointType, c.PointIndex) 
+        } |> Seq.iter (printfn "%A")
+
 
 
 let temp03 () = 
-    let input  = @"G:\work\Projects\events2\data\rtu-data\rtu-S_WW_LEE-points.tab.csv"
-    let output = @"G:\work\Projects\events2\data\rtu-data\rtu-S_WW_LEE-points.trim.csv"
-    let options = 
-        { InputSeparator = "\t"
-          InputHasHeaders = true
-          OutputSeparator = "," }
-    trimCsvFile options input output
+    trimTabSepFile @"G:\work\Projects\events2\data\rtu-data\rtu-S_WW_LEE-points.tab.csv"
+
 
 let temp04 () = runrun parseMnemonics "ISOLATED POWER_ON"
 let temp05 () = runrun parseScalings "2000=-20.0000, 16000=85.0000"
 
-let temp06 () = runrun parseAlarmParameters "DG OFF/E ON/E TDB=60s"
+// "OS HH=1.0/A/2/I HI=Discard LO=Discard LL=Discard TDB=60s"
+
+let temp06 () = runrun parseAlarmParameters @"DG OFF/E ON/E TDB=60s"
+let temp06a () = runrun parseAlarmParameters @"OS HH=1.0/A/2/I HI=Discard LO=Discard LL=Discard TDB=60s"
+let temp06b () = runrun parseAlarmParameters @"DG TDB=60s"
+
+
+// "Log@24H(8d:A)  Val@15M(8d:A)"
+let temp07 () = runrun parserRecordingInfos "Log@24H(8d:A)  Val@15M(8d:A)"
