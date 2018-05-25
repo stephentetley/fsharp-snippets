@@ -82,6 +82,7 @@
     <Compile Include="SL\ExcelUtils.fs" />
     <Compile Include="Scripts\Grouping.fs" />
     <Compile Include="Scripts\TotalOrder.fs" />
+    <Compile Include="Scripts\RtuData.fs" />
     <None Include="CsvTrim.fsx" />
     <None Include="TotalOrder1.fsx" />
     <None Include="TotalOrder2.fsx" />

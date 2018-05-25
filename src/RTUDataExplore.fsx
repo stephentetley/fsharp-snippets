@@ -38,11 +38,13 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 #load @"SL\ScriptMonad.fs"
 #load @"SL\CsvOutput.fs"
 #load @"SL\CsvUtils.fs"
+#load @"Scripts\RtuData.fs"
 open SL.AnswerMonad
 open SL.SqlUtils
 open SL.SQLiteConn
 open SL.ScriptMonad
 open SL.CsvUtils
+open Scripts.RtuData
 
 type OsReport = 
     CsvProvider< 
@@ -115,15 +117,28 @@ let splitOsPoint (s:string) : string * string =
     else 
         "", ""
 
+
+let readDTI (input:string) : option<QualifiedType * int> = 
+    match run parseDerTypNo input with
+    | Success(a,_,_) -> Some a
+    | Failure(s,_,_) -> failwithf "dti - %s" input //  printfn "%s" s; None
+
+
 // Need to edit the input to remove (@) 
 let makeSqlPointDataRow (csvRow:PointReportRow) : unit = 
     let trimOption = Option.map (fun (s:string) -> s.Trim())
     let row = sqlPointData.Create()
     let os,point = splitOsPoint csvRow.``OS\Point name``
+
     row.OsName <- os
     row.PointName <- point
     row.PointComment <- trimOption << nullToOption <| csvRow.``Point comment``.Trim()
-    row.TypeAndIx <- trimOption << nullToOption <| csvRow.``Der. Typ. No``
+    match csvRow.``Der. Typ. No`` |> nullToOption |> Option.bind readDTI with
+    | Some(qt,ix) ->
+        row.PointIndex <- Some <| int64 ix
+        row.PointType <- Some <| longhandQualifiedType qt
+    | None -> () 
+
     row.OdName <- trimOption << nullToOption <| csvRow.``OD name``
     row.PointFunction <- trimOption << nullToOption <| csvRow.Function
     row.RecordingInfo <- trimOption << nullToOption <| csvRow.``Recording & timebase (on DG: on archive)``
@@ -141,12 +156,14 @@ let dbAddOsRecords () : unit =
     sqlCtx.SubmitUpdates ()
 
 
-let dbAddPointRecords () : unit = 
-    (new PointReport()).Rows 
+let dbAddPointRecords (csvFilePath:String) : unit =
+    let csvData = PointReport.Load(csvFilePath)
+    csvData.Rows
         |> Seq.toList
         |> List.map makeSqlPointDataRow
         |> ignore
     sqlCtx.SubmitUpdates ()
+    
 
 let dbDeleteOsRecords () : int = 
     query { 
@@ -170,60 +187,13 @@ let setupDB () : unit =
     dbDeleteOsRecords () |> ignore
     dbDeletePointRecords () |> ignore
     dbAddOsRecords ()
-    dbAddPointRecords () 
+    dbAddPointRecords  @"G:\work\Projects\events2\data\rtu-data\rtu-S_WW_LEE-points.trim.csv"
+    dbAddPointRecords  @"G:\work\Projects\events2\data\rtu-data\rtu-tad-all-points.trim.csv"
 
-type PointDerived = Real | Derived | Calculated
 
-/// S A I
-type PointType = Analogue | Status | Integrated
 
-let pointDerived : Parser<PointDerived,unit> = 
-    (pchar 'D' |>> fun _ -> Derived)        <|> 
-    (pchar 'R' |>> fun _ -> Real)           <|>
-    (pchar 'C' |>> fun _ -> Calculated)
 
-let pointType : Parser<PointType,unit> = 
-    (pchar 'S' |>> fun _ -> Status)   <|> 
-    (pchar 'A' |>> fun _ -> Analogue)   <|>
-    (pchar 'I' |>> fun _ -> Integrated)
 
-let parseDTI : Parser<PointDerived * PointType * int, unit> = 
-    tuple3 (pointDerived .>> spaces) (pointType .>> spaces) pint32
-
-let (|||) (f:char -> bool) (g:char -> bool) : char -> bool = 
-    fun ch -> f ch || g ch
-
-let mnemonic1 : Parser<string,unit> = 
-    many1Satisfy2 (System.Char.IsUpper) 
-                    (System.Char.IsLetterOrDigit ||| (fun c -> c='_')) 
-
-let mnemonics : Parser<string list, unit> = 
-    sepBy1 mnemonic1 spaces1
-
-let pdecimal = pfloat |>> decimal
-
-type Scaling = int * decimal
-
-let scaling1 : Parser<Scaling,unit> = 
-    tuple2 (pint32 .>> pchar '=') pdecimal
-
-let scalings : Parser<Scaling list,unit> = 
-    sepBy1 scaling1 (pchar ',' .>> spaces1)
-
-type AlarmLocation = OS | DG
-
-let alarmLocation : Parser<AlarmLocation, unit> = 
-    (pstring "OS" |>> fun _ -> OS)  <|>
-    (pstring "DG" |>> fun _ -> DG) 
-
-// TO COMPLETE!
-let alarmParameters : Parser<AlarmLocation * string, unit> = 
-    tuple2 (alarmLocation .>> spaces1) (restOfLine false)
-
-let readDTI (input:string) : option<PointDerived * PointType * int> = 
-    match run parseDTI input with
-    | Success(a,_,_) -> Some a
-    | Failure(s,_,_) -> failwithf "dti - %s" input //  printfn "%s" s; None
 
 let runrun (p:Parser<'a,unit>) (input:string) : option<'a> = 
     match run p input with
@@ -232,23 +202,23 @@ let runrun (p:Parser<'a,unit>) (input:string) : option<'a> =
 
 let temp01 () = readDTI "C    A    1"
 
-let temp02 () : unit = 
-    query { 
-        for c in sqlCtx.Main.PointData do 
-        select (c.TypeAndIx) 
-        } |> Seq.iter (Option.iter (printfn "%A" << readDTI))
+//let temp02 () : unit = 
+//    query { 
+//        for c in sqlCtx.Main.PointData do 
+//        select (c.TypeAndIx) 
+//        } |> Seq.iter (Option.iter (printfn "%A" << readDTI))
 
 
 let temp03 () = 
-    let input  = @"G:\work\Projects\events2\data\rtu-data\rtu-tad-all-points.tab.csv"
-    let output = @"G:\work\Projects\events2\data\rtu-data\rtu-tad-all-points.trim.csv"
+    let input  = @"G:\work\Projects\events2\data\rtu-data\rtu-S_WW_LEE-points.tab.csv"
+    let output = @"G:\work\Projects\events2\data\rtu-data\rtu-S_WW_LEE-points.trim.csv"
     let options = 
         { InputSeparator = "\t"
           InputHasHeaders = true
           OutputSeparator = "," }
     trimCsvFile options input output
 
-let temp04 () = runrun mnemonics "ISOLATED POWER_ON"
-let temp05 () = runrun scalings "2000=-20.0000, 16000=85.0000"
+let temp04 () = runrun parseMnemonics "ISOLATED POWER_ON"
+let temp05 () = runrun parseScalings "2000=-20.0000, 16000=85.0000"
 
-let temp06 () = runrun alarmParameters "DG OFF/E ON/E TDB=60s"
+let temp06 () = runrun parseAlarmParameters "DG OFF/E ON/E TDB=60s"
