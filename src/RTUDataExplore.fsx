@@ -240,3 +240,9 @@ let temp06c () = runrun parseAlarmParameters @"OS HH=3.50000/A/2/I HI=3.30000/A/
 // "Log@24H(8d:A)  Val@15M(8d:A)"
 let temp07 ()  = runrun parserRecordingInfos @"Log@24H(8d:A)  Val@15M(8d:A)"
 let temp07a () = runrun parserRecordingInfos @"Val@15M(45d:A),1H(45d:A)"
+let temp07b () = runrun parserRecordingInfos @"Val@15M(8d:A) Ave@15M(8d:A),24H(8d:A)"
+
+
+let temp08 () = 
+    printfn "%s" <| ("hello".PadRight 32) + "world!"
+    printfn "%s" <| ("a string that is a bit".PadRight 32) + "longer"

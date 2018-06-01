@@ -53,14 +53,6 @@
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
-    <Compile Include="DocSoup\Base.fs" />
-    <Compile Include="DocSoup\DocMonad.fs" />
-    <Compile Include="DocSoup\OldRangeOperations.fs" />
-    <Compile Include="DocSoup\OldRegions.fs" />
-    <Compile Include="DocSoup\OldExtractors.fs" />
-    <None Include="DocSoup\TestWord1.fsx" />
-    <None Include="DocSoup\OldTest1.fsx" />
-    <None Include="DocSoup\OldTestRange.fsx" />
     <Compile Include="SL\CommonUtils.fs" />
     <Compile Include="SL\StringUtils.fs" />
     <Compile Include="SL\AnswerMonad.fs" />
