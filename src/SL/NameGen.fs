@@ -38,34 +38,39 @@ let fmapM (fn:'a -> 'b) (ma:NameGen<'a>) : NameGen<'b> =
 let liftM (fn:'a -> 'r) (ma:NameGen<'a>) : NameGen<'r> = fmapM fn ma
 
 let liftM2 (fn:'a -> 'b -> 'r) (ma:NameGen<'a>) (mb:NameGen<'b>) : NameGen<'r> = 
-    NameGen <| fun st ->
-        let (s1,a) = apply1 ma st
-        let (s2,b) = apply1 mb s1
-        (s2, fn a b)
+    nameGen { 
+        let! a = ma
+        let! b = mb
+        return (fn a b)
+    }
 
 let liftM3 (fn:'a -> 'b -> 'c -> 'r) (ma:NameGen<'a>) (mb:NameGen<'b>) (mc:NameGen<'c>) : NameGen<'r> = 
-    NameGen <| fun st ->
-        let (s1,a) = apply1 ma st
-        let (s2,b) = apply1 mb s1
-        let (s3,c) = apply1 mc s2
-        (s3, fn a b c)
+    nameGen { 
+        let! a = ma
+        let! b = mb
+        let! c = mc
+        return (fn a b c)
+    }
 
 let liftM4 (fn:'a -> 'b -> 'c -> 'd -> 'r) (ma:NameGen<'a>) (mb:NameGen<'b>) (mc:NameGen<'c>) (md:NameGen<'d>) : NameGen<'r> = 
-    NameGen <| fun st ->
-        let (s1,a) = apply1 ma st
-        let (s2,b) = apply1 mb s1
-        let (s3,c) = apply1 mc s2
-        let (s4,d) = apply1 md s3
-        (s4, fn a b c d)
+    nameGen { 
+        let! a = ma
+        let! b = mb
+        let! c = mc
+        let! d = md
+        return (fn a b c d)
+    }
+
 
 let liftM5 (fn:'a -> 'b -> 'c -> 'd -> 'e -> 'r) (ma:NameGen<'a>) (mb:NameGen<'b>) (mc:NameGen<'c>) (md:NameGen<'d>) (me:NameGen<'e>) : NameGen<'r> = 
-    NameGen <| fun st ->
-        let (s1,a) = apply1 ma st
-        let (s2,b) = apply1 mb s1
-        let (s3,c) = apply1 mc s2
-        let (s4,d) = apply1 md s3
-        let (s5,e) = apply1 me s4
-        (s5, fn a b c d e)
+    nameGen { 
+        let! a = ma
+        let! b = mb
+        let! c = mc
+        let! d = md
+        let! e = me
+        return (fn a b c d e)
+    }
 
 let tupleM2 (ma:NameGen<'a>) (mb:NameGen<'b>) : NameGen<'a * 'b> = 
     liftM2 (fun a b -> (a,b)) ma mb

@@ -35,14 +35,15 @@ let inline private bindM (ma:ScriptMonad<'r,'a>) (f : 'a -> ScriptMonad<'r,'b>) 
         answerMonad.Bind (apply1 ma sw env, fun a -> apply1 (f a) sw env)
 
 
-// let fail : ScriptMonad<'r,'a> = ScriptMonad <| fun sw env ->  AnswerMonad.Err "ScriptMonad fail"
+let failM (msg:string)  : ScriptMonad<'r,'a> = 
+    ScriptMonad <| fun sw env ->  AnswerMonad.Err msg
 
 
 type ScriptBuilder() = 
-    member self.Return x = unitM x
-    member self.Bind (p,f) = bindM p f
-    member self.Zero () = unitM ()
-    // TODO member self.ReturnFrom 
+    member self.Return x        = unitM x
+    member self.Bind (p,f)      = bindM p f
+    member self.Zero ()         = failM "Zero"
+
 
 
 let (scriptMonad:ScriptBuilder) = new ScriptBuilder()
@@ -56,21 +57,38 @@ let fmapM (fn:'a -> 'b) (ma:ScriptMonad<'r,'a>) : ScriptMonad<'r,'b> =
 let liftM (fn:'a -> 'x) (ma:ScriptMonad<'r,'a>) : ScriptMonad<'r,'x> = fmapM fn ma
 
 let liftM2 (fn:'a -> 'b -> 'x) (ma:ScriptMonad<'r,'a>) (mb:ScriptMonad<'r,'b>) : ScriptMonad<'r,'x> = 
-    ScriptMonad <| fun sw env -> 
-        AnswerMonad.liftM2 fn (apply1 ma sw env) (apply1 mb sw env)
+    scriptMonad { 
+        let! a = ma
+        let! b = mb
+        return (fn a b)
+    }
 
 let liftM3 (fn:'a -> 'b -> 'c -> 'x) (ma:ScriptMonad<'r,'a>) (mb:ScriptMonad<'r,'b>) (mc:ScriptMonad<'r,'c>) : ScriptMonad<'r,'x> = 
-    ScriptMonad <| fun sw env -> 
-        AnswerMonad.liftM3 fn (apply1 ma sw env) (apply1 mb sw env) (apply1 mc sw env)
+    scriptMonad { 
+        let! a = ma
+        let! b = mb
+        let! c = mc
+        return (fn a b c)
+    }
 
 let liftM4 (fn:'a -> 'b -> 'c -> 'd -> 'x) (ma:ScriptMonad<'r,'a>) (mb:ScriptMonad<'r,'b>) (mc:ScriptMonad<'r,'c>) (md:ScriptMonad<'r,'d>) : ScriptMonad<'r,'x> = 
-    ScriptMonad <| fun sw env -> 
-        AnswerMonad.liftM4 fn (apply1 ma sw env) (apply1 mb sw env) (apply1 mc sw env) (apply1 md sw env)
+    scriptMonad { 
+        let! a = ma
+        let! b = mb
+        let! c = mc
+        let! d = md
+        return (fn a b c d)
+    }
 
 let liftM5 (fn:'a -> 'b -> 'c -> 'd -> 'e -> 'x) (ma:ScriptMonad<'r,'a>) (mb:ScriptMonad<'r,'b>) (mc:ScriptMonad<'r,'c>) (md:ScriptMonad<'r,'d>) (me:ScriptMonad<'r,'e>) : ScriptMonad<'r,'x>= 
-    ScriptMonad <| fun sw env -> 
-        AnswerMonad.liftM5 fn (apply1 ma sw env) (apply1 mb sw env) (apply1 mc sw env) (apply1 md sw env) (apply1 me sw env)
-
+    scriptMonad { 
+        let! a = ma
+        let! b = mb
+        let! c = mc
+        let! d = md
+        let! e = me
+        return (fn a b c d e)
+    }
 let tupleM2 (ma:ScriptMonad<'r,'a>) (mb:ScriptMonad<'r,'b>) : ScriptMonad<'r,'a * 'b> = 
     liftM2 (fun a b -> (a,b)) ma mb
 

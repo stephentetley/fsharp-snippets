@@ -25,13 +25,13 @@ let inline private bindM (ma:Answer<'a>) (f : 'a -> Answer<'b>) : Answer<'b> =
     | Ok a -> f a
     | Err msg -> Err(msg)
 
-let fail : Answer<'a> = Err "Answer fail"
+let failM (msg:string) : Answer<'a> = Err msg
 
 
 type AnswerBuilder() = 
-    member self.Return x = unitM x
-    member self.Bind (p,f) = bindM p f
-    member self.Zero () = unitM ()
+    member self.Return x        = unitM x
+    member self.Bind (p,f)      = bindM p f
+    member self.Zero ()         = failM "Zero"
     // TODO member self.ReturnFrom 
 
 let (answerMonad:AnswerBuilder) = new AnswerBuilder()
@@ -45,54 +45,38 @@ let fmapM (fn:'a -> 'b) (ma:Answer<'a>) : Answer<'b> =
 let liftM (fn:'a -> 'r) (ma:Answer<'a>) : Answer<'r> = fmapM fn ma
 
 let liftM2 (fn:'a -> 'b -> 'r) (ma:Answer<'a>) (mb:Answer<'b>) : Answer<'r> = 
-    match ma with
-    | Err msg -> Err msg
-    | Ok a -> 
-        match mb with 
-        | Err msg -> Err msg
-        | Ok b -> Ok (fn a b)
+    answerMonad { 
+        let! a = ma
+        let! b = mb
+        return (fn a b)
+    }
 
 let liftM3 (fn:'a -> 'b -> 'c -> 'r) (ma:Answer<'a>) (mb:Answer<'b>) (mc:Answer<'c>) : Answer<'r> = 
-    match ma with
-    | Err msg -> Err msg
-    | Ok a -> 
-        match mb with 
-        | Err msg -> Err msg
-        | Ok b -> 
-            match mc with 
-            | Err msg -> Err msg
-            | Ok c -> Ok (fn a b c)
+    answerMonad { 
+        let! a = ma
+        let! b = mb
+        let! c = mc
+        return (fn a b c)
+    }
 
 let liftM4 (fn:'a -> 'b -> 'c -> 'd -> 'r) (ma:Answer<'a>) (mb:Answer<'b>) (mc:Answer<'c>) (md:Answer<'d>) : Answer<'r> = 
-    match ma with
-    | Err msg -> Err msg
-    | Ok a -> 
-        match mb with 
-        | Err msg -> Err msg
-        | Ok b -> 
-            match mc with 
-            | Err msg -> Err msg
-            | Ok c -> 
-                match md with
-                | Err msg -> Err msg
-                | Ok d -> Ok (fn a b c d)
+    answerMonad { 
+        let! a = ma
+        let! b = mb
+        let! c = mc
+        let! d = md
+        return (fn a b c d)
+    }
 
 let liftM5 (fn:'a -> 'b -> 'c -> 'd -> 'e -> 'r) (ma:Answer<'a>) (mb:Answer<'b>) (mc:Answer<'c>) (md:Answer<'d>) (me:Answer<'e>) : Answer<'r> = 
-    match ma with
-    | Err msg -> Err msg
-    | Ok a -> 
-        match mb with 
-        | Err msg -> Err msg
-        | Ok b -> 
-            match mc with 
-            | Err msg -> Err msg
-            | Ok c -> 
-                match md with
-                | Err msg -> Err msg
-                | Ok d -> 
-                    match me with
-                    | Err msg -> Err msg
-                    | Ok e -> Ok (fn a b c d e)
+    answerMonad { 
+        let! a = ma
+        let! b = mb
+        let! c = mc
+        let! d = md
+        let! e = me
+        return (fn a b c d e)
+    }
 
 let tupleM2 (ma:Answer<'a>) (mb:Answer<'b>) : Answer<'a * 'b> = 
     liftM2 (fun a b -> (a,b)) ma mb
