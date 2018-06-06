@@ -28,7 +28,7 @@ type ScriptMonad<'r,'a> = private ScriptMonad of (StringWriter -> 'r -> Answer<'
 let inline private apply1 (ma : ScriptMonad<'r,'a>) (sw:StringWriter) (env:'r) : Answer<'a> = 
     let (ScriptMonad fn) = ma  in  fn sw env
 
-let inline private unitM (x:'a) : ScriptMonad<'r,'a> = 
+let inline private returnM (x:'a) : ScriptMonad<'r,'a> = 
     ScriptMonad <| fun sw r -> answerMonad.Return x
 
 
@@ -43,7 +43,7 @@ let failM (msg:string)  : ScriptMonad<'r,'a> =
 
 
 type ScriptBuilder() = 
-    member self.Return x        = unitM x
+    member self.Return x        = returnM x
     member self.Bind (p,f)      = bindM p f
     member self.Zero ()         = failM "Zero"
 
@@ -294,5 +294,5 @@ let runOptional (failMsg:string) (ma:ScriptMonad<'r,'a option>) : ScriptMonad<'r
 /// Are specific lifters worth the dependency?
 let liftJsonExtract (ma:JsonExtractor<'a>) (fileName:string) : ScriptMonad<'r,'a> = 
     match extractFromFile ma fileName with
-    | Ok a -> unitM a
+    | Ok a -> returnM a
     | Err msg -> throwError msg

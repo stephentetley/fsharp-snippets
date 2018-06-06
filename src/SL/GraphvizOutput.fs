@@ -25,7 +25,7 @@ type GraphvizOutput<'a> =
 let inline private apply1 (ma : GraphvizOutput<'a>) (config:Config)  (handle:StringWriter) : 'a = 
     let (GraphvizOutput f) = ma in f config handle
 
-let inline private unitM (x:'a) : GraphvizOutput<'a> = GraphvizOutput (fun _ _ -> x)
+let inline private returnM (x:'a) : GraphvizOutput<'a> = GraphvizOutput (fun _ _ -> x)
 
 
 let inline private bindM (ma:GraphvizOutput<'a>) (f : 'a -> GraphvizOutput<'b>) : GraphvizOutput<'b> =
@@ -35,9 +35,9 @@ let fail : GraphvizOutput<'a> = GraphvizOutput (fun _ _ -> failwith "GraphvizOut
 
 
 type GraphvizOutputBuilder() = 
-    member self.Return x = unitM x
+    member self.Return x = returnM x
     member self.Bind (p,f) = bindM p f
-    member self.Zero () = unitM ()
+    member self.Zero () = returnM ()
 
 let (graphvizOutput:GraphvizOutputBuilder) = new GraphvizOutputBuilder()
 
@@ -50,7 +50,7 @@ let fmapM (fn:'a -> 'b) (ma:GraphvizOutput<'a>) : GraphvizOutput<'b> =
 let mapM (fn:'a -> GraphvizOutput<'b>) (xs:'a list) : GraphvizOutput<'b list> = 
     let rec work ac ys = 
         match ys with
-        | [] -> unitM <| List.rev ac
+        | [] -> returnM <| List.rev ac
         | z :: zs -> bindM (fn z) (fun a -> work (a::ac) zs)
     work [] xs
 
@@ -59,7 +59,7 @@ let forM (xs:'a list) (fn:'a -> GraphvizOutput<'b>) : GraphvizOutput<'b list> = 
 let mapMz (fn:'a -> GraphvizOutput<'b>) (xs:'a list) : GraphvizOutput<unit> = 
     let rec work ys = 
         match ys with
-        | [] -> unitM ()
+        | [] -> returnM ()
         | z :: zs -> bindM (fn z) (fun _ -> work zs)
     work xs
 

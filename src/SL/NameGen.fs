@@ -17,7 +17,7 @@ type NameGen<'a> = private NameGen of (State -> (State * 'a))
 let inline private apply1 (ma:NameGen<'a>) (st:State) : (State * 'a) = 
     match ma with | NameGen fn -> fn st
 
-let inline private unitM (x:'a) : NameGen<'a> = 
+let inline private returnM (x:'a) : NameGen<'a> = 
     NameGen <| fun st -> (st,x)
 
 
@@ -27,9 +27,9 @@ let inline private bindM (ma:NameGen<'a>) (f : 'a -> NameGen<'b>) : NameGen<'b> 
 
 
 type NameGenBuilder() = 
-    member self.Return x = unitM x
+    member self.Return x = returnM x
     member self.Bind (p,f) = bindM p f
-    member self.Zero () = unitM ()
+    member self.Zero () = returnM ()
 
 let (nameGen:NameGenBuilder) = new NameGenBuilder()
 
@@ -92,7 +92,7 @@ let tupleM5 (ma:NameGen<'a>) (mb:NameGen<'b>) (mc:NameGen<'c>) (md:NameGen<'d>) 
 let mapM (fn:'a -> NameGen<'b>) (xs:'a list) : NameGen<'b list> = 
     let rec work ac ys = 
         match ys with
-        | [] -> unitM <| List.rev ac
+        | [] -> returnM <| List.rev ac
         | z :: zs -> bindM (fn z) (fun a -> work (a :: ac) zs)
     work [] xs
 
@@ -101,7 +101,7 @@ let forM (xs:'a list) (fn:'a -> NameGen<'b>) : NameGen<'b list> = mapM fn xs
 let mapMz (fn:'a -> NameGen<'b>) (xs:'a list) : NameGen<unit> = 
     let rec work ys = 
         match ys with
-        | [] -> unitM ()
+        | [] -> returnM ()
         | z :: zs -> bindM (fn z) (fun _ -> work zs)
     work xs
 
@@ -111,7 +111,7 @@ let forMz (xs:'a list) (fn:'a -> NameGen<'b>) : NameGen<unit> = mapMz fn xs
 let mapiM (fn:int -> 'a -> NameGen<'b>) (xs:'a list) : NameGen<'b list> = 
     let rec work ix ac ys = 
         match ys with
-        | [] -> unitM <| List.rev ac
+        | [] -> returnM <| List.rev ac
         | z :: zs -> bindM (fn ix z) (fun a -> work (ix+1) (a::ac) zs)
     work 0 [] xs
 
@@ -119,7 +119,7 @@ let mapiM (fn:int -> 'a -> NameGen<'b>) (xs:'a list) : NameGen<'b list> =
 let mapiMz (fn:int -> 'a -> NameGen<'b>) (xs:'a list) : NameGen<unit> = 
     let rec work ix ys = 
         match ys with
-        | [] -> unitM ()
+        | [] -> returnM ()
         | z :: zs -> 
             bindM (fn ix z) (fun _ -> work (ix+1) zs)
     work 0 xs
@@ -150,14 +150,14 @@ let traverseiMz (fn:int -> 'a -> NameGen<'b>) (source:seq<'a>) : NameGen<unit> =
 let sequenceM (results:NameGen<'a> list) : NameGen<'a list> = 
     let rec work ac ys = 
         match ys with
-        | [] -> unitM <| List.rev ac
+        | [] -> returnM <| List.rev ac
         | ma :: zs -> bindM ma (fun a -> work  (a::ac) zs)
     work [] results
 
 let sequenceMz (results:NameGen<'a> list) : NameGen<unit> = 
     let rec work ys = 
         match ys with
-        | [] -> unitM ()
+        | [] -> returnM ()
         | ma :: zs -> bindM ma (fun _ -> work zs)
     work results
 

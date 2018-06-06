@@ -25,7 +25,7 @@ let runClosedXMLOutput (ma:ClosedXMLOutput<'a>) (sheet:ClosedXMLSheet) : 'a =
 let inline private apply1 (ma : ClosedXMLOutput<'a>) (sheet:ClosedXMLSheet) (rowIx:RowIx) : (RowIx * 'a) = 
     let (ClosedXMLOutput f) = ma in f sheet rowIx
 
-let inline private unitM (x:'a) : ClosedXMLOutput<'a> = 
+let inline private returnM (x:'a) : ClosedXMLOutput<'a> = 
     ClosedXMLOutput <| fun r s -> (s,x)
 
 let inline private bindM (ma:ClosedXMLOutput<'a>) (f : 'a -> ClosedXMLOutput<'b>) : ClosedXMLOutput<'b> =
@@ -36,9 +36,9 @@ let fail : ClosedXMLOutput<'a> =
     ClosedXMLOutput (fun r s -> failwith "ClosedXMLOutput fail")
 
 type ClosedXMLOutputBuilder() = 
-    member self.Return x = unitM x
+    member self.Return x = returnM x
     member self.Bind (p,f) = bindM p f
-    member self.Zero () = unitM ()
+    member self.Zero () = returnM ()
 
 let closedXMLOutput:ClosedXMLOutputBuilder = new ClosedXMLOutputBuilder()
 
@@ -52,7 +52,7 @@ let mapM (fn: 'a -> ClosedXMLOutput<'b>) (xs: 'a list) : ClosedXMLOutput<'b list
     let rec work ac list = 
         match list with
         | y :: ys -> bindM (fn y) (fun b -> work (b::ac) ys)
-        | [] -> unitM <| List.rev ac
+        | [] -> returnM <| List.rev ac
     work [] xs
 
 let forM (xs:'a list) (fn:'a -> ClosedXMLOutput<'b>) : ClosedXMLOutput<'b list> = mapM fn xs
@@ -61,7 +61,7 @@ let mapMz (fn: 'a -> ClosedXMLOutput<'b>) (xs: 'a list) : ClosedXMLOutput<unit> 
     let rec work list = 
         match list with
         | y :: ys -> bindM (fn y) (fun _ -> work ys)
-        | [] -> unitM ()
+        | [] -> returnM ()
     work xs
 
 let forMz (xs:'a list) (fn:'a -> ClosedXMLOutput<'b>) : ClosedXMLOutput<unit> = mapMz fn xs
@@ -101,7 +101,7 @@ let mapiM (fn:int -> 'a -> ClosedXMLOutput<'b>) (xs: 'a list) : ClosedXMLOutput<
     let rec work ac ix list = 
         match list with
         | y :: ys -> bindM (fn ix y) (fun b -> work (b::ac) (ix+1) ys)
-        | [] -> unitM <| List.rev ac
+        | [] -> returnM <| List.rev ac
     work [] 0 xs
 
 let foriM (xs: 'a list) (fn:int -> 'a -> ClosedXMLOutput<'b>) : ClosedXMLOutput<'b list> = mapiM fn xs
@@ -110,7 +110,7 @@ let mapiMz (fn:int -> 'a -> ClosedXMLOutput<'b>) (xs: 'a list) : ClosedXMLOutput
     let rec work ix list = 
         match list with
         | y :: ys -> bindM (fn ix y) (fun _ -> work (ix+1) ys)
-        | [] -> unitM ()
+        | [] -> returnM ()
     work 0 xs
 
 let foriMz (xs: 'a list)  (fn:int -> 'a -> ClosedXMLOutput<'b>) : ClosedXMLOutput<unit> = mapiMz fn xs

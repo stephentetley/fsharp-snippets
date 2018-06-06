@@ -20,7 +20,7 @@ let answerToChoice (result:Answer<'a>) : Choice<string,'a> =
     | Ok a -> Choice2Of2(a)
 
 
-let inline private unitM (x:'a) : Answer<'a> = Ok x
+let inline private returnM (x:'a) : Answer<'a> = Ok x
 
 
 let inline private bindM (ma:Answer<'a>) (f : 'a -> Answer<'b>) : Answer<'b> =
@@ -30,11 +30,22 @@ let inline private bindM (ma:Answer<'a>) (f : 'a -> Answer<'b>) : Answer<'b> =
 
 let failM (msg:string) : Answer<'a> = Err msg
 
+/// Left biased
+let inline private combineM  (ma:Answer<'a>) (mb:Answer<'a>) : Answer<'a> = 
+    match ma with
+    | Ok a -> Ok a
+    | Err msg -> mb
+
+let delayM (fn:unit -> Answer<'a>) : Answer<'a> = 
+    bindM (returnM ()) fn 
 
 type AnswerBuilder() = 
-    member self.Return x        = unitM x
+    member self.Return x        = returnM x
     member self.Bind (p,f)      = bindM p f
     member self.Zero ()         = failM "Zero"
+    member self.Combine (p,q)   = combineM p q
+
+
     // TODO member self.ReturnFrom 
 
 let (answerMonad:AnswerBuilder) = new AnswerBuilder()
@@ -110,7 +121,7 @@ let forM (xs:'a list) (fn:'a -> Answer<'b>) : Answer<'b list> = mapM fn xs
 let mapMz (fn:'a -> Answer<'b>) (xs:'a list) : Answer<unit> = 
     let rec work ys = 
         match ys with
-        | [] -> unitM ()
+        | [] -> returnM ()
         | z :: zs -> 
             match fn z with
             | Err msg -> Err msg
@@ -123,7 +134,7 @@ let forMz (xs:'a list) (fn:'a -> Answer<'b>) : Answer<unit> = mapMz fn xs
 let mapiM (fn:int -> 'a -> Answer<'b>) (xs:'a list) : Answer<'b list> = 
     let rec work ix ac ys = 
         match ys with
-        | [] -> unitM <| List.rev ac
+        | [] -> returnM <| List.rev ac
         | z :: zs -> 
             match fn ix z with
             | Err msg -> Err msg
@@ -134,7 +145,7 @@ let mapiM (fn:int -> 'a -> Answer<'b>) (xs:'a list) : Answer<'b list> =
 let mapiMz (fn:int -> 'a -> Answer<'b>) (xs:'a list) : Answer<unit> = 
     let rec work ix ys = 
         match ys with
-        | [] -> unitM ()
+        | [] -> returnM ()
         | z :: zs -> 
             match fn ix z with
             | Err msg -> Err msg
@@ -167,7 +178,7 @@ let traverseiMz (fn:int -> 'a -> Answer<'b>) (source:seq<'a>) : Answer<unit> =
 let sequenceM (results:Answer<'a> list) : Answer<'a list> = 
     let rec work ac ys = 
         match ys with
-        | [] -> unitM <| List.rev ac
+        | [] -> returnM <| List.rev ac
         | Err msg :: _ -> Err msg
         | Ok a :: zs -> work  (a::ac) zs
     work [] results
@@ -175,7 +186,7 @@ let sequenceM (results:Answer<'a> list) : Answer<'a list> =
 let sequenceMz (results:Answer<'a> list) : Answer<unit> = 
     let rec work ys = 
         match ys with
-        | [] -> unitM ()
+        | [] -> returnM ()
         | Err msg :: _ -> Err msg
         | Ok _ :: zs -> work zs
     work results

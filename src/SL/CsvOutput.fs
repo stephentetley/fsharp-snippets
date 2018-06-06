@@ -41,7 +41,7 @@ type CsvOutput<'a> =
 let inline private apply1 (ma : CsvOutput<'a>) (handle:StreamWriter) (sep:Separator) : 'a = 
     match ma with | CsvOutput f -> f handle sep
 
-let private unitM (x:'a) : CsvOutput<'a> = 
+let private returnM (x:'a) : CsvOutput<'a> = 
     CsvOutput <| fun handle sep -> x
 
 let private bindM (ma:CsvOutput<'a>) (f : 'a -> CsvOutput<'b>) : CsvOutput<'b> =
@@ -53,9 +53,9 @@ let fail : CsvOutput<'a> =
     CsvOutput (fun handle sep -> failwith "CsvOutput fail")
 
 type CsvOutputBuilder() = 
-    member self.Return x        = unitM x
+    member self.Return x        = returnM x
     member self.Bind (p,f)      = bindM p f
-    member self.Zero ()         = unitM ()
+    member self.Zero ()         = returnM ()
 
 let csvOutput:CsvOutputBuilder = new CsvOutputBuilder()
 
@@ -69,7 +69,7 @@ let mapM (fn: 'a -> CsvOutput<'b>) (xs: 'a list) : CsvOutput<'b list> =
     let rec work ac list = 
         match list with
         | y :: ys -> bindM (fn y) (fun b -> work (b::ac) ys)
-        | [] -> unitM <| List.rev ac
+        | [] -> returnM <| List.rev ac
     work [] xs
 
 let forM (xs:'a list) (fn:'a -> CsvOutput<'b>) : CsvOutput<'b list> = mapM fn xs
@@ -79,7 +79,7 @@ let mapMz (fn: 'a -> CsvOutput<'b>) (xs: 'a list) : CsvOutput<unit> =
     let rec work list = 
         match list with
         | y :: ys -> bindM (fn y) (fun _ -> work ys)
-        | [] -> unitM ()
+        | [] -> returnM ()
     work xs
 
 let forMz (xs:'a list) (fn:'a -> CsvOutput<'b>) : CsvOutput<unit> = mapMz fn xs
@@ -113,14 +113,14 @@ let mapiM (fn: 'a -> int -> CsvOutput<'b>) (xs: 'a list) : CsvOutput<'b list> =
     let rec work ac ix list = 
         match list with
         | y :: ys -> bindM (fn y ix) (fun b -> work (b::ac) (ix+1) ys)
-        | [] -> unitM <| List.rev ac
+        | [] -> returnM <| List.rev ac
     work [] 0 xs
 
 let mapiMz (fn: 'a -> int -> CsvOutput<'b>) (xs: 'a list) : CsvOutput<unit> = 
     let rec work ix list = 
         match list with
         | y :: ys -> bindM (fn y ix) (fun _ -> work (ix+1) ys)
-        | [] -> unitM ()
+        | [] -> returnM ()
     work 0 xs
 
 // CsvOutput-specific operations

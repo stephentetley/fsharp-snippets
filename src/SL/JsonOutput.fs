@@ -14,7 +14,7 @@ type JsonOutput<'a> = JsonOutput of (JsonTextWriter -> 'a)
 let inline private apply1 (ma : JsonOutput<'a>) (handle:JsonTextWriter) : 'a = 
     let (JsonOutput f) = ma in f handle
 
-let inline private unitM (x:'a) : JsonOutput<'a> = JsonOutput (fun r -> x)
+let inline private returnM (x:'a) : JsonOutput<'a> = JsonOutput (fun r -> x)
 
 
 let inline private bindM (ma:JsonOutput<'a>) (f : 'a -> JsonOutput<'b>) : JsonOutput<'b> =
@@ -25,9 +25,9 @@ let fail : JsonOutput<'a> = JsonOutput (fun r -> failwith "JsonOutput fail")
 
 
 type JsonOutputBuilder() = 
-    member self.Return x = unitM x
+    member self.Return x = returnM x
     member self.Bind (p,f) = bindM p f
-    member self.Zero () = unitM ()
+    member self.Zero () = returnM ()
 
 let (jsonOutput:JsonOutputBuilder) = new JsonOutputBuilder()
 
@@ -40,7 +40,7 @@ let fmapM (fn:'a -> 'b) (ma:JsonOutput<'a>) : JsonOutput<'b> =
 let mapM (fn:'a -> JsonOutput<'b>) (xs:'a list) : JsonOutput<'b list> = 
     let rec work ac ys = 
         match ys with
-        | [] -> unitM <| List.rev ac
+        | [] -> returnM <| List.rev ac
         | z :: zs -> bindM (fn z) (fun a -> work (a::ac) zs)
     work [] xs
 
@@ -49,7 +49,7 @@ let forM (xs:'a list) (fn:'a -> JsonOutput<'b>) : JsonOutput<'b list> = mapM fn 
 let mapMz (fn:'a -> JsonOutput<'b>) (xs:'a list) : JsonOutput<unit> = 
     let rec work ys = 
         match ys with
-        | [] -> unitM ()
+        | [] -> returnM ()
         | z :: zs -> bindM (fn z) (fun _ -> work zs)
     work xs
 

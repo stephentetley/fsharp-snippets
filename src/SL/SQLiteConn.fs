@@ -32,7 +32,7 @@ type SQLiteConn<'a> = SQLiteConn of (SQLite.SQLiteConnection -> Answer<'a>)
 let inline private apply1 (ma : SQLiteConn<'a>) (conn:SQLite.SQLiteConnection) : Answer<'a> = 
     let (SQLiteConn f) = ma in f conn
 
-let inline private unitM (x:'a) : SQLiteConn<'a> = SQLiteConn (fun _ -> Ok x)
+let inline private returnM (x:'a) : SQLiteConn<'a> = SQLiteConn (fun _ -> Ok x)
 
 
 let inline private bindM (ma:SQLiteConn<'a>) (f : 'a -> SQLiteConn<'b>) : SQLiteConn<'b> =
@@ -45,7 +45,7 @@ let failM (msg:string) : SQLiteConn<'a> = SQLiteConn (fun r -> Err msg)
 
 
 type SQLiteConnBuilder() = 
-    member self.Return x        = unitM x
+    member self.Return x        = returnM x
     member self.Bind (p,f)      = bindM p f
     member self.Zero ()         = failM "Zero"
 

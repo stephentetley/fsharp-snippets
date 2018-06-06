@@ -16,7 +16,7 @@ type DocOutput<'a> = DocOutput of (WordDoc-> 'a)
 let inline private apply1 (ma : DocOutput<'a>) (handle:WordDoc) : 'a = 
     let (DocOutput f) = ma in f handle
 
-let inline private unitM (x:'a) : DocOutput<'a> = DocOutput (fun _ -> x)
+let inline private returnM (x:'a) : DocOutput<'a> = DocOutput (fun _ -> x)
 
 
 let inline private bindM (ma:DocOutput<'a>) (f : 'a -> DocOutput<'b>) : DocOutput<'b> =
@@ -26,9 +26,9 @@ let inline private bindM (ma:DocOutput<'a>) (f : 'a -> DocOutput<'b>) : DocOutpu
 
 
 type DocOutputBuilder() = 
-    member self.Return x = unitM x
+    member self.Return x = returnM x
     member self.Bind (p,f) = bindM p f
-    member self.Zero () = unitM ()
+    member self.Zero () = returnM ()
 
 let (docOutput:DocOutputBuilder) = new DocOutputBuilder()
 
@@ -41,7 +41,7 @@ let fmapM (fn:'a -> 'b) (ma:DocOutput<'a>) : DocOutput<'b> =
 let mapM (fn:'a -> DocOutput<'b>) (xs:'a list) : DocOutput<'b list> = 
     let rec work ac ys = 
         match ys with
-        | [] -> unitM <| List.rev ac
+        | [] -> returnM <| List.rev ac
         | z :: zs -> bindM (fn z) (fun a -> work (a::ac) zs)
     work [] xs
 
@@ -50,7 +50,7 @@ let forM (xs:'a list) (fn:'a -> DocOutput<'b>) : DocOutput<'b list> = mapM fn xs
 let mapMz (fn:'a -> DocOutput<'b>) (xs:'a list) : DocOutput<unit> = 
     let rec work ys = 
         match ys with
-        | [] -> unitM ()
+        | [] -> returnM ()
         | z :: zs -> bindM (fn z) (fun _ -> work zs)
     work xs
 

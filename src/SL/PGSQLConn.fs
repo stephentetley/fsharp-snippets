@@ -31,7 +31,7 @@ type PGSQLConn<'a> = PGSQLConn of (NpgsqlConnection -> Answer<'a>)
 let inline private apply1 (ma : PGSQLConn<'a>) (conn:NpgsqlConnection) : Answer<'a> = 
     let (PGSQLConn f) = ma in f conn
 
-let inline private unitM (x:'a) : PGSQLConn<'a> = PGSQLConn (fun _ -> Ok x)
+let inline private returnM (x:'a) : PGSQLConn<'a> = PGSQLConn (fun _ -> Ok x)
 
 
 let inline private bindM (ma:PGSQLConn<'a>) (f : 'a -> PGSQLConn<'b>) : PGSQLConn<'b> =
@@ -44,7 +44,7 @@ let failM (msg:string) : PGSQLConn<'a> = PGSQLConn (fun _ -> Err msg)
 
 
 type PGSQLConnBuilder() = 
-    member self.Return x        = unitM x
+    member self.Return x        = returnM x
     member self.Bind (p,f)      = bindM p f
     member self.Zero ()         = failM "Zero"
 

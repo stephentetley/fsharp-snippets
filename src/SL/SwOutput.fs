@@ -11,7 +11,7 @@ type SwOutput<'a> = SwOutput of (StringWriter -> 'a)
 let inline private apply1 (ma : SwOutput<'a>) (handle:StringWriter) : 'a = 
     match ma with | SwOutput fn -> fn handle
 
-let private unitM (x:'a) : SwOutput<'a> = 
+let private returnM (x:'a) : SwOutput<'a> = 
     SwOutput <| fun handle -> x
 
 let private bindM (ma:SwOutput<'a>) (f : 'a -> SwOutput<'b>) : SwOutput<'b> =
@@ -20,9 +20,9 @@ let private bindM (ma:SwOutput<'a>) (f : 'a -> SwOutput<'b>) : SwOutput<'b> =
 
 
 type SwOutputBuilder() = 
-    member self.Return x = unitM x
+    member self.Return x = returnM x
     member self.Bind (p,f) = bindM p f
-    member self.Zero () = unitM ()
+    member self.Zero () = returnM ()
 
 let swOutput:SwOutputBuilder = new SwOutputBuilder()
 
@@ -36,7 +36,7 @@ let mapM (fn: 'a -> SwOutput<'b>) (xs: 'a list) : SwOutput<'b list> =
     let rec work ac list = 
         match list with
         | y :: ys -> bindM (fn y) (fun b -> work (b::ac) ys)
-        | [] -> unitM <| List.rev ac
+        | [] -> returnM <| List.rev ac
     work [] xs
 
 let forM (xs:'a list) (fn:'a -> SwOutput<'b>) : SwOutput<'b list> = mapM fn xs
@@ -46,7 +46,7 @@ let mapMz (fn: 'a -> SwOutput<'b>) (xs: 'a list) : SwOutput<unit> =
     let rec work list = 
         match list with
         | y :: ys -> bindM (fn y) (fun _ -> work ys)
-        | [] -> unitM ()
+        | [] -> returnM ()
     work xs
 
 let forMz (xs:'a list) (fn:'a -> SwOutput<'b>) : SwOutput<unit> = mapMz fn xs
@@ -80,14 +80,14 @@ let mapiM (fn: 'a -> int -> SwOutput<'b>) (xs: 'a list) : SwOutput<'b list> =
     let rec work ac ix list = 
         match list with
         | y :: ys -> bindM (fn y ix) (fun b -> work (b::ac) (ix+1) ys)
-        | [] -> unitM <| List.rev ac
+        | [] -> returnM <| List.rev ac
     work [] 0 xs
 
 let mapiMz (fn: 'a -> int -> SwOutput<'b>) (xs: 'a list) : SwOutput<unit> = 
     let rec work ix list = 
         match list with
         | y :: ys -> bindM (fn y ix) (fun _ -> work (ix+1) ys)
-        | [] -> unitM ()
+        | [] -> returnM ()
     work 0 xs
 
 // SwOutput-specific operations

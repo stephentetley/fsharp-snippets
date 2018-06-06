@@ -17,7 +17,7 @@ type JsonExtractor<'a> = private JsonExtractor of (JsonValue -> Answer<'a>)
 let inline private apply1 (ma : JsonExtractor<'a>) (jsVal:JsonValue)  : Answer<'a> = 
     let (JsonExtractor fn) = ma  in  fn jsVal
 
-let private unitM (x:'a) : JsonExtractor<'a> = 
+let private returnM (x:'a) : JsonExtractor<'a> = 
     JsonExtractor <| fun r -> Ok x
 
 let private bindM (ma:JsonExtractor<'a>) (f : 'a -> JsonExtractor<'b>) : JsonExtractor<'b> =
@@ -30,9 +30,9 @@ let fail : JsonExtractor<'a> =
     JsonExtractor (fun _ -> Err "JsonExtractor fail")
 
 type JsonExtractorBuilder() = 
-    member self.Return x = unitM x
+    member self.Return x = returnM x
     member self.Bind (p,f) = bindM p f
-    member self.Zero () = unitM ()
+    member self.Zero () = returnM ()
 
 let jsonExtractor:JsonExtractorBuilder = new JsonExtractorBuilder()
 
