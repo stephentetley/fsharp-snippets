@@ -1,4 +1,7 @@
-﻿module SL.FileStore
+﻿// Copyright (c) Stephen Tetley 2018
+// License: BSD 3 Clause
+
+module SL.FileStore
 
 open System
 open System.IO

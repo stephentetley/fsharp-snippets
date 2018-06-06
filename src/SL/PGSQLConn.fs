@@ -1,4 +1,7 @@
-﻿module SL.PGSQLConn
+﻿// Copyright (c) Stephen Tetley 2018
+// License: BSD 3 Clause
+
+module SL.PGSQLConn
 
 open Npgsql
 
@@ -37,13 +40,13 @@ let inline private bindM (ma:PGSQLConn<'a>) (f : 'a -> PGSQLConn<'b>) : PGSQLCon
         | Ok(a) -> apply1 (f a) conn
         | Err(msg) -> Err(msg)
 
-let fail : PGSQLConn<'a> = PGSQLConn (fun _ -> Err "PGSQLConn fail")
+let failM (msg:string) : PGSQLConn<'a> = PGSQLConn (fun _ -> Err msg)
 
 
 type PGSQLConnBuilder() = 
-    member self.Return x = unitM x
-    member self.Bind (p,f) = bindM p f
-    member self.Zero () = unitM ()
+    member self.Return x        = unitM x
+    member self.Bind (p,f)      = bindM p f
+    member self.Zero ()         = failM "Zero"
 
 let (pgsqlConn:PGSQLConnBuilder) = new PGSQLConnBuilder()
 

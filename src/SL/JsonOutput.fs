@@ -1,4 +1,7 @@
-﻿module SL.JsonOutput
+﻿// Copyright (c) Stephen Tetley 2018
+// License: BSD 3 Clause
+
+module SL.JsonOutput
 
 open Newtonsoft.Json
 
@@ -17,6 +20,7 @@ let inline private unitM (x:'a) : JsonOutput<'a> = JsonOutput (fun r -> x)
 let inline private bindM (ma:JsonOutput<'a>) (f : 'a -> JsonOutput<'b>) : JsonOutput<'b> =
     JsonOutput (fun r -> let a = apply1 ma r in apply1 (f a) r)
 
+// Hard failure (exception) , the monad has real notion of failure
 let fail : JsonOutput<'a> = JsonOutput (fun r -> failwith "JsonOutput fail")
 
 

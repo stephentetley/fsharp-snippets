@@ -1,4 +1,7 @@
-﻿module SL.ScriptMonad
+﻿// Copyright (c) Stephen Tetley 2018
+// License: BSD 3 Clause
+
+module SL.ScriptMonad
 
 open System.IO
 

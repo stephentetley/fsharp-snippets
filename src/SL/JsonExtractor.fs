@@ -1,4 +1,7 @@
-﻿module SL.JsonExtractor
+﻿// Copyright (c) Stephen Tetley 2018
+// License: BSD 3 Clause
+
+module SL.JsonExtractor
 
 open FSharp.Data
 open FSharp.Data.JsonExtensions

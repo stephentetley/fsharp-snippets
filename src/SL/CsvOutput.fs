@@ -1,4 +1,7 @@
-﻿module SL.CsvOutput
+﻿// Copyright (c) Stephen Tetley 2018
+// License: BSD 3 Clause
+
+module SL.CsvOutput
 
 open System
 open System.IO
@@ -45,13 +48,14 @@ let private bindM (ma:CsvOutput<'a>) (f : 'a -> CsvOutput<'b>) : CsvOutput<'b> =
     CsvOutput <| fun handle sep -> 
         let a = apply1 ma handle sep in apply1 (f a) handle sep
 
+// Hard failure (exception) , the monad has real notion of failure
 let fail : CsvOutput<'a> = 
     CsvOutput (fun handle sep -> failwith "CsvOutput fail")
 
 type CsvOutputBuilder() = 
-    member self.Return x = unitM x
-    member self.Bind (p,f) = bindM p f
-    member self.Zero () = unitM ()
+    member self.Return x        = unitM x
+    member self.Bind (p,f)      = bindM p f
+    member self.Zero ()         = unitM ()
 
 let csvOutput:CsvOutputBuilder = new CsvOutputBuilder()
 

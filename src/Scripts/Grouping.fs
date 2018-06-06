@@ -1,4 +1,7 @@
-﻿module Scripts.Grouping
+﻿// Copyright (c) Stephen Tetley 2018
+// License: BSD 3 Clause
+
+module Scripts.Grouping
 
 
 // Note Fsharp's groupBy is not the same as Haskell's groupBy.

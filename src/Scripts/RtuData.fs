@@ -1,4 +1,7 @@
-﻿module Scripts.RtuData
+﻿// Copyright (c) Stephen Tetley 2018
+// License: BSD 3 Clause
+
+module Scripts.RtuData
 
 open FParsec
 

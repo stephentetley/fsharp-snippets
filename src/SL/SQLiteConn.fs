@@ -1,4 +1,7 @@
-﻿module SL.SQLiteConn
+﻿// Copyright (c) Stephen Tetley 2018
+// License: BSD 3 Clause
+
+module SL.SQLiteConn
 
 open System
 open System.IO
@@ -38,13 +41,13 @@ let inline private bindM (ma:SQLiteConn<'a>) (f : 'a -> SQLiteConn<'b>) : SQLite
         | Ok(a) -> apply1 (f a) conn
         | Err(msg) -> Err(msg)
 
-let fail : SQLiteConn<'a> = SQLiteConn (fun r -> Err "SQLiteConn fail")
+let failM (msg:string) : SQLiteConn<'a> = SQLiteConn (fun r -> Err msg)
 
 
 type SQLiteConnBuilder() = 
-    member self.Return x = unitM x
-    member self.Bind (p,f) = bindM p f
-    member self.Zero () = unitM ()
+    member self.Return x        = unitM x
+    member self.Bind (p,f)      = bindM p f
+    member self.Zero ()         = failM "Zero"
 
 let (sqliteConn:SQLiteConnBuilder) = new SQLiteConnBuilder()
 
