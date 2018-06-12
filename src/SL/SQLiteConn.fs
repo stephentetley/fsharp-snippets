@@ -51,12 +51,16 @@ let withTransaction (ma:SQLiteConn<'a>) : SQLiteConn<'a> =
             | Ok(a) -> trans.Commit () ; Ok a
             | Err(msg) -> trans.Rollback () ; Err msg
         with 
-        | ex -> trans.Rollback() ; Err( ex.ToString() )
+        | ex -> trans.Rollback() ; Err ( ex.ToString() )
 
 
 
 /// This is wrapped in a transaction, both must succeed otherwise the 
 /// transaction is rolled back.
+/// This is potentially wrong, Haskell's STM points towards rollback
+/// being managed by the run function (`atomically` in Haskell/STM).
+/// The implication if this is a userland program would repeatedly
+/// call the run function, rather than being embedded in a single run block.
 let inline private combineM  (ma:SQLiteConn<unit>) (mb:SQLiteConn<'b>) : SQLiteConn<'b> = 
     withTransaction << SQLiteConn <| fun conn -> 
         match apply1 ma conn, apply1 mb conn with
