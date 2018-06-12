@@ -30,21 +30,29 @@ let inline private bindM (ma:Answer<'a>) (f : 'a -> Answer<'b>) : Answer<'b> =
 
 let failM (msg:string) : Answer<'a> = Err msg
 
-/// Left biased
-let inline private combineM  (ma:Answer<'a>) (mb:Answer<'a>) : Answer<'a> = 
+/// Both must succeed
+let inline private combineM  (ma:Answer<unit>) (mb:Answer<'b>) : Answer<'b> = 
     match ma with
-    | Ok a -> Ok a
-    | Err msg -> mb
+    | Ok () -> mb
+    | Err msg -> Err msg
 
-let delayM (fn:unit -> Answer<'a>) : Answer<'a> = 
+let inline private delayM (fn:unit -> Answer<'a>) : Answer<'a> = 
     bindM (returnM ()) fn 
+
+let inline private sforM (source:seq<'a>) (fn: 'a -> Answer<unit>)  : Answer<unit> =
+    let rec work ac ss = 
+        match Seq.tryHead ss with
+        | Some a -> let _ = fn a in work () (Seq.tail ss)
+        | None -> Ok ()
+    work () source
 
 type AnswerBuilder() = 
     member self.Return x        = returnM x
     member self.Bind (p,f)      = bindM p f
     member self.Zero ()         = failM "Zero"
     member self.Combine (p,q)   = combineM p q
-
+    member self.Delay fn        = delayM fn
+    member self.For (s,p)       = sforM s p
 
     // TODO member self.ReturnFrom 
 

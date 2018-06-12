@@ -154,12 +154,12 @@ let makeSqlPointDataRow (csvRow:PointReportRow) : unit =
         row.PointType <- Some <| longhandQualifiedType qt
     | None -> () 
 
-    row.OdName <- trimOption << nullToOption <| csvRow.``OD name``
-    row.PointFunction <- trimOption << nullToOption <| csvRow.Function
-    row.RecordingInfo <- trimOption << nullToOption <| csvRow.``Recording & timebase (on DG: on archive)``
-    row.ScalingOrMnemonics <- trimOption << nullToOption <| csvRow.``Scaling (raw=scaled)/mnemonics``
-    row.AlarmParameters <- trimOption << nullToOption <| csvRow.``Alarm parameters``
-    row.ControlPicAlarmPic <- trimOption << nullToOption <| csvRow.``Ctrl pic  Alarm pic``
+    row.OdName              <- trimOption << nullToOption <| csvRow.``OD name``
+    row.PointFunction       <- trimOption << nullToOption <| csvRow.Function
+    row.RecordingInfo       <- trimOption << nullToOption <| csvRow.``Recording & timebase (on DG: on archive)``
+    row.ScalingOrMnemonics  <- trimOption << nullToOption <| csvRow.``Scaling (raw=scaled)/mnemonics``
+    row.AlarmParameters     <- trimOption << nullToOption <| csvRow.``Alarm parameters``
+    row.ControlPicAlarmPic  <- trimOption << nullToOption <| csvRow.``Ctrl pic  Alarm pic``
 
 
 

@@ -43,11 +43,35 @@ let inline private bindM (ma:SQLiteConn<'a>) (f : 'a -> SQLiteConn<'b>) : SQLite
 
 let failM (msg:string) : SQLiteConn<'a> = SQLiteConn (fun r -> Err msg)
 
+let withTransaction (ma:SQLiteConn<'a>) : SQLiteConn<'a> = 
+    SQLiteConn <| fun conn -> 
+        let trans = conn.BeginTransaction(System.Data.IsolationLevel.ReadCommitted)
+        try 
+            match apply1 ma conn with
+            | Ok(a) -> trans.Commit () ; Ok a
+            | Err(msg) -> trans.Rollback () ; Err msg
+        with 
+        | ex -> trans.Rollback() ; Err( ex.ToString() )
+
+
+
+/// This is wrapped in a transaction, both must succeed otherwise the 
+/// transaction is rolled back.
+let inline private combineM  (ma:SQLiteConn<unit>) (mb:SQLiteConn<'b>) : SQLiteConn<'b> = 
+    withTransaction << SQLiteConn <| fun conn -> 
+        match apply1 ma conn, apply1 mb conn with
+        | Ok _, Ok b -> Ok b
+        | Err msg, _ -> Err msg
+        | _, Err msg -> Err msg
+
+
 
 type SQLiteConnBuilder() = 
     member self.Return x        = returnM x
     member self.Bind (p,f)      = bindM p f
     member self.Zero ()         = failM "Zero"
+    member self.Combine (p,q)   = combineM p q
+
 
 let (sqliteConn:SQLiteConnBuilder) = new SQLiteConnBuilder()
 
@@ -242,16 +266,6 @@ let execReaderSingleton (statement:string) (proc:SQLite.SQLiteDataReader -> 'a) 
         with
         | ex -> Err(ex.ToString())
 
-let withTransaction (ma:SQLiteConn<'a>) : SQLiteConn<'a> = 
-    SQLiteConn <| fun conn -> 
-        let trans = conn.BeginTransaction(System.Data.IsolationLevel.ReadCommitted)
-        try 
-            let ans = apply1 ma conn
-            match ans with
-            | Ok(a) -> trans.Commit () ; ans
-            | Err(msg) -> trans.Rollback () ; ans
-        with 
-        | ex -> trans.Rollback() ; Err( ex.ToString() )
 
 let withTransactionList (values:'a list) (proc1:'a -> SQLiteConn<'b>) : SQLiteConn<'b list> = 
     withTransaction (forM values proc1)
