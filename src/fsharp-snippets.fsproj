@@ -53,6 +53,7 @@
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
+    <Compile Include="AssemblyInfo.fs" />
     <Compile Include="SL\CommonUtils.fs" />
     <Compile Include="SL\StringUtils.fs" />
     <Compile Include="SL\AnswerMonad.fs" />
@@ -78,11 +79,8 @@
     <None Include="CsvTrim.fsx" />
     <None Include="TotalOrder1.fsx" />
     <None Include="TotalOrder2.fsx" />
-    <None Include="GenFindReplaceInput.fsx" />
-    <None Include="WordFindReplace.fsx" />
     <None Include="DbImportSites.fsx" />
     <None Include="DbImportEvents.fsx" />
-    <None Include="GenUploadForm.fsx" />
     <None Include="InvestigateDb.fsx" />
     <None Include="DbBarriers.fsx" />
     <None Include="TestDocOutput.fsx" />
