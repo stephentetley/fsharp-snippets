@@ -88,7 +88,6 @@
     <None Include="TestDocOutput.fsx" />
     <None Include="TestFileStore.fsx" />
     <None Include="TestGraphvizOutput.fsx" />
-    <None Include="TestMagick.fsx" />
     <None Include="TestPostgres.fsx" />
     <None Include="ScreenData.fsx" />
     <None Include="ERReportBuildDB.fsx" />
@@ -162,9 +161,6 @@
     </Reference>
     <Reference Include="ICSharpCode.SharpZipLib">
       <HintPath>..\packages\ExcelProvider.0.8.2\lib\ICSharpCode.SharpZipLib.dll</HintPath>
-    </Reference>
-    <Reference Include="Magick.NET-Q8-AnyCPU">
-      <HintPath>..\packages\Magick.NET-Q8-AnyCPU.7.4.4\lib\net40\Magick.NET-Q8-AnyCPU.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="mscorlib" />

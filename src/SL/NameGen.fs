@@ -25,11 +25,17 @@ let inline private bindM (ma:NameGen<'a>) (f : 'a -> NameGen<'b>) : NameGen<'b> 
     NameGen <| fun st ->
         let (s1,a) = apply1 ma st in apply1 (f a) s1
 
+/// For NameGen this is the FParsec's (>>.) combinator, or Haskell's (*>)
+let inline private combineM  (ma:NameGen<unit>) (mb:NameGen<'b>) : NameGen<'b> = 
+    NameGen <| fun st ->
+        let (s1,_) = apply1 ma st in apply1 mb s1
+
 
 type NameGenBuilder() = 
-    member self.Return x = returnM x
-    member self.Bind (p,f) = bindM p f
-    member self.Zero () = returnM ()
+    member self.Return x        = returnM x
+    member self.Bind (p,f)      = bindM p f
+    member self.Zero ()         = returnM ()        // WARNING - no notion of failure
+    member self.Combine (p,f)   = combineM p f
 
 let (nameGen:NameGenBuilder) = new NameGenBuilder()
 
@@ -129,9 +135,9 @@ let foriM (xs:'a list) (fn:int -> 'a -> NameGen<'b>)  : NameGen<'b list> = mapiM
 let foriMz (xs:'a list) (fn:int -> 'a -> NameGen<'b>) : NameGen<unit> = mapiMz fn xs
 
 
-// Note - Seq going through list seems better than anything I can manage directly
-// either with recursion (bursts the stack) or an enumerator (very slow)
-// The moral is this is a abd API (currently)
+// Note - Seq-going-through-list seems better than anything I have managed 
+// directly: either with recursion (bursts the stack) or an enumerator (very slow).
+// The moral is that exposing traverseM is a bad API (currently).
 
 
 let traverseM (fn: 'a -> NameGen<'b>) (source:seq<'a>) : NameGen<seq<'b>> =
