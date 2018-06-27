@@ -80,16 +80,12 @@
     <None Include="TotalOrder1.fsx" />
     <None Include="TotalOrder2.fsx" />
     <None Include="DbImportSites.fsx" />
-    <None Include="DbImportEvents.fsx" />
-    <None Include="InvestigateDb.fsx" />
     <None Include="DbBarriers.fsx" />
     <None Include="TestDocOutput.fsx" />
     <None Include="TestFileStore.fsx" />
     <None Include="TestGraphvizOutput.fsx" />
     <None Include="TestPostgres.fsx" />
     <None Include="ScreenData.fsx" />
-    <None Include="ERReportBuildDB.fsx" />
-    <None Include="ERReportRun.fsx" />
     <None Include="DisBuildDB.fsx" />
     <None Include="TEDataExplore.fsx" />
     <None Include="RTUDataExplore.fsx" />

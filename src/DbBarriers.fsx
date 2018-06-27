@@ -44,7 +44,7 @@ open SL.ScriptMonad
 
 
 type ImportTable = 
-    ExcelFile< @"G:\work\Projects\barriers\barriers_data.xlsx",
+    ExcelFile< @"G:\work\Projects\rtu\IS_barriers\barriers_data.xlsx",
                 SheetName = "INFO_ALL",
                 ForceString = true >
 
