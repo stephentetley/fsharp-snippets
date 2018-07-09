@@ -67,7 +67,6 @@
     <Compile Include="SL\ScriptMonad.fs" />
     <Compile Include="SL\ClosedXMLOutput.fs" />
     <Compile Include="SL\CsvOutput.fs" />
-    <Compile Include="SL\CsvUtils.fs" />
     <Compile Include="SL\DocOutput.fs" />
     <Compile Include="SL\GraphvizOutput.fs" />
     <Compile Include="SL\SwOutput.fs" />
@@ -76,7 +75,6 @@
     <Compile Include="Scripts\Grouping.fs" />
     <Compile Include="Scripts\TotalOrder.fs" />
     <Compile Include="Scripts\RtuData.fs" />
-    <None Include="CsvTrim.fsx" />
     <None Include="TotalOrder1.fsx" />
     <None Include="TotalOrder2.fsx" />
     <None Include="DbImportSites.fsx" />
