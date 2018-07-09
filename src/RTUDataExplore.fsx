@@ -37,13 +37,11 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitNames
 #load @"SL\JsonExtractor.fs"
 #load @"SL\ScriptMonad.fs"
 #load @"SL\CsvOutput.fs"
-#load @"SL\CsvUtils.fs"
 #load @"Scripts\RtuData.fs"
 open SL.AnswerMonad
 open SL.SqlUtils
 open SL.SQLiteConn
 open SL.ScriptMonad
-open SL.CsvUtils
 open Scripts.RtuData
 
 type OsReport = 
@@ -88,19 +86,6 @@ type SqlPointDataTable = SqlDB.dataContext.mainSchema.``main.point_data``
 type SqlPointDataRow = SqlDB.dataContext.``main.point_dataEntity``
 
 let sqlPointData : SqlPointDataTable = sqlCtx.Main.PointData
-
-
-
-let trimTabSepFile (inputPath:string) : unit = 
-    let name1 = System.IO.FileInfo(inputPath).Name
-    let path1 = System.IO.FileInfo(inputPath).Directory.FullName
-    let name2 = name1.Replace(".tab.", ".trim.")
-    let outputPath = System.IO.Path.Combine(path1,name2)
-    let options = 
-        { InputSeparator = "\t"
-          InputHasHeaders = true
-          OutputSeparator = "," }
-    trimCsvFile options inputPath outputPath
 
 
 
@@ -220,9 +205,6 @@ let temp02 () : unit =
         } |> Seq.iter (printfn "%A")
 
 
-
-let temp03 () = 
-    trimTabSepFile @"G:\work\Projects\events2\data\rtu-data\rtu-S_WW_LEE-points.tab.csv"
 
 
 let temp04 () = runrun parseMnemonics "ISOLATED POWER_ON"
