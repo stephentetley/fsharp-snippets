@@ -37,6 +37,8 @@ type SaiTable =
 
 type SaiRow = SaiTable.Row
 
+
+/// "ACORN PARK/STW" => "SAI0125"
 let getSaiLookups () : Map<string,string> = 
     let dict : GetRowsDict<SaiTable, SaiRow> = 
         { GetRows     = fun imports -> imports.Data 
@@ -45,6 +47,28 @@ let getSaiLookups () : Map<string,string> =
         |> List.map (fun row -> row.InstCommonName, row.InstReference)
         |> Map.ofList
 
+let getAssetDict () : Map<string,SaiRow> = 
+    let dict : GetRowsDict<SaiTable, SaiRow> = 
+        { GetRows     = fun imports -> imports.Data 
+          NotNullProc = fun row -> match row.GetValue(0) with null -> false | _ -> true }
+    excelTableGetRows dict (new SaiTable()) 
+        |> List.map (fun row -> row.InstReference, row)
+        |> Map.ofList
+
+
+
+type RtsTable = 
+    CsvProvider<  @"G:\work\Projects\rtu\AR-asset-expired-2011\rts-data.csv", 
+                    HasHeaders = true,
+                    IgnoreErrors = true >
+
+type RtsRow = RtsTable.Row
+
+let getRtsData () : Map<string, RtsRow> = 
+    let csv = RtsTable.Load( @"G:\work\Projects\rtu\AR-asset-expired-2011\rts-data.csv")
+    csv.Rows 
+        |> Seq.map (fun row -> (row.``OD name``, row))
+        |> Map.ofSeq
 
 
 
@@ -57,21 +81,26 @@ let getSiteName (source:string) : string =
 
 let getSiteName1 (row:AssetRow) : string = getSiteName row.``Common Name``
 
-let getHeaders (schema:string) : string = 
-    let leftOf (needle:char) (source:string) = 
-        source.Split(needle).[0]
+/// Can't do much about column headers they are auto-printed if HasHeaders = true
+
+//let getHeaders (schema:string) : string = 
+//    let leftOf (needle:char) (source:string) = 
+//        source.Split(needle).[0]
         
-    let arr = schema.Split(',')
-    Array.map (fun s -> (leftOf '(' s).Trim() ) arr |> String.concat ","
+//    let arr = schema.Split(',')
+//    Array.map (fun s -> (leftOf '(' s).Trim() ) arr |> String.concat ","
 
 
 
 [<Literal>]
 let OutSchema = 
-    "Sai Number (string), Site(string), Manufacturer (string), \
-     Model (string), Specific Model (string), Serial Number (string), \
-     Installed From (string), Asset Status (string), Memo 1 (string), \
-     Memo 2 (string)"
+    "Sai Number (string), Odyssey (string), Site Name(string), Site Type (string), \
+     Pli Number (string), AI2 Install Date (string), Outstation Name (string), \
+     AI2 Path (string), Grid Ref (string), \
+     Operational Contact (string), Work Center (string), \
+     Site Address (string), Postcode (string), \
+     OS Type (string), RTU Address (string), OS Comment (string), \
+     AI2 Manufacturer (string), AI2 Model (string), AI2 Model or Frame (string)"
 
 
 /// Setting Sample to the schema is a trick to generate Headers.
@@ -81,24 +110,68 @@ type OutputCsv =
         Sample = OutSchema,
         HasHeaders = true>
 
-let outputRecord (sais:Map<string,string>) (row:AssetRow) : OutputCsv.Row = 
+let genOdyssey (saiNumber:string) : string = 
+    sprintf "SAIREF = \"%s\" OR" saiNumber
+
+let osAddrRepair (osAddr:string) :string = 
+    let arr = osAddr.Split(',')
+    if arr.Length = 2 then 
+        sprintf "%s, %s" (arr.[0].Trim()) (arr.[1].Trim())
+    else 
+        sprintf "' %s" osAddr
+
+let commonNamePath (osCommonName:string) : string = 
+    let arr = osCommonName.Split('/')
+    if arr.Length > 3 then 
+        let stop = arr.Length - 2 // drop last 
+        let arr1 = arr.[2..stop]
+        String.concat "/" arr1
+    else 
+        ""
+
+
+
+let outputRecord (assets:Map<string,SaiRow>) 
+                    (sais:Map<string,string>) (rts:Map<string,RtsRow>) 
+                    (currentRow:AssetRow) : OutputCsv.Row = 
     let sainum = 
-        match Map.tryFind (getSiteName row.``Common Name``) sais with
+        match Map.tryFind (getSiteName currentRow.``Common Name``) sais with
         | Some str -> str
         | None -> "unknown"
 
+
+    let withSaiRow (defaultVal:'a) (fn :SaiRow -> 'a) : 'a = 
+        match Map.tryFind sainum assets with
+        | Some row -> fn row
+        | None -> defaultVal
+
+    let withRtsRow (defaultVal:'a) (fn :RtsRow -> 'a) : 'a = 
+        match Map.tryFind sainum rts with
+        | Some row -> fn row
+        | None -> defaultVal
+
     OutputCsv.Row(
         saiNumber = sainum,
-        site=getSiteName row.``Common Name``, 
-        manufacturer = row.Manufacturer,
-        model = row.Model,
-        specificModel = row.``Specific Model_Frame``,
-        serialNumber = row.``Serial No``,
-        installedFrom = row.``Installed From``,
-        assetStatus = row.AssetStatus,
-        memo1 = row.``Memo Line 1`` , 
-        memo2 = row.``Memo Line 2`` ) 
-
+        odyssey = genOdyssey sainum, 
+        siteName = getSiteName currentRow.``Common Name``, 
+        siteType = withSaiRow "" (fun row -> row.AssetType),
+        pliNumber = currentRow.Reference,
+        ai2InstallDate = currentRow.``Installed From``, 
+        outstationName = withRtsRow "" (fun row -> row.``OS name``),
+        ai2Path = commonNamePath currentRow.``Common Name``,
+        gridRef = withSaiRow "" (fun row -> row.LocationReference),
+        operationalContact = withSaiRow "" (fun row -> row.``Operational Responsibility``),
+        workCenter = withSaiRow "" (fun row -> row.``Work Centre``),
+        siteAddress = withSaiRow "" (fun row -> row.``Full Address``),
+        postcode = withSaiRow "" (fun row -> row.``Post Code``),
+        osType = withRtsRow "" (fun row -> row.``OS type``),
+        rtuAddress = withRtsRow "" (fun row -> osAddrRepair row.``OS Addr``),
+        osComment = withRtsRow "" (fun row -> row.``OS comment``),
+        ai2Manufacturer = currentRow.Manufacturer,
+        ai2Model = currentRow.Model,
+        ai2ModelOrFrame = currentRow.``Specific Model_Frame``
+        )
+        
 
 
 /// TODO - should optQuote
@@ -113,9 +186,11 @@ let writeHeaders (sw:System.IO.StreamWriter) (headers:string [] option) : unit =
 
 let collateData (outPath:string) : unit = 
     let sais = getSaiLookups ()
-    let csvdata = new OutputCsv(List.map (outputRecord sais)  <| getAssetRows ())
+    let assets = getAssetDict ()
+    let rts = getRtsData ()
+    let csvdata = new OutputCsv(List.map (outputRecord assets sais rts)  <| getAssetRows ())
     use sw = new System.IO.StreamWriter(outPath)
-    writeHeaders sw csvdata.Headers
+    // writeHeaders sw csvdata.Headers
     csvdata.Save(writer = sw, separator = ',', quote = '"')
 
 let test01 () = 
