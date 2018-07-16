@@ -3,6 +3,27 @@
 
 module SL.ExcelProviderHelper
 
+
+
+/// F# design guidelines say favour object-interfaces rather 
+/// than records of functions...
+type IExcelProviderHelper<'table,'row> = 
+    abstract member GetTableRows : 'table -> seq<'row>
+    abstract member IsBlankRow: 'row -> bool
+
+let excelGetRows (helper:IExcelProviderHelper<'table,'row>) (table:'table) : seq<'row> = 
+    let allrows = helper.GetTableRows table
+    allrows |> Seq.filter (not << helper.IsBlankRow)
+
+
+let excelGetRowsAsList (helper:IExcelProviderHelper<'table,'row>) (table:'table) : 'row list = 
+    excelGetRows helper table |> Seq.toList
+
+
+
+// ************************************
+// OLD...
+
 // The Excel Type Provider seems to read a trailing null row.
 // This dictionary and procedure provide a skeleton to get round this.
 

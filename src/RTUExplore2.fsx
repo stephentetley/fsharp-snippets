@@ -17,35 +17,46 @@ open SL.ExcelProviderHelper
 
 /// Favour Csv reader as ExcelProvider appears to be transposing dates to MM/dd/yyyy (???)
 type AssetTable = 
-    CsvProvider<  @"G:\work\Projects\rtu\AR-asset-expired-2011\mmims-2010-to-2012.csv", 
+    CsvProvider<  @"G:\work\Projects\rtu\MK5 MMIM Replacement\mmims-2010-to-2012.csv", 
                     HasHeaders = true >
 
 type AssetRow = AssetTable.Row
 
 let getAssetRows () : AssetRow list = 
-    AssetTable.Load(@"G:\work\Projects\rtu\AR-asset-expired-2011\mmims-2010-to-2012.csv").Rows 
+    AssetTable.Load(@"G:\work\Projects\rtu\MK5 MMIM Replacement\mmims-2010-to-2012.csv").Rows 
         |> Seq.toList
 
 let file1 = 
-    AssetTable.Load(@"G:\work\Projects\rtu\AR-asset-expired-2011\mmims-2010-to-2012.csv").Headers
+    AssetTable.Load(@"G:\work\Projects\rtu\MK5 MMIM Replacement\mmims-2010-to-2012.csv").Headers
 
 
 type SaiTable = 
-    ExcelFile< @"G:\work\Projects\rtu\AR-asset-expired-2011\SAINumbers.xlsx",
+    ExcelFile< @"G:\work\Projects\rtu\MK5 MMIM Replacement\SAINumbers.xlsx",
                 SheetName = "SITE_LIST",
                 ForceString = true >
 
 type SaiRow = SaiTable.Row
 
 
+//let getSiteListRows () : seq<SiteListRow> = 
+//    let dict () = 
+//        { new IExcelProviderHelper<SiteListTable,SiteListRow>
+//          with member this.GetTableRows table = table.Data 
+//               member this.IsBlankRow row = match row.GetValue(0) with null -> true | _ -> false }
+         
+//    excelGetRows (dict ()) (new SiteListTable())
+
+
 /// "ACORN PARK/STW" => "SAI0125"
 let getSaiLookups () : Map<string,string> = 
-    let dict : GetRowsDict<SaiTable, SaiRow> = 
-        { GetRows     = fun imports -> imports.Data 
-          NotNullProc = fun row -> match row.GetValue(0) with null -> false | _ -> true }
-    excelTableGetRows dict (new SaiTable()) 
-        |> List.map (fun row -> row.InstCommonName, row.InstReference)
-        |> Map.ofList
+    let dict () : IExcelProviderHelper<SaiTable, SaiRow> = 
+         { new IExcelProviderHelper<SaiTable,SaiRow>
+           with member this.GetTableRows imports = imports.Data 
+                member this.IsBlankRow row = 
+                    match row.GetValue(0) with null -> false | _ -> true }
+    excelGetRows (dict ()) (new SaiTable()) 
+        |> Seq.map (fun (row:SaiRow) -> row.InstCommonName, row.InstReference)
+        |> Map.ofSeq
 
 let getAssetDict () : Map<string,SaiRow> = 
     let dict : GetRowsDict<SaiTable, SaiRow> = 
@@ -58,7 +69,7 @@ let getAssetDict () : Map<string,SaiRow> =
 
 
 type RtsTable = 
-    CsvProvider<  @"G:\work\Projects\rtu\AR-asset-expired-2011\rts-data.csv", 
+    CsvProvider<  @"G:\work\Projects\rtu\MK5 MMIM Replacement\rts-data.csv", 
                     HasHeaders = true,
                     IgnoreErrors = true >
 

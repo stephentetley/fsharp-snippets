@@ -89,6 +89,7 @@
     <None Include="RTUDataExplore.fsx" />
     <None Include="RTUExplore2.fsx" />
     <None Include="TextScan.fsx" />
+    <None Include="FlowExplore.fsx" />
     <COMReference Include="Microsoft Excel 16.0 Object Library">
       <Guid>{00020813-0000-0000-c000-000000000046}</Guid>
       <VersionMajor>1</VersionMajor>
