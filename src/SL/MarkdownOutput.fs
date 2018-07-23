@@ -11,9 +11,9 @@ open SL.FormatCombinators
 // Output is to a handle so this is not really a writer monad
 // (all output must be sequential)
 
-type MarkdownOutput<'a> = MarkdownOutput of (StringWriter -> 'a)
+type MarkdownOutput<'a> = MarkdownOutput of (StreamWriter -> 'a)
 
-let inline private apply1 (ma : MarkdownOutput<'a>) (handle:StringWriter) : 'a = 
+let inline private apply1 (ma : MarkdownOutput<'a>) (handle:StreamWriter) : 'a = 
     let (MarkdownOutput f) = ma in f handle
 
 let inline private mdreturn (x:'a) : MarkdownOutput<'a> = MarkdownOutput (fun r -> x)
@@ -36,7 +36,7 @@ let (markdownOutput:MarkdownOutputBuilder) = new MarkdownOutputBuilder()
 
 // Common monadic operations
 let fmapM (fn:'a -> 'b) (ma:MarkdownOutput<'a>) : MarkdownOutput<'b> = 
-    MarkdownOutput <| fun (handle:StringWriter) ->
+    MarkdownOutput <| fun (handle:StreamWriter) ->
         let ans = apply1 ma handle in fn ans
 
 let mapM (fn:'a -> MarkdownOutput<'b>) (xs:'a list) : MarkdownOutput<'b list> = 
@@ -72,29 +72,17 @@ let traverseMz (fn: 'a -> MarkdownOutput<'b>) (source:seq<'a>) : MarkdownOutput<
 
 
 let runMarkdownOutput (outputFile:string) (ma:MarkdownOutput<'a>) : 'a = 
-    use handle : StringWriter = new StringWriter()
+    use handle : StreamWriter = new StreamWriter(outputFile)
     match ma with 
-    | MarkdownOutput(f) -> 
-        let ans = f handle
-        File.WriteAllText(path = outputFile, contents= handle.ToString()) |> ignore
-        ans 
+    | MarkdownOutput(f) -> f handle 
 
-let runMarkdownOutputConsole (ma:MarkdownOutput<'a>) : 'a = 
-    use handle : StringWriter = new StringWriter()
-    match ma with 
-    | MarkdownOutput(f) ->
-        let ans = f handle
-        printfn "----------"
-        printfn "%s" (handle.ToString ())
-        printfn "----------"
-        ans 
 
 
 type Markdown = Doc
 
 
 let tellMarkdown (md:Markdown) : MarkdownOutput<unit> = 
-    MarkdownOutput <| fun (handle:StringWriter) ->
+    MarkdownOutput <| fun (handle:StreamWriter) ->
         handle.WriteLine (render md)
 
 let (@@@) (d1:Markdown) (d2:Markdown) : Markdown = d1 +^+ d2

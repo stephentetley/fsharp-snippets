@@ -2,10 +2,13 @@
 #load @"SL\MarkdownOutput.fs"
 open SL.MarkdownOutput
 
+
+let outFile = System.IO.Path.Combine(__SOURCE_DIRECTORY__, "..", @"data\markdown-temp.md")
+
 let test01 () : unit = 
     let procM = 
         let bodytext = 
-            plaintext "Empasis, aka italics, with" 
+            plaintext "Emphasis, aka italics, with" 
                 @@@ (asterisks <| plaintext "asterisks")
                 @@@ plaintext "or"
                 @@@ (underscores <| plaintext "asterisks")
@@ -15,5 +18,5 @@ let test01 () : unit =
             do! tellMarkdown bodytext
             return ()
             }
-    runMarkdownOutputConsole procM |> ignore
+    runMarkdownOutput outFile procM |> ignore
 
