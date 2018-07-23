@@ -75,7 +75,7 @@ let test01 () : unit =
 
 [<Literal>]
 let OutSchema = 
-    "Sai Number (string), Odyssey (string), Site Name(string), \
+    "Sai Number (string), Odyssey (string), Site Name (string), \
      Area (string), Inst Number (string), Inst Name (string), \
      Operational Contact (string), Work Center (string), \
      Site Address (string), Postcode (string)"

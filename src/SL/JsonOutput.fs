@@ -20,7 +20,7 @@ let inline private returnM (x:'a) : JsonOutput<'a> = JsonOutput (fun r -> x)
 let inline private bindM (ma:JsonOutput<'a>) (f : 'a -> JsonOutput<'b>) : JsonOutput<'b> =
     JsonOutput (fun r -> let a = apply1 ma r in apply1 (f a) r)
 
-// Hard failure (exception) , the monad has real notion of failure
+// Hard failure (exception), the monad has no real notion of failure
 let fail : JsonOutput<'a> = JsonOutput (fun r -> failwith "JsonOutput fail")
 
 

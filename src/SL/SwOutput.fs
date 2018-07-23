@@ -5,6 +5,9 @@ module SL.SwOutput
 
 open System.IO
 
+/// This is overkill, implement string writing directly in the monad 
+/// rather than use this as a "transformer" / effect.
+
 type SwOutput<'a> = SwOutput of (StringWriter -> 'a)
 
 
